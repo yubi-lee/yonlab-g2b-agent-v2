@@ -48,6 +48,24 @@ def test_score_endpoint_accepts_raw_notice() -> None:
     assert response.json()["total_score"] >= 85
 
 
+def test_score_endpoint_accepts_explicit_raw_notice_request_schema() -> None:
+    response = client.post(
+        "/recommendations/score",
+        json={
+            "raw_notice": {
+                "공고명": "서울 AI 소프트웨어 개발",
+                "지역제한": "서울특별시",
+                "참가자격": "소프트웨어사업자, 소기업, 창업기업 우대",
+                "과업내용": "인공지능소프트웨어 정보시스템개발서비스",
+                "입찰마감일시": "2026-07-20",
+            }
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["total_score"] >= 85
+
+
 def test_report_endpoint_returns_markdown() -> None:
     response = client.post(
         "/recommendations/report",
@@ -62,3 +80,13 @@ def test_report_endpoint_returns_markdown() -> None:
 
     assert response.status_code == 200
     assert "## 🎯 와이온랩 맞춤 추천 공고" in response.json()["markdown"]
+
+
+def test_openapi_uses_explicit_request_schemas() -> None:
+    openapi = client.get("/openapi.json").json()
+
+    score_schema = openapi["paths"]["/recommendations/score"]["post"]["requestBody"]
+    demo_schema = openapi["paths"]["/demo/recommendations"]["post"]["requestBody"]
+
+    assert "NoticeRequest" in str(score_schema)
+    assert "DemoRecommendationsRequest" in str(demo_schema)

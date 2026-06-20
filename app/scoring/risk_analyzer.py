@@ -113,7 +113,7 @@ def analyze_risks(
     if deadline_risk is not None:
         risks.append(deadline_risk)
 
-    return risks
+    return _dedupe_risks(risks)
 
 
 def _is_other_region_limited(notice: BidNotice, text: str) -> bool:
@@ -175,3 +175,14 @@ def _parse_deadline(deadline: str) -> date | None:
 
 def _has_any(text: str, terms: tuple[str, ...]) -> bool:
     return any(term.casefold() in text for term in terms)
+
+
+def _dedupe_risks(risks: list[RiskItem]) -> list[RiskItem]:
+    deduped: list[RiskItem] = []
+    seen_codes: set[str] = set()
+    for risk in risks:
+        if risk.code in seen_codes:
+            continue
+        seen_codes.add(risk.code)
+        deduped.append(risk)
+    return deduped

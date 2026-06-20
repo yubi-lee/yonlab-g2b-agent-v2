@@ -33,3 +33,19 @@ def test_risk_case_contains_region_and_performance_risks() -> None:
     assert "non_seoul_region" in risk_codes
     assert "recent_performance_required" in risk_codes
     assert "single_contract_amount_required" in risk_codes
+
+
+def test_risk_output_uses_canonical_deduplicated_codes() -> None:
+    notice = load_normalized_sample_notices()[4]
+
+    score = score_notice(notice)
+    risk_codes = [risk.code for risk in score.risks]
+    eligibility_risk_codes = [
+        signal.code for signal in score.eligibility.signals if signal.kind == "risk"
+    ]
+
+    assert len(risk_codes) == len(set(risk_codes))
+    assert "other_region_limit" not in risk_codes
+    assert "three_year_performance_limit" not in risk_codes
+    assert "other_region_limit" not in eligibility_risk_codes
+    assert "three_year_performance_limit" not in eligibility_risk_codes

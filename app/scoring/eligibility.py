@@ -100,11 +100,6 @@ def evaluate_eligibility(
         signals.append(
             EligibilitySignal(kind=SignalKind.RISK, code=risk.code, message=risk.message)
         )
-        alias = _legacy_risk_code(risk.code)
-        if alias != risk.code:
-            signals.append(
-                EligibilitySignal(kind=SignalKind.RISK, code=alias, message=risk.message)
-            )
 
     fit = _fit_level(signals)
     return EligibilityResult(
@@ -149,12 +144,3 @@ def _has_any(text: str, terms: tuple[str, ...]) -> bool:
 
 def _signals_with_code(signals: list[EligibilitySignal], code: str) -> list[EligibilitySignal]:
     return [signal for signal in signals if signal.code == code]
-
-
-def _legacy_risk_code(code: str) -> str:
-    aliases = {
-        "non_seoul_region": "other_region_limit",
-        "recent_performance_required": "three_year_performance_limit",
-        "hardware_only": "hardware_delivery_low_fit",
-    }
-    return aliases.get(code, code)

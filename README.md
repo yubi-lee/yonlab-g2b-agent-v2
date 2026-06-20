@@ -1,26 +1,17 @@
 # YOnLab G2B Agent v2
 
-YOnLab-specific G2B/Narajangteo bid recommendation MVP.
+Fixture-based operational MVP for YOnLab-specific G2B/Narajangteo bid recommendation.
+
+The app normalizes procurement notices, evaluates YOnLab eligibility, detects risks, calculates a deterministic 100-point match score, and generates a Korean markdown recommendation report.
 
 This repository is independent from the previous v1 project:
 
 - Previous repository: `D:\Views\yonlab-bid-agent`
 - Current repository: `D:\Views\yonlab-g2b-agent-v2`
 
-The MVP is fixture-first and deterministic. Real G2B/Public Data Portal API access is disabled by default and is not used by tests or demo endpoints.
+## Current Limitation
 
-## What It Does
-
-```text
-Raw procurement notice
--> normalized BidNotice
--> YOnLab eligibility analysis
--> risk analysis
--> 100-point match score
--> recommendation level
--> Korean markdown recommendation report
--> FastAPI endpoint response
-```
+This is a fixture-based MVP. Real G2B/Public Data Portal API calls are disabled by default and are not used by tests, demo endpoints, or smoke scripts.
 
 ## Run Tests
 
@@ -50,7 +41,7 @@ http://127.0.0.1:8000/docs
 http://127.0.0.1:8000/health
 ```
 
-## Key Endpoints
+## Endpoints
 
 - `GET /health`
 - `GET /profile/yonlab`
@@ -60,7 +51,41 @@ http://127.0.0.1:8000/health
 - `POST /recommendations/report`
 - `POST /demo/recommendations`
 
-## Example Report Request
+## Demo Recommendations
+
+Compact output:
+
+```powershell
+$body = @{
+  include_reports = $false
+  limit = 5
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://127.0.0.1:8000/demo/recommendations" `
+  -ContentType "application/json; charset=utf-8" `
+  -Body $body
+```
+
+Full output with reports:
+
+```powershell
+$body = @{
+  include_reports = $true
+  limit = 5
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://127.0.0.1:8000/demo/recommendations" `
+  -ContentType "application/json; charset=utf-8" `
+  -Body $body
+```
+
+No body or `{}` also works and uses local fixture notices.
+
+## Recommendation Report Example
 
 ```powershell
 $body = @{
@@ -80,6 +105,13 @@ Invoke-RestMethod `
   -Body $body
 ```
 
-## Fixture Rule
+## Smoke Scripts
 
-The app ships with local sample notices at `data/fixtures/g2b/sample_notices.json`. Default behavior never calls a real G2B/Public Data Portal API and does not require an API key, database, frontend, or LLM.
+Start the server first with `.\scripts\dev_start.ps1`, then run in another terminal:
+
+```powershell
+.\scripts\smoke_demo.ps1
+.\scripts\smoke_report.ps1
+```
+
+Set `YONLAB_G2B_BASE_URL` to target a non-default local URL.
