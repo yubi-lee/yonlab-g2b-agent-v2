@@ -1,3 +1,4 @@
+from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Body
@@ -28,6 +29,7 @@ from app.domain.search import (
 )
 from app.domain.yonlab_profile import YOnLabProfile, default_yonlab_profile
 from app.integrations.g2b.client import G2BClient
+from app.integrations.g2b.detail_queue import build_detail_analysis_queue
 from app.integrations.g2b.errors import G2BClientError
 from app.integrations.g2b.fixtures import load_sample_g2b_notices, search_sample_g2b_notices
 from app.integrations.g2b.normalizer import normalize_g2b_notice
@@ -139,8 +141,11 @@ def g2b_recommendations(request: G2BRecommendationRequest) -> G2BRecommendationR
         include_reports=request.include_reports,
         recommendations=recommendations,
         ranked_order=[_demo_notice_id(item) for item in recommendations],
+        detail_analysis_queue=search_response.detail_analysis_queue,
         source_count=search_response.raw_count,
         message=search_response.message,
+        safe_endpoint_path=search_response.safe_endpoint_path,
+        service_key_exposed=search_response.service_key_exposed,
     )
 
 
@@ -238,7 +243,10 @@ def _search_g2b_notices(request: G2BSearchRequest) -> G2BSearchResponse:
             business_type=request.business_type,
             limit=request.num_rows,
         )
-        normalized = [normalize_g2b_notice(notice) for notice in raw_notices]
+        normalized = _filter_active_notices(
+            [normalize_g2b_notice(notice) for notice in raw_notices],
+            active_only=request.active_only is True,
+        )
         message = "Fixture notices returned."
         if not normalized:
             message = "No fixture notices matched the search criteria."
@@ -251,8 +259,10 @@ def _search_g2b_notices(request: G2BSearchRequest) -> G2BSearchResponse:
             message=message,
         )
 
+    settings = get_settings()
+    endpoint_path, _ = resolve_endpoint_path(settings)
     try:
-        raw_notices = G2BClient(get_settings()).search(request)
+        raw_notices = G2BClient(settings).search(request)
     except G2BClientError as exc:
         return G2BSearchResponse(
             ok=False,
@@ -267,7 +277,13 @@ def _search_g2b_notices(request: G2BSearchRequest) -> G2BSearchResponse:
             service_key_exposed=exc.service_key_exposed,
         )
 
-    normalized = [normalize_g2b_notice(notice) for notice in raw_notices]
+    active_only = request.active_only
+    if active_only is None and isinstance(request, G2BRecommendationRequest):
+        active_only = True
+    normalized = _filter_active_notices(
+        [normalize_g2b_notice(notice) for notice in raw_notices],
+        active_only=active_only is True,
+    )
     message = "Real G2B notices returned."
     if not normalized:
         message = "Real G2B response contained no notices."
@@ -276,6 +292,40 @@ def _search_g2b_notices(request: G2BSearchRequest) -> G2BSearchResponse:
         mode=request.mode,
         source="real",
         notices=normalized,
+        detail_analysis_queue=build_detail_analysis_queue(normalized),
         raw_count=len(raw_notices),
         message=message,
+        safe_endpoint_path=endpoint_path or None,
+        service_key_exposed=False,
     )
+
+
+def _filter_active_notices(
+    notices: list[BidNotice],
+    *,
+    active_only: bool,
+    today: date | None = None,
+) -> list[BidNotice]:
+    if not active_only:
+        return notices
+
+    today = today or date.today()
+    active_notices = []
+    for notice in notices:
+        if not notice.deadline:
+            active_notices.append(notice)
+            continue
+        parsed_deadline = _parse_deadline_date(notice.deadline)
+        if parsed_deadline is None or parsed_deadline >= today:
+            active_notices.append(notice)
+    return active_notices
+
+
+def _parse_deadline_date(deadline: str) -> date | None:
+    normalized = deadline.replace(".", "-").replace("/", "-").strip()
+    for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"):
+        try:
+            return datetime.strptime(normalized[: len("2026-06-20 12:00:00")], fmt).date()
+        except ValueError:
+            continue
+    return None

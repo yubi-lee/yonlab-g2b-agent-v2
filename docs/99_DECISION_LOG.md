@@ -93,3 +93,23 @@ Reason:
 - The approved service base path alone can return HTTP/path errors for real list/search calls.
 - Service search requires operation-compatible query parameters such as `ServiceKey`, `type=json`, `inqryDiv=1`, inquiry date range, and `bidNtceNm`.
 - HTTP error responses should include safe diagnostics such as status code and endpoint path without exposing the service key.
+
+## 2026-06-20 Real G2B Response Normalization Calibration
+
+Decision: Calibrate normalization and recommendation behavior using a sanitized real BidPublicInfoService service-search sample after the first controlled smoke succeeded.
+
+Reason:
+
+- Real service-search responses include contract, service division, procurement category, joint-supply, industry-limit, and evaluation-ratio fields that improve YOnLab recommendation quality.
+- `active_only` filtering keeps expired notices out of real recommendations by default while preserving missing-deadline notices with a medium risk signal.
+- Successful real responses should return safe endpoint metadata without query parameters or service keys.
+
+## 2026-06-20 Real G2B Detail Analysis Queue
+
+Decision: Extract notice detail URLs, attachment URL/file-name metadata, and risk-related fields from real BidPublicInfoService list responses into a deterministic `detail_analysis_queue`.
+
+Reason:
+
+- Real list responses already include public `bidNtceDtlUrl`, `bidNtceUrl`, `ntceSpecDocUrl*`, and `ntceSpecFileNm*` fields needed for the next analysis step.
+- Recommendation quality can improve by surfacing attachment and risk metadata before any attachment download feature exists.
+- The queue is metadata-only: it does not download files, create local artifacts, or expose service keys.

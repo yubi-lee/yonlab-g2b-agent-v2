@@ -23,6 +23,7 @@ FastAPI routes
 - `app/integrations/g2b/normalizer.py`: Korean and G2B-like field mapping.
 - `app/integrations/g2b/client.py`: guarded httpx client for real API calls.
 - `app/integrations/g2b/capture.py`: optional sanitized real response capture.
+- `app/integrations/g2b/detail_queue.py`: deterministic real-notice detail and attachment metadata queue builder; no downloads.
 - `app/integrations/g2b/errors.py`: sanitized client errors.
 - `app/integrations/g2b/presets.py`: endpoint path preset definitions and resolver.
 - `app/integrations/g2b/readiness.py`: offline real API readiness summary.
@@ -31,6 +32,7 @@ FastAPI routes
 - `app/scoring/score_engine.py`: 100-point deterministic recommendation score.
 - `app/reports/markdown_report.py`: Korean markdown report generator.
 - `app/api/routes.py`: API endpoints for MVP and G2B dual pipeline.
+- `data/fixtures/g2b/real_servc_search_sample.json`: sanitized observed real service-search response sample for offline tests.
 
 ## Data Flow
 
@@ -39,12 +41,15 @@ FastAPI routes
 request mode
 -> fixture filter or guarded real API client
 -> normalize_g2b_notice
+-> optional active_only deadline filter
+-> real-mode detail_analysis_queue metadata extraction
 -> G2BSearchResponse
 
 /g2b/recommendations
 search result
 -> score_notice
 -> optional generate_markdown_report
+-> carry detail_analysis_queue forward
 -> ranked response
 ```
 
@@ -54,6 +59,7 @@ search result
 - Real API calls require enabled settings, a configured service key, endpoint path or known endpoint preset, and explicit request confirmation.
 - Real response capture is opt-in and masks secret request fields before writing UTF-8 JSON.
 - Captured real responses are written under ignored local paths such as `data/captured/g2b`.
+- Detail-analysis queue extraction records public detail and attachment metadata only; it does not download attachment files.
 - `scripts/validate_g2b_real_readiness.ps1` checks readiness without calling the real API.
 - The service key is never returned in API responses.
 - Tests and smoke fixture scripts do not call the real API.

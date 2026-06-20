@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -20,7 +21,28 @@ class G2BSearchRequest(BaseModel):
     num_rows: int | None = Field(default=None, ge=1, le=100)
     business_type: str | None = None
     region: str | None = None
+    active_only: bool | None = None
     confirm_real_api_call: bool = False
+
+
+class G2BAttachmentCandidate(BaseModel):
+    sequence: int
+    file_name: str = ""
+    url: str = ""
+    source_url_field: str
+    source_file_name_field: str
+    download_attempted: bool = False
+
+
+class G2BDetailAnalysisQueueItem(BaseModel):
+    notice_id: str
+    title: str
+    detail_url: str = ""
+    notice_url: str = ""
+    attachments: list[G2BAttachmentCandidate] = Field(default_factory=list)
+    risk_metadata: dict[str, Any] = Field(default_factory=dict)
+    analysis_status: str = "queued"
+    download_attempted: bool = False
 
 
 class G2BSearchResponse(BaseModel):
@@ -28,6 +50,7 @@ class G2BSearchResponse(BaseModel):
     mode: G2BSearchMode
     source: str
     notices: list[BidNotice] = Field(default_factory=list)
+    detail_analysis_queue: list[G2BDetailAnalysisQueueItem] = Field(default_factory=list)
     raw_count: int = 0
     message: str = ""
     error_code: str | None = None
@@ -49,6 +72,7 @@ class G2BRecommendationResponse(BaseModel):
         default_factory=list
     )
     ranked_order: list[str] = Field(default_factory=list)
+    detail_analysis_queue: list[G2BDetailAnalysisQueueItem] = Field(default_factory=list)
     source_count: int = 0
     message: str = ""
     error_code: str | None = None

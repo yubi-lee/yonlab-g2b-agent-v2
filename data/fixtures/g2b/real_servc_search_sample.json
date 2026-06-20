@@ -1,0 +1,90 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "00",
+      "resultMsg": "정상"
+    },
+    "body": {
+      "items": [
+        {
+          "bidNtceNo": "R26BK01540922",
+          "bidNtceDtlUrl": "https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=R26BK01540922&bidPbancOrd=000",
+          "bidNtceUrl": "https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=R26BK01540922&bidPbancOrd=000",
+          "ntceSpecDocUrl1": "https://www.g2b.go.kr/pn/pnp/pnpe/UntyAtchFile/downloadFile.do?bidPbancNo=R26BK01540922&bidPbancOrd=000&fileType=&fileSeq=1&prcmBsneSeCd=03",
+          "ntceSpecDocUrl2": "https://www.g2b.go.kr/pn/pnp/pnpe/UntyAtchFile/downloadFile.do?bidPbancNo=R26BK01540922&bidPbancOrd=000&fileType=&fileSeq=2&prcmBsneSeCd=03",
+          "ntceSpecDocUrl3": "https://www.g2b.go.kr/pn/pnp/pnpe/UntyAtchFile/downloadFile.do?bidPbancNo=R26BK01540922&bidPbancOrd=000&fileType=&fileSeq=3&prcmBsneSeCd=03",
+          "ntceSpecFileNm1": "notice_R26BK01540922.hwpx",
+          "ntceSpecFileNm2": "notice_R26BK01540922.pdf",
+          "ntceSpecFileNm3": "rfp_R26BK01540922.pdf",
+          "bidNtceNm": "국산 AI반도체 성능 평가 체계화 시범검증 용역",
+          "dminsttNm": "한국연구재단 정보통신기획평가원",
+          "asignBdgtAmt": "252210000",
+          "bidClseDt": "2026-06-16 10:00:00",
+          "bidMethdNm": "전자입찰",
+          "cntrctCnclsMthdNm": "제한경쟁",
+          "srvceDivNm": "일반용역",
+          "cmmnSpldmdMethdNm": "(없음)공동수급불허",
+          "cmmnSpldmdCorpRgnLmtYn": "N",
+          "bidPrtcptLmtYn": "N",
+          "indstrytyLmtYn": "Y",
+          "prdctClsfcLmtYn": "N",
+          "sucsfbidMthdNm": "협상에의한계약-협상에 의한 낙찰자 결정",
+          "techAbltEvlRt": "90",
+          "bidPrceEvlRt": "10",
+          "pubPrcrmntLrgClsfcNm": "연구조사서비스",
+          "pubPrcrmntMidClsfcNm": "학술연구서비스",
+          "pubPrcrmntClsfcNo": "80909032",
+          "pubPrcrmntClsfcNm": "기타연구조사서비스",
+          "purchsObjPrdctList": "[1^8090903201^기타연구조사서비스]"
+        },
+        {
+          "bidNtceNo": "R26BK01553148",
+          "bidNtceDtlUrl": "https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=R26BK01553148&bidPbancOrd=000",
+          "bidNtceUrl": "https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=R26BK01553148&bidPbancOrd=000",
+          "ntceSpecDocUrl1": "https://www.g2b.go.kr/pn/pnp/pnpe/UntyAtchFile/downloadFile.do?bidPbancNo=R26BK01553148&bidPbancOrd=000&fileType=&fileSeq=1&prcmBsneSeCd=03",
+          "ntceSpecDocUrl2": "https://www.g2b.go.kr/pn/pnp/pnpe/UntyAtchFile/downloadFile.do?bidPbancNo=R26BK01553148&bidPbancOrd=000&fileType=&fileSeq=2&prcmBsneSeCd=03",
+          "ntceSpecFileNm1": "rfp_R26BK01553148.hwp",
+          "ntceSpecFileNm2": "rfp_R26BK01553148.pdf",
+          "bidNtceNm": "AI 시간다이어리 조사",
+          "dminsttNm": "정보통신정책연구원",
+          "asignBdgtAmt": "25000000",
+          "bidClseDt": "",
+          "bidMethdNm": "직찰",
+          "cntrctCnclsMthdNm": "일반경쟁",
+          "srvceDivNm": "일반용역",
+          "cmmnSpldmdMethdNm": "(없음)공동수급불허",
+          "indstrytyLmtYn": "N",
+          "sucsfbidMthdNm": "협상에의한계약",
+          "pubPrcrmntLrgClsfcNm": "연구조사서비스",
+          "pubPrcrmntMidClsfcNm": "학술연구서비스",
+          "pubPrcrmntClsfcNo": "80909032",
+          "pubPrcrmntClsfcNm": "기타연구조사서비스"
+        },
+        {
+          "bidNtceNo": "R26BK01570123",
+          "bidNtceDtlUrl": "https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=R26BK01570123&bidPbancOrd=000",
+          "bidNtceUrl": "https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=R26BK01570123&bidPbancOrd=000",
+          "ntceSpecDocUrl1": "https://www.g2b.go.kr/pn/pnp/pnpe/UntyAtchFile/downloadFile.do?bidPbancNo=R26BK01570123&bidPbancOrd=000&fileType=&fileSeq=1&prcmBsneSeCd=03",
+          "ntceSpecFileNm1": "notice_R26BK01570123.pdf",
+          "bidNtceNm": "빅데이터·AI R&D 데이터 표준화 및 플랫폼 탑재 지원 용역",
+          "dminsttNm": "테스트 공공기관",
+          "asignBdgtAmt": "99000000",
+          "bidClseDt": "2099-12-31 10:00:00",
+          "bidMethdNm": "전자입찰",
+          "cntrctCnclsMthdNm": "제한경쟁",
+          "srvceDivNm": "일반용역",
+          "cmmnSpldmdMethdNm": "",
+          "indstrytyLmtYn": "N",
+          "sucsfbidMthdNm": "협상에의한계약",
+          "techAbltEvlRt": "80",
+          "bidPrceEvlRt": "20",
+          "pubPrcrmntLrgClsfcNm": "정보기술서비스",
+          "pubPrcrmntMidClsfcNm": "데이터서비스",
+          "pubPrcrmntClsfcNo": "81112002",
+          "pubPrcrmntClsfcNm": "데이터처리서비스",
+          "purchsObjPrdctList": "[1^8111200201^데이터처리서비스]"
+        }
+      ]
+    }
+  }
+}

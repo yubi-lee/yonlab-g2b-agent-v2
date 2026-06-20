@@ -100,3 +100,11 @@ Then run the confirmed template only after the checklist passes:
 ```powershell
 .\scripts\smoke_g2b_real_confirmed_template.ps1
 ```
+
+The first controlled real smoke has succeeded. For recommendation calibration, use:
+
+```powershell
+.\scripts\smoke_g2b_real_recommend_template.ps1
+```
+
+Real responses now include safe endpoint metadata and can use `active_only=true` to exclude already-closed notices. Service keys remain local-only and are not printed.

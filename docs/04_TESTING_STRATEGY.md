@@ -35,6 +35,7 @@ The script runs `scripts/check_no_secrets.ps1`, targeted offline tests, and `pyt
 - `tests/test_g2b_normalizer.py`: fixture loading and field normalization.
 - `tests/test_g2b_client.py`: guarded real client behavior using mocks only.
 - `tests/test_g2b_endpoint_presets.py`: endpoint preset resolution and unknown-preset blocking.
+- `tests/test_g2b_detail_analysis_queue.py`: real notice detail URL, attachment metadata, and risk metadata queue extraction without downloads.
 - `tests/test_g2b_pipeline_api.py`: `/g2b/config`, `/g2b/search`, `/g2b/recommendations`.
 - `tests/test_g2b_readiness.py`: offline real API readiness summary without secrets.
 - `tests/test_korean_utf8_pipeline.py`: Korean fixture/API/report encoding regression coverage.
@@ -57,6 +58,9 @@ Tests must never call the real G2B/Public Data Portal API. Real API behavior is 
 - mocked HTTP error, timeout, unsupported XML, and unexpected JSON shape.
 - optional capture behavior with sanitized request metadata.
 - guard-blocked smoke script execution through `scripts/validate_local.ps1`.
+- sanitized real BidPublicInfoService service-search fixture normalization.
+- active-only filtering and missing-deadline recommendation risk behavior.
+- detail-analysis queue extraction from real list response fields without attachment downloads.
 
 ## Rules
 

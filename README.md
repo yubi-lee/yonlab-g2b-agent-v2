@@ -20,6 +20,8 @@ This repository is independent from the previous v1 project:
 - Guarded real API client and request models.
 - Real API calls are disabled by default.
 - Real response capture is disabled by default and writes only sanitized JSON when enabled.
+- First controlled real G2B smoke succeeded; real BidPublicInfoService fields are normalized into recommendation inputs.
+- Real search/recommendation responses include a deterministic detail-analysis queue with notice detail URLs, attachment URL/file-name metadata, and risk metadata. Attachments are not downloaded.
 - Tests do not call any real G2B/Public Data Portal API.
 - Korean UTF-8 regression tests cover fixture data, API responses, and report output.
 - No database, frontend, or LLM is required.
@@ -110,6 +112,8 @@ Invoke-RestMethod `
   -ContentType "application/json; charset=utf-8" `
   -Body $body
 ```
+
+Set `active_only=true` on `/g2b/search` or `/g2b/recommendations` to filter out notices whose normalized deadline has already passed. Notices with missing deadlines are kept and receive a `deadline_missing` recommendation risk.
 
 ## Real API Safety Rules
 

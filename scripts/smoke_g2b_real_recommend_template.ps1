@@ -26,6 +26,7 @@ $BodyJson = @{
     page_no = 1
     num_rows = 3
     include_reports = $false
+    active_only = $false
     confirm_real_api_call = $true
 } | ConvertTo-Json -Depth 5
 
@@ -46,4 +47,7 @@ if ($Response.RawContentStream) {
     $Text = $Response.Content
 }
 
-$Text | ConvertFrom-Json | ConvertTo-Json -Depth 30
+$Object = $Text | ConvertFrom-Json
+$Object.recommendations |
+    Select-Object rank, notice_id, title, agency, total_score, recommendation_label, risk_summaries |
+    ConvertTo-Json -Depth 10

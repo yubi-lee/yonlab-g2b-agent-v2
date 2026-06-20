@@ -136,6 +136,12 @@ def test_real_smoke_templates_contain_no_service_key() -> None:
         assert "end_date = \"2026-06-20\"" in content
         assert "getBidPblancListInfoServcPPSSrch" in content
 
+    recommend_content = (
+        PROJECT_ROOT / "scripts" / "smoke_g2b_real_recommend_template.ps1"
+    ).read_text(encoding="utf-8")
+    assert "active_only = $false" in recommend_content
+    assert "Select-Object rank, notice_id, title, agency" in recommend_content
+
 
 def test_gitattributes_contains_line_ending_policy() -> None:
     content = (PROJECT_ROOT / ".gitattributes").read_text(encoding="utf-8")
