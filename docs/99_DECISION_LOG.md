@@ -41,3 +41,13 @@ Reason:
 - The app can be exercised safely in fixture mode.
 - Real API code can be tested with mocked responses.
 - Service keys stay out of responses, logs, tests, and docs.
+
+## 2026-06-20 Korean UTF-8 Regression
+
+Decision: Add explicit UTF-8 handling to PowerShell smoke scripts and regression tests for Korean fixture/API/report output.
+
+Reason:
+
+- G2B/Narajangteo data contains Korean text in notice titles, agencies, qualification text, and descriptions.
+- Fixture files were valid UTF-8, but Windows PowerShell response rendering could produce mojibake without explicit UTF-8 console/output and response-stream decoding.
+- Smoke scripts now set UTF-8 output, use UTF-8 request bytes, decode API response streams as UTF-8, and print readable JSON or markdown.

@@ -20,6 +20,7 @@ This repository is independent from the previous v1 project:
 - Guarded real API client and request models.
 - Real API calls are disabled by default.
 - Tests do not call any real G2B/Public Data Portal API.
+- Korean UTF-8 regression tests cover fixture data, API responses, and report output.
 - No database, frontend, or LLM is required.
 
 ## Run Tests
@@ -127,9 +128,11 @@ G2B_FIXTURE_MODE=true
 
 ## Smoke Scripts
 
-Start the server first with `.\scripts\dev_start.ps1`, then run in another terminal:
+Start the server first with `.\scripts\dev_start.ps1`, then run in another Windows PowerShell terminal:
 
 ```powershell
+Set-Location D:\Views\yonlab-g2b-agent-v2
+.\.venv\Scripts\Activate.ps1
 .\scripts\smoke_g2b_config.ps1
 .\scripts\smoke_g2b_search_fixture.ps1
 .\scripts\smoke_g2b_recommend_fixture.ps1
@@ -137,4 +140,10 @@ Start the server first with `.\scripts\dev_start.ps1`, then run in another termi
 .\scripts\smoke_report.ps1
 ```
 
+The smoke scripts set console output to UTF-8 and decode API response streams as UTF-8 so Korean text such as `서울 AI 기반 행정지원 업무 자동화 시스템 구축`, `적극 추천`, and `와이온랩 맞춤 추천 공고` prints correctly.
+
 Set `YONLAB_G2B_BASE_URL` to target a non-default local URL.
+
+## Korean UTF-8 Regression Coverage
+
+Korean UTF-8 regression tests are included because G2B/Narajangteo data contains Korean text in notice titles, agencies, qualification text, and descriptions.

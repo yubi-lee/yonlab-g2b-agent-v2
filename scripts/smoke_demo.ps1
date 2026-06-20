@@ -3,14 +3,12 @@ $ErrorActionPreference = "Stop"
 $Utf8 = New-Object System.Text.UTF8Encoding($false)
 [Console]::OutputEncoding = $Utf8
 $OutputEncoding = $Utf8
+try { chcp.com 65001 | Out-Null } catch {}
 
-try {
-    chcp.com 65001 | Out-Null
-} catch {
-    # Ignore if chcp is unavailable.
+$BaseUrl = $env:YONLAB_G2B_BASE_URL
+if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
+    $BaseUrl = "http://127.0.0.1:8000"
 }
-
-$Uri = "http://127.0.0.1:8000/demo/recommendations"
 
 $BodyJson = @{
     include_reports = $false
@@ -21,7 +19,7 @@ $Bytes = [System.Text.Encoding]::UTF8.GetBytes($BodyJson)
 
 $Response = Invoke-WebRequest `
     -Method Post `
-    -Uri $Uri `
+    -Uri "$BaseUrl/demo/recommendations" `
     -ContentType "application/json; charset=utf-8" `
     -Body $Bytes
 

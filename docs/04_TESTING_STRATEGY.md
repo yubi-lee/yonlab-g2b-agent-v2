@@ -15,6 +15,7 @@ python -m pytest -q
 - `tests/test_g2b_normalizer.py`: fixture loading and field normalization.
 - `tests/test_g2b_client.py`: guarded real client behavior using mocks only.
 - `tests/test_g2b_pipeline_api.py`: `/g2b/config`, `/g2b/search`, `/g2b/recommendations`.
+- `tests/test_korean_utf8_pipeline.py`: Korean fixture/API/report encoding regression coverage.
 - `tests/test_yonlab_eligibility.py`: eligibility and first-pass risk signals.
 - `tests/test_score_engine.py`: 100-point scoring and risk penalty behavior.
 - `tests/test_markdown_report.py`: deterministic Korean report sections.
@@ -37,3 +38,15 @@ Tests must never call the real G2B/Public Data Portal API. Real API behavior is 
 - Tests must not require `.env`, secrets, a database, frontend UI, or an LLM.
 - Add fixture cases before expanding real API behavior.
 - `python -m pytest -q` must remain the standard validation command.
+
+## Korean UTF-8 Regression Rule
+
+Korean UTF-8 regression tests are included because G2B/Narajangteo data contains Korean text in notice titles, agencies, qualification text, and descriptions.
+
+The regression suite checks:
+
+- fixture files are valid UTF-8 without BOM.
+- fixture loader preserves Korean titles.
+- `/g2b/search` and `/g2b/recommendations` preserve Korean response fields.
+- `/recommendations/report` preserves Korean markdown headings.
+- common mojibake fragments do not appear in Korean content fields.
