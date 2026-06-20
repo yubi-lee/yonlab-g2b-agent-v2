@@ -4,7 +4,9 @@
 
 ```text
 FastAPI routes
-  -> G2B fixture loader / normalizer
+  -> G2B search mode router
+  -> fixture loader or guarded real API client
+  -> normalizer
   -> domain models
   -> eligibility and risk analysis
   -> 100-point score engine
@@ -16,29 +18,37 @@ FastAPI routes
 - `app/domain/yonlab_profile.py`: fixed YOnLab profile.
 - `app/domain/bid_notice.py`: normalized procurement notice model.
 - `app/domain/recommendation.py`: eligibility, risk, score, report, and demo response models.
-- `app/integrations/g2b/fixtures.py`: local fixture loader only.
+- `app/domain/search.py`: G2B search and recommendation request/response models.
+- `app/integrations/g2b/fixtures.py`: local fixture loader and deterministic filter.
 - `app/integrations/g2b/normalizer.py`: Korean and G2B-like field mapping.
+- `app/integrations/g2b/client.py`: guarded httpx client for real API calls.
+- `app/integrations/g2b/errors.py`: sanitized client errors.
 - `app/scoring/eligibility.py`: first-pass YOnLab eligibility signals.
 - `app/scoring/risk_analyzer.py`: deterministic risk detection.
 - `app/scoring/score_engine.py`: 100-point deterministic recommendation score.
 - `app/reports/markdown_report.py`: Korean markdown report generator.
-- `app/api/routes.py`: API endpoints for profile, fixtures, normalization, scoring, reports, and demo ranking.
+- `app/api/routes.py`: API endpoints for MVP and G2B dual pipeline.
 
 ## Data Flow
 
 ```text
-raw notice JSON
+/g2b/search
+request mode
+-> fixture filter or guarded real API client
 -> normalize_g2b_notice
--> evaluate_eligibility + analyze_risks
+-> G2BSearchResponse
+
+/g2b/recommendations
+search result
 -> score_notice
--> generate_markdown_report
--> API response
+-> optional generate_markdown_report
+-> ranked response
 ```
 
-## Constraints
+## Safety Constraints
 
-- No database is required.
-- No frontend UI is required.
-- No LLM calls are used.
-- No real G2B/Public Data Portal call is made by default.
-- Domain and scoring logic stay independent from FastAPI.
+- Fixture mode is default.
+- Real API calls require enabled settings, a configured service key, endpoint path, and explicit request confirmation.
+- The service key is never returned in API responses.
+- Tests and smoke fixture scripts do not call the real API.
+- No database, frontend UI, or LLM is required.

@@ -25,8 +25,19 @@ Included:
 - Korean markdown report generator.
 - FastAPI endpoints for profile, fixtures, normalization, scoring, reports, and demo ranking.
 
+## 2026-06-20 Guarded Dual Pipeline
+
+Decision: Add real G2B client capability behind explicit safety gates while preserving fixture default.
+
+Safety gates:
+
+- `G2B_ENABLE_REAL_API=true`
+- service key configured
+- endpoint path configured
+- request has `confirm_real_api_call=true`
+
 Reason:
 
-- The product can now be validated end to end without credentials or network calls.
-- Scoring and reports are deterministic, testable, and easy to review.
-- Real API integration can be added later behind explicit settings and smoke-test confirmation.
+- The app can be exercised safely in fixture mode.
+- Real API code can be tested with mocked responses.
+- Service keys stay out of responses, logs, tests, and docs.

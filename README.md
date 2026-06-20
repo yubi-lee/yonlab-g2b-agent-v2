@@ -1,17 +1,26 @@
 # YOnLab G2B Agent v2
 
-Fixture-based operational MVP for YOnLab-specific G2B/Narajangteo bid recommendation.
+Operational MVP for YOnLab-specific G2B/Narajangteo bid recommendation.
 
-The app normalizes procurement notices, evaluates YOnLab eligibility, detects risks, calculates a deterministic 100-point match score, and generates a Korean markdown recommendation report.
+The app supports two deterministic pipelines:
+
+- Fixture pipeline: local sample notices, enabled by default.
+- Guarded real API pipeline: Public Data Portal/G2B HTTP client, blocked unless explicitly enabled and confirmed.
+
+It normalizes procurement notices, evaluates YOnLab eligibility, detects risks, calculates a 100-point match score, ranks recommendations, and generates a Korean markdown report.
 
 This repository is independent from the previous v1 project:
 
 - Previous repository: `D:\Views\yonlab-bid-agent`
 - Current repository: `D:\Views\yonlab-g2b-agent-v2`
 
-## Current Limitation
+## Current Status
 
-This is a fixture-based MVP. Real G2B/Public Data Portal API calls are disabled by default and are not used by tests, demo endpoints, or smoke scripts.
+- FastAPI MVP with fixture recommendations.
+- Guarded real API client and request models.
+- Real API calls are disabled by default.
+- Tests do not call any real G2B/Public Data Portal API.
+- No database, frontend, or LLM is required.
 
 ## Run Tests
 
@@ -41,7 +50,7 @@ http://127.0.0.1:8000/docs
 http://127.0.0.1:8000/health
 ```
 
-## Endpoints
+## Existing Endpoints
 
 - `GET /health`
 - `GET /profile/yonlab`
@@ -51,58 +60,69 @@ http://127.0.0.1:8000/health
 - `POST /recommendations/report`
 - `POST /demo/recommendations`
 
-## Demo Recommendations
+## G2B Endpoints
 
-Compact output:
+- `GET /g2b/config`
+- `POST /g2b/search`
+- `POST /g2b/recommendations`
 
-```powershell
-$body = @{
-  include_reports = $false
-  limit = 5
-} | ConvertTo-Json
-
-Invoke-RestMethod `
-  -Method Post `
-  -Uri "http://127.0.0.1:8000/demo/recommendations" `
-  -ContentType "application/json; charset=utf-8" `
-  -Body $body
-```
-
-Full output with reports:
+## Fixture Mode Example
 
 ```powershell
 $body = @{
-  include_reports = $true
-  limit = 5
-} | ConvertTo-Json
-
-Invoke-RestMethod `
-  -Method Post `
-  -Uri "http://127.0.0.1:8000/demo/recommendations" `
-  -ContentType "application/json; charset=utf-8" `
-  -Body $body
-```
-
-No body or `{}` also works and uses local fixture notices.
-
-## Recommendation Report Example
-
-```powershell
-$body = @{
-  "공고명" = "서울 AI 소프트웨어 개발"
-  "수요기관" = "테스트기관"
-  "추정가격" = "55,000,000원"
-  "입찰마감일시" = "2026-07-20"
-  "지역제한" = "서울특별시"
-  "참가자격" = "소프트웨어사업자, 소기업, 창업기업 우대"
-  "과업내용" = "AI Agent 정보시스템개발서비스 클라우드 시스템 구축"
+  mode = "fixture"
+  keyword = "AI"
+  page_no = 1
+  num_rows = 10
+  confirm_real_api_call = $false
 } | ConvertTo-Json -Depth 5
 
 Invoke-RestMethod `
   -Method Post `
-  -Uri "http://127.0.0.1:8000/recommendations/report" `
+  -Uri "http://127.0.0.1:8000/g2b/search" `
   -ContentType "application/json; charset=utf-8" `
   -Body $body
+```
+
+Fixture recommendations:
+
+```powershell
+$body = @{
+  mode = "fixture"
+  keyword = "AI"
+  include_reports = $false
+  confirm_real_api_call = $false
+} | ConvertTo-Json -Depth 5
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://127.0.0.1:8000/g2b/recommendations" `
+  -ContentType "application/json; charset=utf-8" `
+  -Body $body
+```
+
+## Real API Safety Rules
+
+Real API calls require all of the following:
+
+- `G2B_ENABLE_REAL_API=true`
+- `G2B_API_SERVICE_KEY` configured
+- `G2B_LIST_ENDPOINT_PATH` configured
+- request body includes `confirm_real_api_call=true`
+- request `mode` is `real`
+
+If any condition is missing, the API returns a controlled error response and does not call the network. The service key is never returned by `/g2b/config`, errors, tests, or docs.
+
+## `.env.example` Guidance
+
+Copy values from `.env.example` only when you are ready to configure a local environment. Do not commit `.env`.
+
+Important defaults:
+
+```env
+G2B_ENABLE_REAL_API=false
+G2B_API_SERVICE_KEY=
+G2B_FIXTURE_MODE=true
 ```
 
 ## Smoke Scripts
@@ -110,6 +130,9 @@ Invoke-RestMethod `
 Start the server first with `.\scripts\dev_start.ps1`, then run in another terminal:
 
 ```powershell
+.\scripts\smoke_g2b_config.ps1
+.\scripts\smoke_g2b_search_fixture.ps1
+.\scripts\smoke_g2b_recommend_fixture.ps1
 .\scripts\smoke_demo.ps1
 .\scripts\smoke_report.ps1
 ```

@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     g2b_api_service_key: str = ""
     g2b_request_timeout_seconds: int = 15
     g2b_default_num_rows: int = 10
+    g2b_default_page_no: int = 1
+    g2b_list_endpoint_path: str = ""
+    g2b_fixture_mode: bool = True
 
     log_level: str = "INFO"
 

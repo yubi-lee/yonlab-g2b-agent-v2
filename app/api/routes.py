@@ -15,8 +15,18 @@ from app.domain.recommendation import (
     RecommendationReport,
     RecommendationScore,
 )
+from app.domain.search import (
+    G2BConfigResponse,
+    G2BRecommendationRequest,
+    G2BRecommendationResponse,
+    G2BSearchMode,
+    G2BSearchRequest,
+    G2BSearchResponse,
+)
 from app.domain.yonlab_profile import YOnLabProfile, default_yonlab_profile
-from app.integrations.g2b.fixtures import load_sample_g2b_notices
+from app.integrations.g2b.client import G2BClient
+from app.integrations.g2b.errors import G2BClientError
+from app.integrations.g2b.fixtures import load_sample_g2b_notices, search_sample_g2b_notices
 from app.integrations.g2b.normalizer import normalize_g2b_notice
 from app.reports.markdown_report import generate_markdown_report
 from app.scoring.score_engine import score_notice
@@ -42,6 +52,64 @@ def get_yonlab_profile() -> YOnLabProfile:
 @router.get("/fixtures/g2b/notices", response_model=FixtureNoticeResponse)
 def get_g2b_fixture_notices() -> FixtureNoticeResponse:
     return FixtureNoticeResponse(notices=load_sample_g2b_notices())
+
+
+@router.get("/g2b/config", response_model=G2BConfigResponse)
+def get_g2b_config() -> G2BConfigResponse:
+    settings = get_settings()
+    return G2BConfigResponse(
+        real_api_enabled=settings.g2b_enable_real_api,
+        base_url_configured=bool(settings.g2b_api_base_url),
+        service_key_configured=bool(settings.g2b_api_service_key),
+        default_num_rows=settings.g2b_default_num_rows,
+        default_page_no=settings.g2b_default_page_no,
+        endpoint_path_configured=bool(settings.g2b_list_endpoint_path),
+        fixture_mode=settings.g2b_fixture_mode,
+    )
+
+
+@router.post("/g2b/search", response_model=G2BSearchResponse)
+def search_g2b_notices(request: G2BSearchRequest) -> G2BSearchResponse:
+    return _search_g2b_notices(request)
+
+
+@router.post("/g2b/recommendations", response_model=G2BRecommendationResponse)
+def g2b_recommendations(request: G2BRecommendationRequest) -> G2BRecommendationResponse:
+    search_response = _search_g2b_notices(request)
+    if not search_response.ok:
+        return G2BRecommendationResponse(
+            ok=False,
+            mode=request.mode,
+            source=search_response.source,
+            include_reports=request.include_reports,
+            recommendations=[],
+            ranked_order=[],
+            source_count=0,
+            message=search_response.message,
+            error_code=search_response.error_code,
+        )
+
+    scored = []
+    for notice in search_response.notices:
+        score = score_notice(notice)
+        report = generate_markdown_report(notice, score)
+        scored.append((notice, score, report))
+
+    ranked = sorted(scored, key=lambda item: item[1].total_score, reverse=True)
+    recommendations = _demo_recommendation_items(
+        ranked,
+        include_reports=request.include_reports,
+    )
+    return G2BRecommendationResponse(
+        ok=True,
+        mode=request.mode,
+        source=search_response.source,
+        include_reports=request.include_reports,
+        recommendations=recommendations,
+        ranked_order=[_demo_notice_id(item) for item in recommendations],
+        source_count=search_response.raw_count,
+        message=search_response.message,
+    )
 
 
 @router.post("/notices/normalize", response_model=NormalizedNoticeResponse)
@@ -128,3 +196,51 @@ def _demo_notice_id(item: DemoRecommendation | CompactDemoRecommendation) -> str
     if isinstance(item, DemoRecommendation):
         return item.normalized_notice.notice_id
     return item.notice_id
+
+
+def _search_g2b_notices(request: G2BSearchRequest) -> G2BSearchResponse:
+    if request.mode == G2BSearchMode.FIXTURE:
+        raw_notices = search_sample_g2b_notices(
+            keyword=request.keyword,
+            region=request.region,
+            business_type=request.business_type,
+            limit=request.num_rows,
+        )
+        normalized = [normalize_g2b_notice(notice) for notice in raw_notices]
+        message = "Fixture notices returned."
+        if not normalized:
+            message = "No fixture notices matched the search criteria."
+        return G2BSearchResponse(
+            ok=True,
+            mode=request.mode,
+            source="fixture",
+            notices=normalized,
+            raw_count=len(raw_notices),
+            message=message,
+        )
+
+    try:
+        raw_notices = G2BClient(get_settings()).search(request)
+    except G2BClientError as exc:
+        return G2BSearchResponse(
+            ok=False,
+            mode=request.mode,
+            source="real",
+            notices=[],
+            raw_count=0,
+            message=str(exc),
+            error_code=exc.code,
+        )
+
+    normalized = [normalize_g2b_notice(notice) for notice in raw_notices]
+    message = "Real G2B notices returned."
+    if not normalized:
+        message = "Real G2B response contained no notices."
+    return G2BSearchResponse(
+        ok=True,
+        mode=request.mode,
+        source="real",
+        notices=normalized,
+        raw_count=len(raw_notices),
+        message=message,
+    )

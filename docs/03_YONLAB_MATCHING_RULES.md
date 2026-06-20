@@ -31,6 +31,16 @@
 - 제조사, 총판, 대리점, 공급확약서, 특정 라이선스 requirement.
 - Missing or urgent deadline.
 
+## Search Filtering
+
+Fixture search filters normalized notices by:
+
+- keyword in title, description, qualification text, and keywords.
+- region when supplied.
+- business type when supplied.
+
+Real search passes request fields to the guarded client only after safety gates pass.
+
 ## Scoring Model
 
 | Category | Points |
@@ -49,12 +59,3 @@
 - `recommend`: 70-84
 - `consider`: 50-69
 - `not_recommended`: below 50
-
-## Report Strategy
-
-Reports should mention:
-
-- 예비창업패키지 기반 AI/Device Farm/AI 검증 플랫폼 경험.
-- 온디바이스 AI/NPU/로봇 AI 기술역량.
-- 소기업/소상공인 및 창업기업 지위.
-- Required documents and concrete risk responses.

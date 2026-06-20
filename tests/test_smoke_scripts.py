@@ -6,6 +6,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 def test_smoke_scripts_exist() -> None:
     assert (PROJECT_ROOT / "scripts" / "smoke_demo.ps1").is_file()
     assert (PROJECT_ROOT / "scripts" / "smoke_report.ps1").is_file()
+    assert (PROJECT_ROOT / "scripts" / "smoke_g2b_config.ps1").is_file()
+    assert (PROJECT_ROOT / "scripts" / "smoke_g2b_search_fixture.ps1").is_file()
+    assert (PROJECT_ROOT / "scripts" / "smoke_g2b_recommend_fixture.ps1").is_file()
 
 
 def test_gitattributes_contains_line_ending_policy() -> None:
