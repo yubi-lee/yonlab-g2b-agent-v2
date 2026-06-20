@@ -22,6 +22,8 @@ This repository is independent from the previous v1 project:
 - Real response capture is disabled by default and writes only sanitized JSON when enabled.
 - First controlled real G2B smoke succeeded; real BidPublicInfoService fields are normalized into recommendation inputs.
 - Real search/recommendation responses include a deterministic detail-analysis queue with notice detail URLs, attachment URL/file-name metadata, and risk metadata. Attachments are not downloaded.
+- Text-based document risk analysis and PDF candidate planning are available through controlled, fixture-safe endpoints.
+- PDF text extraction is disabled by default and only reads local PDF files when explicitly confirmed and enabled.
 - Tests do not call any real G2B/Public Data Portal API.
 - Korean UTF-8 regression tests cover fixture data, API responses, and report output.
 - No database, frontend, or LLM is required.
@@ -77,6 +79,13 @@ http://127.0.0.1:8000/health
 - `GET /g2b/real-readiness`
 - `POST /g2b/search`
 - `POST /g2b/recommendations`
+- `POST /g2b/detail-links`
+- `POST /g2b/detail-analysis-queue`
+- `POST /g2b/attachment-download-plan`
+- `POST /g2b/attachment-analysis-plan`
+- `POST /g2b/document-risk-analysis`
+- `POST /g2b/pdf-analysis-candidates`
+- `POST /g2b/pdf-text-analysis`
 
 ## Swagger Testing Guide
 
@@ -131,10 +140,31 @@ Use `/docs` with practical fixture-safe examples instead of Swagger placeholders
 }
 ```
 
-Attachment-specific endpoints such as `/g2b/detail-analysis-queue` and
-`/g2b/attachment-analysis-plan` are not separate API routes yet. Today, real
-`/g2b/search` and `/g2b/recommendations` responses include `detail_analysis_queue`
-metadata without downloading attachments.
+`POST /g2b/document-risk-analysis` text-only fixture example:
+
+```json
+{
+  "source_name": "sample-rfp-text",
+  "text": "AI 소프트웨어 개발, 최근 3년 유사 사업 수행실적, 공동수급불허, 기술평가 90점",
+  "include_positive_signals": true
+}
+```
+
+`POST /g2b/pdf-analysis-candidates` fixture example:
+
+```json
+{
+  "mode": "fixture",
+  "keyword": "AI",
+  "page_no": 1,
+  "num_rows": 3,
+  "confirm_real_api_call": false
+}
+```
+
+`POST /g2b/pdf-text-analysis` is local-file only and blocked unless
+`confirm_pdf_analysis=true`. It never downloads from URLs. HWP/HWPX content extraction is
+not implemented; those attachments remain manual review.
 
 ## Fixture Mode Example
 

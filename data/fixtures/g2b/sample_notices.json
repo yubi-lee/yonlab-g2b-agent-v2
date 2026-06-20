@@ -1,6 +1,12 @@
 [
   {
     "bidNtceNo": "G2B-SAMPLE-2026-001",
+    "bidNtceDtlUrl": "https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=G2B-SAMPLE-2026-001&bidPbancOrd=000",
+    "bidNtceUrl": "https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=G2B-SAMPLE-2026-001&bidPbancOrd=000",
+    "ntceSpecDocUrl1": "https://www.g2b.go.kr/pn/pnp/pnpe/UntyAtchFile/downloadFile.do?bidPbancNo=G2B-SAMPLE-2026-001&bidPbancOrd=000&fileType=&fileSeq=1&prcmBsneSeCd=03",
+    "ntceSpecDocUrl2": "https://www.g2b.go.kr/pn/pnp/pnpe/UntyAtchFile/downloadFile.do?bidPbancNo=G2B-SAMPLE-2026-001&bidPbancOrd=000&fileType=&fileSeq=2&prcmBsneSeCd=03",
+    "ntceSpecFileNm1": "sample_rfp.pdf",
+    "ntceSpecFileNm2": "sample_notice.hwp",
     "bidNtceNm": "서울 AI 기반 행정지원 업무 자동화 시스템 구축",
     "dminsttNm": "서울특별시 산하기관",
     "asignBdgtAmt": "85000000",

@@ -124,3 +124,15 @@ Reason:
 - G2B recommendation filter placeholders should behave like omitted filters so fixture recommendations still return useful results.
 - Demo recommendation placeholder notices should be ignored, falling back to fixtures when no valid custom notice remains.
 - Real API safety gates remain unchanged: real calls still require enabled settings, service key configuration, endpoint path, real mode, and explicit confirmation.
+
+## 2026-06-20 Document Risk and PDF Planning Layer
+
+Decision: Add deterministic text-based procurement risk analysis and controlled PDF planning without enabling real attachment downloads by default.
+
+Reason:
+
+- RFP text often contains eligibility, performance, consortium, evaluation, and document submission risks that are not visible in notice list metadata alone.
+- PDF attachment metadata can be queued and filtered before any download or parsing feature is enabled.
+- PDF text extraction must be local-file only, size-limited, explicitly confirmed, and disabled by default.
+- HWP/HWPX parsing remains manual review until a controlled parser is selected.
+- Local validation must remain fixture-only and must not call real G2B APIs or download attachments.

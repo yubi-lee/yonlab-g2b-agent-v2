@@ -11,5 +11,6 @@ htmlcov/
 data/raw/
 data/private/
 data/captured/
+data/extracted/
 .test_captured/
 *.log

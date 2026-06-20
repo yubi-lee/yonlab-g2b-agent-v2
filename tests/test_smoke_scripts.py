@@ -10,6 +10,9 @@ SMOKE_SCRIPT_NAMES = (
     "smoke_g2b_endpoint_presets.ps1",
     "smoke_g2b_real_readiness.ps1",
     "smoke_g2b_real_guard_blocked.ps1",
+    "smoke_g2b_document_risk_analysis.ps1",
+    "smoke_g2b_pdf_analysis_candidates_fixture.ps1",
+    "smoke_g2b_pdf_text_analysis_fixture.ps1",
     "smoke_g2b_real_confirmed_template.ps1",
     "smoke_g2b_real_recommend_template.ps1",
 )
@@ -69,6 +72,9 @@ def test_validate_local_script_runs_expected_validation_steps() -> None:
     assert "smoke_g2b_real_readiness.ps1" in content
     assert "smoke_g2b_search_fixture.ps1" in content
     assert "smoke_g2b_recommend_fixture.ps1" in content
+    assert "smoke_g2b_document_risk_analysis.ps1" in content
+    assert "smoke_g2b_pdf_analysis_candidates_fixture.ps1" in content
+    assert "smoke_g2b_pdf_text_analysis_fixture.ps1" in content
     assert "smoke_g2b_real_guard_blocked.ps1" in content
     assert "smoke_report.ps1" in content
     assert "Stop-Job" in content

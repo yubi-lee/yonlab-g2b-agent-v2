@@ -49,6 +49,7 @@ def _extract_attachments(raw_source: dict[str, Any]) -> list[G2BAttachmentCandid
 def _build_risk_metadata(notice: BidNotice, raw_source: dict[str, Any]) -> dict[str, Any]:
     joint_supply_method = _safe_text(raw_source.get("cmmnSpldmdMethdNm"))
     metadata: dict[str, Any] = {
+        "agency": notice.agency,
         "contract_method": _safe_text(raw_source.get("cntrctCnclsMthdNm")),
         "successful_bid_method": _safe_text(raw_source.get("sucsfbidMthdNm")),
         "bid_method": _safe_text(raw_source.get("bidMethdNm")),

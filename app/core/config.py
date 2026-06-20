@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     g2b_fixture_mode: bool = True
     g2b_capture_real_responses: bool = False
     g2b_capture_dir: str = "data/captured/g2b"
+    g2b_enable_pdf_text_extraction: bool = False
+    g2b_pdf_max_bytes: int = 20_000_000
+    g2b_pdf_extracted_text_dir: str = "data/extracted/g2b"
+    g2b_enable_attachment_download: bool = False
+    g2b_attachment_max_bytes: int = 20_000_000
 
     log_level: str = "INFO"
 

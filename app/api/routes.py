@@ -1,10 +1,23 @@
 from datetime import date, datetime
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Body
 
 from app.core.config import get_settings
 from app.domain.bid_notice import BidNotice
+from app.domain.document_analysis import (
+    AttachmentAnalysisPlanResponse,
+    AttachmentDownloadPlanRequest,
+    AttachmentDownloadPlanResponse,
+    DocumentRiskAnalysisRequest,
+    DocumentRiskAnalysisResult,
+    PdfAnalysisCandidatesRequest,
+    PdfAnalysisCandidatesResponse,
+    PdfTextAnalysisRequest,
+    PdfTextAnalysisResponse,
+    PdfTextExtractionResult,
+)
 from app.domain.recommendation import (
     CompactDemoRecommendation,
     DemoRecommendation,
@@ -38,6 +51,13 @@ from app.integrations.g2b.presets import list_endpoint_presets, resolve_endpoint
 from app.integrations.g2b.readiness import build_real_readiness
 from app.reports.markdown_report import generate_markdown_report
 from app.scoring.score_engine import score_notice
+from app.services.attachment_analysis_planner import (
+    build_attachment_analysis_plan_items,
+    build_pdf_analysis_candidates,
+)
+from app.services.attachment_downloader import build_attachment_download_plan_items
+from app.services.document_risk_analyzer import analyze_document_risks
+from app.services.pdf_text_extractor import extract_pdf_text_from_file
 
 router = APIRouter()
 NOTICE_REQUEST_BODY = Body(
@@ -152,6 +172,48 @@ G2B_RECOMMENDATION_BODY = Body(
         },
     }
 )
+DOCUMENT_RISK_ANALYSIS_BODY = Body(
+    openapi_examples={
+        "fixture_text": {
+            "summary": "Analyze fixture-like RFP text",
+            "value": {
+                "source_name": "sample-rfp-text",
+                "text": (
+                    "본 사업은 AI 소프트웨어 개발 및 클라우드 시스템 구축이며 "
+                    "최근 3년 유사 사업 수행실적과 소프트웨어사업자 확인서를 요구합니다. "
+                    "공동수급불허 조건이고 기술평가 90점입니다."
+                ),
+                "include_positive_signals": True,
+            },
+        }
+    }
+)
+PDF_CANDIDATES_BODY = Body(
+    openapi_examples={
+        "fixture_candidates": {
+            "summary": "List fixture PDF candidates without downloading",
+            "value": {
+                "mode": "fixture",
+                "keyword": "AI",
+                "page_no": 1,
+                "num_rows": 3,
+                "confirm_real_api_call": False,
+            },
+        }
+    }
+)
+PDF_TEXT_ANALYSIS_BODY = Body(
+    openapi_examples={
+        "local_pdf": {
+            "summary": "Analyze an already-local PDF only",
+            "value": {
+                "file_path": "data/fixtures/documents/sample_rfp.pdf",
+                "source_name": "sample_rfp.pdf",
+                "confirm_pdf_analysis": True,
+            },
+        }
+    }
+)
 
 
 @router.get("/health")
@@ -211,6 +273,17 @@ def get_g2b_real_readiness() -> G2BRealReadinessResponse:
     return G2BRealReadinessResponse(**build_real_readiness(get_settings()))
 
 
+@router.post("/g2b/document-risk-analysis", response_model=DocumentRiskAnalysisResult)
+def document_risk_analysis(
+    request: DocumentRiskAnalysisRequest = DOCUMENT_RISK_ANALYSIS_BODY,
+) -> DocumentRiskAnalysisResult:
+    return analyze_document_risks(
+        request.text,
+        source_name=request.source_name,
+        include_positive_signals=request.include_positive_signals,
+    )
+
+
 @router.post("/g2b/search", response_model=G2BSearchResponse)
 def search_g2b_notices(request: G2BSearchRequest = G2B_SEARCH_BODY) -> G2BSearchResponse:
     return _search_g2b_notices(request)
@@ -260,6 +333,152 @@ def g2b_recommendations(
         message=search_response.message,
         safe_endpoint_path=search_response.safe_endpoint_path,
         service_key_exposed=search_response.service_key_exposed,
+    )
+
+
+@router.post("/g2b/detail-links")
+def g2b_detail_links(request: G2BSearchRequest = G2B_SEARCH_BODY) -> dict[str, Any]:
+    search_response = _search_g2b_notices(request)
+    queue = _detail_queue_from_response(search_response)
+    return {
+        "ok": search_response.ok,
+        "mode": request.mode,
+        "source": search_response.source,
+        "links": [
+            {
+                "notice_id": item.notice_id,
+                "title": item.title,
+                "detail_url": item.detail_url,
+                "notice_url": item.notice_url,
+            }
+            for item in queue
+        ],
+        "service_key_exposed": False,
+    }
+
+
+@router.post("/g2b/detail-analysis-queue")
+def g2b_detail_analysis_queue(request: G2BSearchRequest = G2B_SEARCH_BODY) -> dict[str, Any]:
+    search_response = _search_g2b_notices(request)
+    return {
+        "ok": search_response.ok,
+        "mode": request.mode,
+        "source": search_response.source,
+        "detail_analysis_queue": [
+            item.model_dump() for item in _detail_queue_from_response(search_response)
+        ],
+        "service_key_exposed": False,
+    }
+
+
+@router.post("/g2b/attachment-download-plan", response_model=AttachmentDownloadPlanResponse)
+def g2b_attachment_download_plan(
+    request: AttachmentDownloadPlanRequest = PDF_CANDIDATES_BODY,
+) -> AttachmentDownloadPlanResponse:
+    search_response = _search_g2b_notices(request)
+    settings = get_settings()
+    queue = _detail_queue_from_response(search_response)
+    items = build_attachment_download_plan_items(
+        queue,
+        download_enabled=settings.g2b_enable_attachment_download,
+        confirm_attachment_download=request.confirm_attachment_download,
+    )
+    return AttachmentDownloadPlanResponse(
+        ok=search_response.ok,
+        mode=request.mode,
+        source=search_response.source,
+        download_enabled=settings.g2b_enable_attachment_download,
+        confirm_attachment_download=request.confirm_attachment_download,
+        items=items,
+        message="Attachment download plan generated; no files were downloaded.",
+        service_key_exposed=False,
+    )
+
+
+@router.post("/g2b/attachment-analysis-plan", response_model=AttachmentAnalysisPlanResponse)
+def g2b_attachment_analysis_plan(
+    request: G2BSearchRequest = PDF_CANDIDATES_BODY,
+) -> AttachmentAnalysisPlanResponse:
+    search_response = _search_g2b_notices(request)
+    queue = _detail_queue_from_response(search_response)
+    items = build_attachment_analysis_plan_items(queue)
+    return AttachmentAnalysisPlanResponse(
+        ok=search_response.ok,
+        mode=request.mode,
+        source=search_response.source,
+        items=items,
+        pdf_candidates=build_pdf_analysis_candidates(queue),
+        message="Attachment analysis plan generated; no files were downloaded.",
+        service_key_exposed=False,
+    )
+
+
+@router.post("/g2b/pdf-analysis-candidates", response_model=PdfAnalysisCandidatesResponse)
+def g2b_pdf_analysis_candidates(
+    request: PdfAnalysisCandidatesRequest = PDF_CANDIDATES_BODY,
+) -> PdfAnalysisCandidatesResponse:
+    search_response = _search_g2b_notices(request)
+    queue = _detail_queue_from_response(search_response)
+    candidates = build_pdf_analysis_candidates(queue)
+    return PdfAnalysisCandidatesResponse(
+        ok=search_response.ok,
+        mode=request.mode,
+        source=search_response.source,
+        candidates=candidates,
+        source_count=len(queue),
+        message="PDF candidates generated from attachment metadata; no files were downloaded.",
+        service_key_exposed=False,
+    )
+
+
+@router.post("/g2b/pdf-text-analysis", response_model=PdfTextAnalysisResponse)
+def g2b_pdf_text_analysis(
+    request: PdfTextAnalysisRequest = PDF_TEXT_ANALYSIS_BODY,
+) -> PdfTextAnalysisResponse:
+    if not request.confirm_pdf_analysis:
+        extraction = PdfTextExtractionResult(
+            file_name=Path(request.file_path).name,
+            source="local_file",
+            extraction_ok=False,
+            message="PDF text analysis requires confirm_pdf_analysis=true.",
+        )
+        return PdfTextAnalysisResponse(ok=False, extraction=extraction, message=extraction.message)
+
+    settings = get_settings()
+    if Path(request.file_path).suffix.casefold() != ".pdf":
+        extraction = extract_pdf_text_from_file(
+            request.file_path,
+            max_bytes=settings.g2b_pdf_max_bytes,
+        )
+        return PdfTextAnalysisResponse(ok=False, extraction=extraction, message=extraction.message)
+
+    if not settings.g2b_enable_pdf_text_extraction and not _is_fixture_document_path(
+        request.file_path
+    ):
+        extraction = PdfTextExtractionResult(
+            file_name=Path(request.file_path).name,
+            source="local_file",
+            extraction_ok=False,
+            message="PDF text extraction is disabled by configuration.",
+        )
+        return PdfTextAnalysisResponse(ok=False, extraction=extraction, message=extraction.message)
+
+    extraction = extract_pdf_text_from_file(
+        request.file_path,
+        max_bytes=settings.g2b_pdf_max_bytes,
+    )
+    risk_analysis = None
+    if extraction.extraction_ok:
+        risk_analysis = analyze_document_risks(
+            extraction.text,
+            source_name=request.source_name or extraction.file_name,
+        )
+    return PdfTextAnalysisResponse(
+        ok=extraction.extraction_ok,
+        extraction=extraction,
+        risk_analysis=risk_analysis,
+        message=extraction.message,
+        service_key_exposed=False,
     )
 
 
@@ -319,6 +538,17 @@ def _demo_input_notices(payload: DemoRecommendationsRequest) -> list[dict[str, A
     if not valid_notices:
         return load_sample_g2b_notices()
     return valid_notices
+
+
+def _detail_queue_from_response(search_response: G2BSearchResponse) -> list[Any]:
+    if search_response.detail_analysis_queue:
+        return search_response.detail_analysis_queue
+    return build_detail_analysis_queue(search_response.notices)
+
+
+def _is_fixture_document_path(file_path: str) -> bool:
+    normalized = Path(file_path).as_posix()
+    return normalized.startswith("data/fixtures/documents/")
 
 
 def _demo_recommendation_items(

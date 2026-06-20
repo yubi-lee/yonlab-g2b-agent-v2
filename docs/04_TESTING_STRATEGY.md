@@ -73,10 +73,30 @@ Recommended controlled real template:
 
 Placeholder strings such as `"string"` in G2B filter fields are treated as empty filters.
 Placeholder notice objects such as `{"additionalProp1": {}}` in `/demo/recommendations`
-are ignored; if no valid custom notice remains, fixtures are used. Attachment-specific
-routes such as `/g2b/detail-analysis-queue` and `/g2b/attachment-analysis-plan` are not
-separate endpoints yet; current G2B recommendation responses expose `detail_analysis_queue`
-metadata without downloads.
+are ignored; if no valid custom notice remains, fixtures are used. Attachment and PDF
+planning endpoints are fixture-safe and do not download files.
+
+Recommended `/g2b/document-risk-analysis` text body:
+
+```json
+{
+  "source_name": "sample-rfp-text",
+  "text": "AI 소프트웨어 개발, 최근 3년 유사 사업 수행실적, 공동수급불허, 기술평가 90점",
+  "include_positive_signals": true
+}
+```
+
+Recommended `/g2b/pdf-analysis-candidates` body:
+
+```json
+{
+  "mode": "fixture",
+  "keyword": "AI",
+  "page_no": 1,
+  "num_rows": 3,
+  "confirm_real_api_call": false
+}
+```
 
 ## Current Test Coverage
 
@@ -86,6 +106,7 @@ metadata without downloads.
 - `tests/test_g2b_client.py`: guarded real client behavior using mocks only.
 - `tests/test_g2b_endpoint_presets.py`: endpoint preset resolution and unknown-preset blocking.
 - `tests/test_g2b_detail_analysis_queue.py`: real notice detail URL, attachment metadata, and risk metadata queue extraction without downloads.
+- `tests/test_document_risk_analysis.py`: document keyword risk analysis, PDF candidates, blocked PDF text analysis, and disabled attachment download planning.
 - `tests/test_g2b_pipeline_api.py`: `/g2b/config`, `/g2b/search`, `/g2b/recommendations`.
 - `tests/test_g2b_readiness.py`: offline real API readiness summary without secrets.
 - `tests/test_korean_utf8_pipeline.py`: Korean fixture/API/report encoding regression coverage.
@@ -111,10 +132,14 @@ Tests must never call the real G2B/Public Data Portal API. Real API behavior is 
 - sanitized real BidPublicInfoService service-search fixture normalization.
 - active-only filtering and missing-deadline recommendation risk behavior.
 - detail-analysis queue extraction from real list response fields without attachment downloads.
+- document risk analysis from local fixture text only.
+- PDF candidate planning from attachment metadata without downloads.
+- blocked-by-default PDF text extraction and attachment download behavior.
 
 ## Rules
 
 - Tests must not require `.env`, secrets, a database, frontend UI, or an LLM.
+- Tests must not download real attachments or require HWP/HWPX parsing.
 - Add fixture cases before expanding real API behavior.
 - `python -m pytest -q` must remain the standard validation command.
 

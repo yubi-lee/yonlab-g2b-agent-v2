@@ -11,6 +11,9 @@ Do not paste, commit, print, or ask for the service key.
 - `.env` is local only and ignored by Git.
 - `.env.example` keeps `G2B_API_SERVICE_KEY=` empty.
 - Captured real responses must not contain the service key and stay under `data/captured/`.
+- Attachment download is disabled by default with `G2B_ENABLE_ATTACHMENT_DOWNLOAD=false`.
+- PDF text extraction is disabled by default with `G2B_ENABLE_PDF_TEXT_EXTRACTION=false`.
+- Local validation does not download real attachments or parse HWP/HWPX contents.
 
 ## Approved Endpoint
 
@@ -108,3 +111,18 @@ The first controlled real smoke has succeeded. For recommendation calibration, u
 ```
 
 Real responses now include safe endpoint metadata and can use `active_only=true` to exclude already-closed notices. Service keys remain local-only and are not printed.
+
+## Attachment and PDF Follow-up
+
+After a successful real list smoke, use fixture-safe planning endpoints first:
+
+```powershell
+.\scripts\smoke_g2b_document_risk_analysis.ps1
+.\scripts\smoke_g2b_pdf_analysis_candidates_fixture.ps1
+.\scripts\smoke_g2b_pdf_text_analysis_fixture.ps1
+```
+
+These scripts do not call the real API and do not download attachments. HWP/HWPX files
+remain manual review until a controlled parser is implemented. The next integration step is
+controlled PDF download into ignored local storage, followed by extracted-text integration
+into recommendation reports.
