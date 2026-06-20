@@ -103,13 +103,20 @@ def evaluate_eligibility(
         )
 
     fit = _fit_level(signals)
-    return EligibilityResult(eligible=bool(_signals_with_code(signals, "sw_business_required")), fit=fit, signals=tuple(signals))
+    return EligibilityResult(
+        eligible=bool(_signals_with_code(signals, "sw_business_required")),
+        fit=fit,
+        signals=tuple(signals),
+    )
 
 
 def _fit_level(signals: list[EligibilitySignal]) -> FitLevel:
     if _signals_with_code(signals, "hardware_delivery_low_fit"):
         return FitLevel.LOW
-    if len([signal for signal in signals if signal.kind in {SignalKind.ELIGIBLE, SignalKind.FAVORABLE}]) >= 2:
+    positive_count = len(
+        [signal for signal in signals if signal.kind in {SignalKind.ELIGIBLE, SignalKind.FAVORABLE}]
+    )
+    if positive_count >= 2:
         return FitLevel.HIGH
     if any(signal.kind in {SignalKind.ELIGIBLE, SignalKind.FAVORABLE} for signal in signals):
         return FitLevel.MEDIUM
