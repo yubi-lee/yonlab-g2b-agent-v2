@@ -1,59 +1,85 @@
-﻿# YOnLab G2B Agent v2
+# YOnLab G2B Agent v2
 
-YOnLab-specific G2B/Narajangteo AI bid recommendation application.
+YOnLab-specific G2B/Narajangteo bid recommendation MVP.
 
-This repository is a new Agent-first implementation and must remain independent from the previous repository:
+This repository is independent from the previous v1 project:
 
 - Previous repository: `D:\Views\yonlab-bid-agent`
 - Current repository: `D:\Views\yonlab-g2b-agent-v2`
 
-## Current phase
+The MVP is fixture-first and deterministic. Real G2B/Public Data Portal API access is disabled by default and is not used by tests or demo endpoints.
 
-Phase 1: Initial FastAPI baseline.
+## What It Does
 
-Implemented:
+```text
+Raw procurement notice
+-> normalized BidNotice
+-> YOnLab eligibility analysis
+-> risk analysis
+-> 100-point match score
+-> recommendation level
+-> Korean markdown recommendation report
+-> FastAPI endpoint response
+```
 
-- Minimal FastAPI app
-- `GET /health`
-- pytest health test
-- project guidance files
-- initial docs and scripts
-
-Not implemented yet:
-
-- G2B API integration
-- G2B fixtures
-- bid normalizer
-- YOnLab eligibility engine
-- scoring engine
-- recommendation report generator
-- database
-- UI
-
-## Quick start
+## Run Tests
 
 ```powershell
 Set-Location D:\Views\yonlab-g2b-agent-v2
 .\.venv\Scripts\Activate.ps1
 python -m pytest -q
-uvicorn app.main:app --reload
+```
+
+Or:
+
+```powershell
+.\scripts\run_tests.ps1
+```
+
+## Start Server
+
+```powershell
+Set-Location D:\Views\yonlab-g2b-agent-v2
+.\scripts\dev_start.ps1
 ```
 
 Open:
 
 ```text
+http://127.0.0.1:8000/docs
 http://127.0.0.1:8000/health
 ```
 
-Expected response:
+## Key Endpoints
 
-```json
-{
-  "status": "ok",
-  "app": "YOnLab G2B Agent v2"
-}
+- `GET /health`
+- `GET /profile/yonlab`
+- `GET /fixtures/g2b/notices`
+- `POST /notices/normalize`
+- `POST /recommendations/score`
+- `POST /recommendations/report`
+- `POST /demo/recommendations`
+
+## Example Report Request
+
+```powershell
+$body = @{
+  "공고명" = "서울 AI 소프트웨어 개발"
+  "수요기관" = "테스트기관"
+  "추정가격" = "55,000,000원"
+  "입찰마감일시" = "2026-07-20"
+  "지역제한" = "서울특별시"
+  "참가자격" = "소프트웨어사업자, 소기업, 창업기업 우대"
+  "과업내용" = "AI Agent 정보시스템개발서비스 클라우드 시스템 구축"
+} | ConvertTo-Json -Depth 5
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://127.0.0.1:8000/recommendations/report" `
+  -ContentType "application/json; charset=utf-8" `
+  -Body $body
 ```
 
-## Development rule
+## Fixture Rule
 
-Fixture-first. Test-first. No real API call unless explicitly confirmed.
+The app ships with local sample notices at `data/fixtures/g2b/sample_notices.json`. Default behavior never calls a real G2B/Public Data Portal API and does not require an API key, database, frontend, or LLM.

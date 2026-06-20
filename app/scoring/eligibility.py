@@ -1,45 +1,23 @@
 from app.domain.bid_notice import BidNotice
 from app.domain.recommendation import EligibilityResult, EligibilitySignal, FitLevel, SignalKind
 from app.domain.yonlab_profile import YOnLabProfile, default_yonlab_profile
+from app.scoring.risk_analyzer import analyze_risks
 
-SEOUL_TERMS = ("서울", "서울특별시")
-OTHER_REGION_TERMS = (
-    "부산",
-    "대구",
-    "인천",
-    "광주",
-    "대전",
-    "울산",
-    "세종",
-    "경기",
-    "강원",
-    "충북",
-    "충청북도",
-    "충남",
-    "충청남도",
-    "전북",
-    "전라북도",
-    "전남",
-    "전라남도",
-    "경북",
-    "경상북도",
-    "경남",
-    "경상남도",
-    "제주",
-)
 AI_SW_TERMS = (
     "ai",
     "인공지능",
     "소프트웨어",
     "sw",
     "정보시스템",
+    "시스템 개발",
     "클라우드",
     "시스템관리",
     "원격 검증",
     "device farm",
     "agent",
+    "npu",
+    "온디바이스",
 )
-HARDWARE_TERMS = ("h/w", "hw", "하드웨어", "장비 납품", "pc 납품", "서버 납품")
 
 
 def evaluate_eligibility(
@@ -49,91 +27,134 @@ def evaluate_eligibility(
     profile = profile or default_yonlab_profile()
     text = notice.searchable_text()
     signals: list[EligibilitySignal] = []
+    positive_reasons: list[str] = []
 
     if _has_any(text, ("소프트웨어사업자", "sw사업자", "소프트웨어 사업자")):
-        signals.append(
-            EligibilitySignal(
-                kind=SignalKind.ELIGIBLE,
-                code="sw_business_required",
-                message=f"{profile.core_qualification} 요구 공고입니다.",
-            )
+        _add_signal(
+            signals,
+            positive_reasons,
+            SignalKind.ELIGIBLE,
+            "sw_business_required",
+            "소프트웨어사업자 요구 조건이 와이온랩 핵심 자격과 부합합니다.",
         )
 
-    if _has_any(text, ("소기업", "소상공인")):
-        signals.append(_favorable("small_business", "소기업/소상공인 제한 공고입니다."))
+    if _has_any(text, AI_SW_TERMS):
+        _add_signal(
+            signals,
+            positive_reasons,
+            SignalKind.FAVORABLE,
+            "ai_sw_fit",
+            "AI/SW/정보시스템 개발 과업으로 와이온랩 기술 방향과 부합합니다.",
+        )
+
+    if _has_any(text, ("소기업", "소상공인", "중소기업자간 경쟁")):
+        _add_signal(
+            signals,
+            positive_reasons,
+            SignalKind.FAVORABLE,
+            "small_business",
+            "소기업·소상공인 조건이 초기기업인 와이온랩에 유리합니다.",
+        )
 
     if _has_any(text, ("창업기업", "초기창업기업", "창업 기업")):
-        signals.append(_favorable("startup_preference", "창업기업 우대 공고입니다."))
-
-    if _is_region_limited(text) and _has_any(text, SEOUL_TERMS):
-        signals.append(_favorable("seoul_region", "서울 지역 제한 공고입니다."))
-
-    if _is_region_limited(text) and _has_any(text, OTHER_REGION_TERMS):
-        signals.append(
-            EligibilitySignal(
-                kind=SignalKind.RISK,
-                code="other_region_limit",
-                message="YOnLab 소재지와 다른 지역 제한 공고입니다.",
-            )
+        _add_signal(
+            signals,
+            positive_reasons,
+            SignalKind.FAVORABLE,
+            "startup_preference",
+            "창업기업 우대 조건이 있어 제안 전략상 유리합니다.",
         )
 
-    if _has_any(text, ("최근 3년", "최근3년", "3년 이내")) and _has_any(text, ("실적", "수행실적")):
-        signals.append(
-            EligibilitySignal(
-                kind=SignalKind.RISK,
-                code="three_year_performance_limit",
-                message="최근 3년 실적 제한이 있습니다.",
-            )
+    if _has_any(f"{notice.region} {text}".casefold(), ("서울", "서울특별시", "강남구")):
+        _add_signal(
+            signals,
+            positive_reasons,
+            SignalKind.FAVORABLE,
+            "seoul_region",
+            "서울 지역 조건은 와이온랩 소재지와 부합합니다.",
         )
 
-    ai_sw_fit = _has_any(text, AI_SW_TERMS) or any(
-        category.casefold() in text for category in profile.procurement_categories
-    )
-    if ai_sw_fit:
-        signals.append(_favorable("ai_sw_fit", "AI/SW 관련 공고입니다."))
-
-    hardware_only = _has_any(text, HARDWARE_TERMS) and not ai_sw_fit
-    if hardware_only:
-        signals.append(
-            EligibilitySignal(
-                kind=SignalKind.RISK,
-                code="hardware_delivery_low_fit",
-                message="단순 H/W 납품 중심 공고로 적합도가 낮습니다.",
-            )
+    if _has_any(text, ("클라우드", "정보시스템개발", "시스템관리", "소프트웨어 개발")):
+        _add_signal(
+            signals,
+            positive_reasons,
+            SignalKind.FAVORABLE,
+            "cloud_system_fit",
+            "클라우드·시스템·소프트웨어 개발 역량을 활용할 수 있습니다.",
         )
+
+    matched_categories = [
+        category for category in profile.procurement_categories if category.casefold() in text
+    ]
+    if matched_categories:
+        _add_signal(
+            signals,
+            positive_reasons,
+            SignalKind.FAVORABLE,
+            "procurement_category_match",
+            f"와이온랩 등록 품목과 직접 일치합니다: {', '.join(matched_categories)}.",
+        )
+
+    risks = analyze_risks(notice)
+    for risk in risks:
+        signals.append(
+            EligibilitySignal(kind=SignalKind.RISK, code=risk.code, message=risk.message)
+        )
+        alias = _legacy_risk_code(risk.code)
+        if alias != risk.code:
+            signals.append(
+                EligibilitySignal(kind=SignalKind.RISK, code=alias, message=risk.message)
+            )
 
     fit = _fit_level(signals)
     return EligibilityResult(
         eligible=bool(_signals_with_code(signals, "sw_business_required")),
         fit=fit,
-        signals=tuple(signals),
+        positive_reasons=positive_reasons,
+        risk_codes=[risk.code for risk in risks],
+        signals=signals,
     )
 
 
 def _fit_level(signals: list[EligibilitySignal]) -> FitLevel:
-    if _signals_with_code(signals, "hardware_delivery_low_fit"):
+    if _signals_with_code(signals, "hardware_only") or _signals_with_code(
+        signals, "license_mismatch"
+    ):
         return FitLevel.LOW
     positive_count = len(
         [signal for signal in signals if signal.kind in {SignalKind.ELIGIBLE, SignalKind.FAVORABLE}]
     )
-    if positive_count >= 2:
+    if positive_count >= 4:
         return FitLevel.HIGH
-    if any(signal.kind in {SignalKind.ELIGIBLE, SignalKind.FAVORABLE} for signal in signals):
+    if positive_count >= 1:
         return FitLevel.MEDIUM
     return FitLevel.LOW
 
 
-def _favorable(code: str, message: str) -> EligibilitySignal:
-    return EligibilitySignal(kind=SignalKind.FAVORABLE, code=code, message=message)
+def _add_signal(
+    signals: list[EligibilitySignal],
+    positive_reasons: list[str],
+    kind: SignalKind,
+    code: str,
+    message: str,
+) -> None:
+    signals.append(EligibilitySignal(kind=kind, code=code, message=message))
+    if kind in {SignalKind.ELIGIBLE, SignalKind.FAVORABLE}:
+        positive_reasons.append(message)
 
 
 def _has_any(text: str, terms: tuple[str, ...]) -> bool:
     return any(term.casefold() in text for term in terms)
 
 
-def _is_region_limited(text: str) -> bool:
-    return _has_any(text, ("지역 제한", "지역제한", "소재지", "본점 소재지"))
-
-
 def _signals_with_code(signals: list[EligibilitySignal], code: str) -> list[EligibilitySignal]:
     return [signal for signal in signals if signal.code == code]
+
+
+def _legacy_risk_code(code: str) -> str:
+    aliases = {
+        "non_seoul_region": "other_region_limit",
+        "recent_performance_required": "three_year_performance_limit",
+        "hardware_only": "hardware_delivery_low_fit",
+    }
+    return aliases.get(code, code)

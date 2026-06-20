@@ -1,29 +1,60 @@
-﻿# 03_YONLAB_MATCHING_RULES ??Draft
+# 03 YOnLab Matching Rules
 
-## YOnLab baseline
+## Baseline Profile
 
-- Location: ?쒖슱?밸퀎??媛뺣궓援?- Size: ?뚭린??/ ?뚯긽怨듭씤
-- Status: 珥덇린李쎌뾽湲곗뾽
-- Qualification: ?뚰봽?몄썾?댁궗?낆옄
-- Core capabilities:
-  - ?⑤뵒諛붿씠??AI
-  - Device Farm
-  - AI/SW ?먭꺽 寃利?  - 濡쒕큸/?곗뾽??AI
-  - AI Agent
-  - ?대씪?곕뱶 ?쒖뒪??
-## Positive signals
+- Company: 주식회사 와이온랩
+- CEO: 이근영
+- Location: 서울특별시 강남구
+- Company size: 소기업, 소상공인
+- Startup status: 초기창업기업
+- Core qualifications:
+  - 소프트웨어사업자
+  - 패키지소프트웨어개발 공급사업
+  - 컴퓨터관련서비스사업
 
-- ?멸났吏?μ냼?꾪듃?⑥뼱
-- ?뺣낫?쒖뒪?쒓컻諛쒖꽌鍮꾩뒪
-- ?⑦궎吏?뚰봽?몄썾?닿컻諛쒕컦?꾩엯?쒕퉬??- ?대씪?곕뱶?뚰봽?몄썾??- ?쒖뒪?쒓?由ъ냼?꾪듃?⑥뼱
-- ?뚭린???뚯긽怨듭씤 ?쒗븳
-- 李쎌뾽湲곗뾽 ?곕?
-- ?쒖슱 吏???쒗븳
+## Strong Positive Signals
 
-## Risk signals
+- 소프트웨어사업자, SW사업자, 컴퓨터관련서비스사업 requirement.
+- AI, 인공지능, AI Agent, 온디바이스 AI, NPU, Device Farm.
+- 정보시스템개발서비스, 클라우드소프트웨어, 시스템관리소프트웨어.
+- 소기업, 소상공인, 창업기업 우대 or participation.
+- 서울, 수도권, 전국 region conditions.
+- Direct procurement category match.
 
-- ? 吏???쒗븳
-- 理쒓렐 3???⑥씪 ?ㅼ쟻 ?쒗븳
-- ?湲곗뾽/以묎껄湲곗뾽 以묒떖 李몄뿬 援ъ“
-- ?⑥닚 HW ?⑺뭹
-- 怨쇰룄???곸＜ ?몃젰 ?붽뎄
+## Risk Signals
+
+- 서울 외 특정 지역 소재 업체 제한.
+- 최근 3년 유사 사업 실적 requirement.
+- 단일 계약 금액 기준 performance requirement.
+- 단순 PC, 서버, 전산장비, H/W 납품 중심 procurement.
+- 상주, 전담 인력, 파견, 현장근무 burden.
+- 제조사, 총판, 대리점, 공급확약서, 특정 라이선스 requirement.
+- Missing or urgent deadline.
+
+## Scoring Model
+
+| Category | Points |
+| --- | ---: |
+| Required qualification fit | 25 |
+| Technical fit | 25 |
+| Company condition fit | 20 |
+| Budget/contract fit | 10 |
+| Region fit | 10 |
+| Strategic value | 10 |
+| Risk penalty | up to -20 |
+
+## Recommendation Levels
+
+- `strong_recommend`: 85+
+- `recommend`: 70-84
+- `consider`: 50-69
+- `not_recommended`: below 50
+
+## Report Strategy
+
+Reports should mention:
+
+- 예비창업패키지 기반 AI/Device Farm/AI 검증 플랫폼 경험.
+- 온디바이스 AI/NPU/로봇 AI 기술역량.
+- 소기업/소상공인 및 창업기업 지위.
+- Required documents and concrete risk responses.

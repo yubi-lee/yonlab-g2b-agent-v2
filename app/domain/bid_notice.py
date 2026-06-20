@@ -1,24 +1,49 @@
-from dataclasses import dataclass, field
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 
-@dataclass(frozen=True)
-class BidNotice:
-    title: str
-    description: str = ""
+class BidNotice(BaseModel):
     notice_id: str = ""
-    requirements: tuple[str, ...] = field(default_factory=tuple)
-    restrictions: tuple[str, ...] = field(default_factory=tuple)
-    preferences: tuple[str, ...] = field(default_factory=tuple)
-    categories: tuple[str, ...] = field(default_factory=tuple)
+    title: str = ""
+    agency: str = ""
+    budget_amount: int | None = None
+    deadline: str | None = None
+    region: str = ""
+    contract_type: str = ""
+    business_type: str = ""
+    qualification_text: str = ""
+    description: str = ""
+    keywords: list[str] = Field(default_factory=list)
+    requirements: list[str] = Field(default_factory=list)
+    restrictions: list[str] = Field(default_factory=list)
+    preferences: list[str] = Field(default_factory=list)
+    categories: list[str] = Field(default_factory=list)
+    raw_source: dict[str, Any] = Field(default_factory=dict)
 
     def searchable_text(self) -> str:
-        parts = (
+        values: list[Any] = [
             self.notice_id,
             self.title,
+            self.agency,
+            self.region,
+            self.contract_type,
+            self.business_type,
+            self.qualification_text,
             self.description,
+            *self.keywords,
             *self.requirements,
             *self.restrictions,
             *self.preferences,
             *self.categories,
-        )
-        return " ".join(part for part in parts if part).casefold()
+            *self.raw_source.values(),
+        ]
+        return " ".join(_stringify(value) for value in values if value not in (None, "")).casefold()
+
+
+def _stringify(value: Any) -> str:
+    if isinstance(value, list | tuple | set):
+        return " ".join(_stringify(item) for item in value)
+    if isinstance(value, dict):
+        return " ".join(f"{key} {_stringify(item)}" for key, item in value.items())
+    return str(value)

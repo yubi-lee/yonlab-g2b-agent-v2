@@ -11,7 +11,7 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         version="0.1.0",
     )
-    app.include_router(router)
+    app.router.routes.extend(router.routes)
 
     return app
 
