@@ -71,6 +71,7 @@ http://127.0.0.1:8000/health
 ## G2B Endpoints
 
 - `GET /g2b/config`
+- `GET /g2b/endpoint-presets`
 - `POST /g2b/search`
 - `POST /g2b/recommendations`
 
@@ -115,7 +116,7 @@ Real API calls require all of the following:
 
 - `G2B_ENABLE_REAL_API=true`
 - `G2B_API_SERVICE_KEY` configured
-- `G2B_LIST_ENDPOINT_PATH` configured
+- `G2B_LIST_ENDPOINT_PATH` configured, or `G2B_ENDPOINT_PRESET` set to a known preset
 - request body includes `confirm_real_api_call=true`
 - request `mode` is `real`
 
@@ -130,7 +131,8 @@ Required local settings:
 ```env
 G2B_ENABLE_REAL_API=true
 G2B_API_SERVICE_KEY=<your local key>
-G2B_LIST_ENDPOINT_PATH=<configured list endpoint path>
+G2B_ENDPOINT_PRESET=bid_notice_service
+# Or use G2B_LIST_ENDPOINT_PATH=<configured list endpoint path>
 ```
 
 Every real request must also include `confirm_real_api_call=true`. The template smoke scripts use `num_rows=3` for a small first real check.
@@ -144,6 +146,22 @@ G2B_CAPTURE_DIR=data/captured/g2b
 
 Captured responses are disabled by default. When enabled, captures are written as UTF-8 JSON with request secrets masked. `data/captured/` is ignored by Git.
 
+Before the first confirmed smoke, run the offline readiness check:
+
+```powershell
+.\scripts\validate_g2b_real_readiness.ps1
+```
+
+It checks no-secret rules, endpoint preset readiness, and relevant tests without calling the real API.
+
+Endpoint preset guidance:
+
+- `bid_notice_service`: recommended first preset for YOnLab AI/SW 용역 notices.
+- `bid_notice_goods`: use only when intentionally reviewing 물품 notices.
+- `bid_notice_construction`: not a normal YOnLab target; use only for comparison.
+
+For full setup steps, see `docs/05_REAL_G2B_CONNECTION_GUIDE.md`.
+
 ## `.env.example` Guidance
 
 Copy values from `.env.example` only when you are ready to configure a local environment. Do not commit `.env`.
@@ -153,6 +171,7 @@ Important defaults:
 ```env
 G2B_ENABLE_REAL_API=false
 G2B_API_SERVICE_KEY=
+G2B_ENDPOINT_PRESET=
 G2B_FIXTURE_MODE=true
 G2B_CAPTURE_REAL_RESPONSES=false
 G2B_CAPTURE_DIR=data/captured/g2b

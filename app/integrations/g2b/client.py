@@ -7,6 +7,11 @@ from app.core.config import Settings
 from app.domain.search import G2BSearchRequest
 from app.integrations.g2b.capture import MASKED_VALUE, capture_real_response
 from app.integrations.g2b.errors import G2BClientError
+from app.integrations.g2b.presets import (
+    ENDPOINT_PATH_SOURCE_MISSING,
+    ENDPOINT_PATH_SOURCE_UNKNOWN_PRESET,
+    resolve_endpoint_path,
+)
 
 
 class G2BClient:
@@ -62,15 +67,22 @@ class G2BClient:
             )
         if not self.settings.g2b_api_service_key:
             raise G2BClientError("service_key_missing", "G2B API service key is not configured.")
-        if not self.settings.g2b_list_endpoint_path:
+        _, endpoint_path_source = resolve_endpoint_path(self.settings)
+        if endpoint_path_source == ENDPOINT_PATH_SOURCE_MISSING:
             raise G2BClientError(
                 "endpoint_path_missing",
                 "G2B list endpoint path is not configured.",
             )
+        if endpoint_path_source == ENDPOINT_PATH_SOURCE_UNKNOWN_PRESET:
+            raise G2BClientError(
+                "endpoint_preset_unknown",
+                "G2B endpoint preset is not recognized.",
+            )
 
     def _build_url(self) -> str:
         base_url = self.settings.g2b_api_base_url.rstrip("/") + "/"
-        endpoint_path = self.settings.g2b_list_endpoint_path.lstrip("/")
+        endpoint_path, _ = resolve_endpoint_path(self.settings)
+        endpoint_path = endpoint_path.lstrip("/")
         return urljoin(base_url, endpoint_path)
 
     def _build_params(self, request: G2BSearchRequest) -> dict[str, Any]:

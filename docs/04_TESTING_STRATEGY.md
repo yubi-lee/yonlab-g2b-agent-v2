@@ -18,13 +18,25 @@ Use one command for local end-to-end validation:
 
 The script runs `python -m pytest -q`, starts a temporary FastAPI server on `127.0.0.1:8000`, waits for `/health`, runs fixture smoke scripts, verifies the real API guard-blocked smoke path, runs the Korean markdown report smoke check, and stops the server in a `finally` block.
 
+## Real API Readiness Validation
+
+Use one command before the first confirmed real smoke:
+
+```powershell
+.\scripts\validate_g2b_real_readiness.ps1
+```
+
+The script runs no-secret validation, targeted offline tests, and `python -m app.integrations.g2b.readiness`. It does not call the real G2B/Public Data Portal API and does not print service key values.
+
 ## Current Test Coverage
 
 - `tests/test_app_health.py`: health endpoint.
 - `tests/test_yonlab_profile.py`: fixed YOnLab profile.
 - `tests/test_g2b_normalizer.py`: fixture loading and field normalization.
 - `tests/test_g2b_client.py`: guarded real client behavior using mocks only.
+- `tests/test_g2b_endpoint_presets.py`: endpoint preset resolution and unknown-preset blocking.
 - `tests/test_g2b_pipeline_api.py`: `/g2b/config`, `/g2b/search`, `/g2b/recommendations`.
+- `tests/test_g2b_readiness.py`: offline real API readiness summary without secrets.
 - `tests/test_korean_utf8_pipeline.py`: Korean fixture/API/report encoding regression coverage.
 - `tests/test_yonlab_eligibility.py`: eligibility and first-pass risk signals.
 - `tests/test_score_engine.py`: 100-point scoring and risk penalty behavior.

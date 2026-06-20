@@ -58,5 +58,21 @@ class G2BConfigResponse(BaseModel):
     default_num_rows: int
     default_page_no: int
     endpoint_path_configured: bool
+    endpoint_preset: str | None = None
+    endpoint_path_source: str
     fixture_mode: bool
     capture_real_responses: bool
+
+
+class G2BEndpointPresetResponse(BaseModel):
+    code: str
+    operation_name: str
+    endpoint_path: str
+    recommended_for_yonlab: bool
+    guidance: str
+
+
+class G2BEndpointPresetListResponse(BaseModel):
+    presets: list[G2BEndpointPresetResponse]
+    recommended_first_preset: str
+    message: str

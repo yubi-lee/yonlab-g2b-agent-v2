@@ -24,6 +24,8 @@ FastAPI routes
 - `app/integrations/g2b/client.py`: guarded httpx client for real API calls.
 - `app/integrations/g2b/capture.py`: optional sanitized real response capture.
 - `app/integrations/g2b/errors.py`: sanitized client errors.
+- `app/integrations/g2b/presets.py`: endpoint path preset definitions and resolver.
+- `app/integrations/g2b/readiness.py`: offline real API readiness summary.
 - `app/scoring/eligibility.py`: first-pass YOnLab eligibility signals.
 - `app/scoring/risk_analyzer.py`: deterministic risk detection.
 - `app/scoring/score_engine.py`: 100-point deterministic recommendation score.
@@ -49,9 +51,10 @@ search result
 ## Safety Constraints
 
 - Fixture mode is default.
-- Real API calls require enabled settings, a configured service key, endpoint path, and explicit request confirmation.
+- Real API calls require enabled settings, a configured service key, endpoint path or known endpoint preset, and explicit request confirmation.
 - Real response capture is opt-in and masks secret request fields before writing UTF-8 JSON.
 - Captured real responses are written under ignored local paths such as `data/captured/g2b`.
+- `scripts/validate_g2b_real_readiness.ps1` checks readiness without calling the real API.
 - The service key is never returned in API responses.
 - Tests and smoke fixture scripts do not call the real API.
 - No database, frontend UI, or LLM is required.

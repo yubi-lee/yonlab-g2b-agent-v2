@@ -17,6 +17,8 @@ from app.domain.recommendation import (
 )
 from app.domain.search import (
     G2BConfigResponse,
+    G2BEndpointPresetListResponse,
+    G2BEndpointPresetResponse,
     G2BRecommendationRequest,
     G2BRecommendationResponse,
     G2BSearchMode,
@@ -28,6 +30,7 @@ from app.integrations.g2b.client import G2BClient
 from app.integrations.g2b.errors import G2BClientError
 from app.integrations.g2b.fixtures import load_sample_g2b_notices, search_sample_g2b_notices
 from app.integrations.g2b.normalizer import normalize_g2b_notice
+from app.integrations.g2b.presets import list_endpoint_presets, resolve_endpoint_path
 from app.reports.markdown_report import generate_markdown_report
 from app.scoring.score_engine import score_notice
 
@@ -57,15 +60,36 @@ def get_g2b_fixture_notices() -> FixtureNoticeResponse:
 @router.get("/g2b/config", response_model=G2BConfigResponse)
 def get_g2b_config() -> G2BConfigResponse:
     settings = get_settings()
+    endpoint_path, endpoint_path_source = resolve_endpoint_path(settings)
     return G2BConfigResponse(
         real_api_enabled=settings.g2b_enable_real_api,
         base_url_configured=bool(settings.g2b_api_base_url),
         service_key_configured=bool(settings.g2b_api_service_key),
         default_num_rows=settings.g2b_default_num_rows,
         default_page_no=settings.g2b_default_page_no,
-        endpoint_path_configured=bool(settings.g2b_list_endpoint_path),
+        endpoint_path_configured=bool(endpoint_path),
+        endpoint_preset=settings.g2b_endpoint_preset or None,
+        endpoint_path_source=endpoint_path_source,
         fixture_mode=settings.g2b_fixture_mode,
         capture_real_responses=settings.g2b_capture_real_responses,
+    )
+
+
+@router.get("/g2b/endpoint-presets", response_model=G2BEndpointPresetListResponse)
+def get_g2b_endpoint_presets() -> G2BEndpointPresetListResponse:
+    return G2BEndpointPresetListResponse(
+        presets=[
+            G2BEndpointPresetResponse(
+                code=preset.code,
+                operation_name=preset.operation_name,
+                endpoint_path=preset.endpoint_path,
+                recommended_for_yonlab=preset.recommended_for_yonlab,
+                guidance=preset.guidance,
+            )
+            for preset in list_endpoint_presets()
+        ],
+        recommended_first_preset="bid_notice_service",
+        message="Verify the selected operation in data.go.kr before the first confirmed real call.",
     )
 
 

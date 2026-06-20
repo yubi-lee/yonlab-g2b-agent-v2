@@ -71,3 +71,14 @@ Reason:
 - Real G2B/Public Data Portal calls must require enabled settings, a service key, endpoint path, real mode, and per-request confirmation.
 - Guard-blocked smoke validation proves the safety gates work without calling the real network.
 - Captured real responses can help future field mapping work, but captures are opt-in, UTF-8 JSON, secret-masked, and ignored by Git.
+
+## 2026-06-20 Real G2B Readiness Guide and Endpoint Presets
+
+Decision: Add endpoint presets, no-secret validation, and an offline real-readiness command before any confirmed Public Data Portal/G2B smoke.
+
+Reason:
+
+- First real integration needs repeatable local setup without weakening the default fixture-first safety model.
+- `G2B_ENDPOINT_PRESET=bid_notice_service` reduces endpoint path copy/paste risk for the first YOnLab AI/SW 용역 smoke.
+- `G2B_LIST_ENDPOINT_PATH` still overrides presets for manually verified operation paths.
+- Readiness validation must prove configuration safety without calling the real API or printing service keys.

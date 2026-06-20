@@ -16,6 +16,8 @@ def test_g2b_config_does_not_expose_service_key() -> None:
     assert payload["base_url_configured"] is True
     assert payload["service_key_configured"] is False
     assert payload["capture_real_responses"] is False
+    assert payload["endpoint_preset"] is None
+    assert payload["endpoint_path_source"] == "missing"
     assert "service_key" not in payload
     assert "G2B_API_SERVICE_KEY" not in str(payload)
 
@@ -116,6 +118,28 @@ def test_g2b_search_real_mode_blocked_when_endpoint_path_missing(monkeypatch) ->
     assert "SECRET-KEY" not in str(payload)
 
 
+def test_g2b_search_real_mode_blocked_when_endpoint_preset_unknown(monkeypatch) -> None:  # noqa: ANN001
+    monkeypatch.setattr(
+        routes,
+        "get_settings",
+        lambda: Settings(
+            g2b_enable_real_api=True,
+            g2b_api_service_key="SECRET-KEY",
+            g2b_endpoint_preset="unknown",
+        ),
+    )
+
+    response = client.post(
+        "/g2b/search",
+        json={"mode": "real", "keyword": "AI", "confirm_real_api_call": True},
+    )
+
+    payload = response.json()
+    assert payload["ok"] is False
+    assert payload["error_code"] == "endpoint_preset_unknown"
+    assert "SECRET-KEY" not in str(payload)
+
+
 def test_g2b_recommendations_real_mode_blocked_safely() -> None:
     response = client.post(
         "/g2b/recommendations",
@@ -138,6 +162,32 @@ def test_g2b_config_with_service_key_only_reports_boolean(monkeypatch) -> None: 
 
     payload = response.json()
     assert payload["service_key_configured"] is True
+    assert "SECRET-KEY" not in str(payload)
+
+
+def test_g2b_config_with_endpoint_preset_reports_safe_source(monkeypatch) -> None:  # noqa: ANN001
+    monkeypatch.setattr(
+        routes,
+        "get_settings",
+        lambda: Settings(g2b_endpoint_preset="bid_notice_service"),
+    )
+
+    response = client.get("/g2b/config")
+
+    payload = response.json()
+    assert payload["endpoint_path_configured"] is True
+    assert payload["endpoint_preset"] == "bid_notice_service"
+    assert payload["endpoint_path_source"] == "preset"
+    assert "serviceKey" not in str(payload)
+
+
+def test_g2b_endpoint_presets_are_safe_to_inspect() -> None:
+    response = client.get("/g2b/endpoint-presets")
+
+    payload = response.json()
+    assert payload["recommended_first_preset"] == "bid_notice_service"
+    assert any(preset["code"] == "bid_notice_service" for preset in payload["presets"])
+    assert "serviceKey" not in str(payload)
     assert "SECRET-KEY" not in str(payload)
 
 
