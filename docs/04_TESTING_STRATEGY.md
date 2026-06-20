@@ -26,7 +26,7 @@ Use one command before the first confirmed real smoke:
 .\scripts\validate_g2b_real_readiness.ps1
 ```
 
-The script runs no-secret validation, targeted offline tests, and `python -m app.integrations.g2b.readiness`. It does not call the real G2B/Public Data Portal API and does not print service key values.
+The script runs `scripts/check_no_secrets.ps1`, targeted offline tests, and `python -m app.integrations.g2b.readiness`. It does not call the real G2B/Public Data Portal API and does not print service key values.
 
 ## Current Test Coverage
 

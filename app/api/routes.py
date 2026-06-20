@@ -19,6 +19,7 @@ from app.domain.search import (
     G2BConfigResponse,
     G2BEndpointPresetListResponse,
     G2BEndpointPresetResponse,
+    G2BRealReadinessResponse,
     G2BRecommendationRequest,
     G2BRecommendationResponse,
     G2BSearchMode,
@@ -31,6 +32,7 @@ from app.integrations.g2b.errors import G2BClientError
 from app.integrations.g2b.fixtures import load_sample_g2b_notices, search_sample_g2b_notices
 from app.integrations.g2b.normalizer import normalize_g2b_notice
 from app.integrations.g2b.presets import list_endpoint_presets, resolve_endpoint_path
+from app.integrations.g2b.readiness import build_real_readiness
 from app.reports.markdown_report import generate_markdown_report
 from app.scoring.score_engine import score_notice
 
@@ -80,17 +82,19 @@ def get_g2b_endpoint_presets() -> G2BEndpointPresetListResponse:
     return G2BEndpointPresetListResponse(
         presets=[
             G2BEndpointPresetResponse(
-                code=preset.code,
-                operation_name=preset.operation_name,
-                endpoint_path=preset.endpoint_path,
-                recommended_for_yonlab=preset.recommended_for_yonlab,
-                guidance=preset.guidance,
+                name=preset.name,
+                path=preset.path,
+                description=preset.description,
             )
             for preset in list_endpoint_presets()
         ],
-        recommended_first_preset="bid_notice_service",
-        message="Verify the selected operation in data.go.kr before the first confirmed real call.",
+        message="Verify the exact operation path in data.go.kr before a confirmed real call.",
     )
+
+
+@router.get("/g2b/real-readiness", response_model=G2BRealReadinessResponse)
+def get_g2b_real_readiness() -> G2BRealReadinessResponse:
+    return G2BRealReadinessResponse(**build_real_readiness(get_settings()))
 
 
 @router.post("/g2b/search", response_model=G2BSearchResponse)

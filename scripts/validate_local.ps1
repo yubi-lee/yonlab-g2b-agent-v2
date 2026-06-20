@@ -58,8 +58,15 @@ function Wait-ForHealth {
 }
 
 try {
+    Invoke-ValidationStep "check_no_secrets" {
+        & (Join-Path $ProjectRoot "scripts\check_no_secrets.ps1")
+    }
+
     Invoke-ValidationStep "pytest" {
         & $Python -m pytest -q
+        if ($LASTEXITCODE -ne 0) {
+            throw "pytest failed."
+        }
     }
 
     Write-Host ""
@@ -78,6 +85,12 @@ try {
 
     Invoke-ValidationStep "smoke_g2b_config" {
         & (Join-Path $ProjectRoot "scripts\smoke_g2b_config.ps1")
+    }
+    Invoke-ValidationStep "smoke_g2b_endpoint_presets" {
+        & (Join-Path $ProjectRoot "scripts\smoke_g2b_endpoint_presets.ps1")
+    }
+    Invoke-ValidationStep "smoke_g2b_real_readiness" {
+        & (Join-Path $ProjectRoot "scripts\smoke_g2b_real_readiness.ps1")
     }
     Invoke-ValidationStep "smoke_g2b_search_fixture" {
         & (Join-Path $ProjectRoot "scripts\smoke_g2b_search_fixture.ps1")

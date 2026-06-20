@@ -79,6 +79,7 @@ Decision: Add endpoint presets, no-secret validation, and an offline real-readin
 Reason:
 
 - First real integration needs repeatable local setup without weakening the default fixture-first safety model.
-- `G2B_ENDPOINT_PRESET=bid_notice_service` reduces endpoint path copy/paste risk for the first YOnLab AI/SW 용역 smoke.
-- `G2B_LIST_ENDPOINT_PATH` still overrides presets for manually verified operation paths.
+- The approved first-smoke base path is `/1230000/ad/BidPublicInfoService`.
+- `G2B_ENDPOINT_PRESET=approved_bid_public_info_service` is available, but `.env.example`
+  uses `G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService` directly.
 - Readiness validation must prove configuration safety without calling the real API or printing service keys.

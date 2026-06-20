@@ -65,14 +65,18 @@ class G2BConfigResponse(BaseModel):
 
 
 class G2BEndpointPresetResponse(BaseModel):
-    code: str
-    operation_name: str
-    endpoint_path: str
-    recommended_for_yonlab: bool
-    guidance: str
+    name: str
+    path: str
+    description: str
 
 
 class G2BEndpointPresetListResponse(BaseModel):
     presets: list[G2BEndpointPresetResponse]
-    recommended_first_preset: str
     message: str
+
+
+class G2BRealReadinessResponse(BaseModel):
+    ready: bool
+    checks: dict[str, bool]
+    missing: list[str]
+    next_steps: list[str]

@@ -72,6 +72,7 @@ http://127.0.0.1:8000/health
 
 - `GET /g2b/config`
 - `GET /g2b/endpoint-presets`
+- `GET /g2b/real-readiness`
 - `POST /g2b/search`
 - `POST /g2b/recommendations`
 
@@ -131,8 +132,7 @@ Required local settings:
 ```env
 G2B_ENABLE_REAL_API=true
 G2B_API_SERVICE_KEY=<your local key>
-G2B_ENDPOINT_PRESET=bid_notice_service
-# Or use G2B_LIST_ENDPOINT_PATH=<configured list endpoint path>
+G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService
 ```
 
 Every real request must also include `confirm_real_api_call=true`. The template smoke scripts use `num_rows=3` for a small first real check.
@@ -156,11 +156,10 @@ It checks no-secret rules, endpoint preset readiness, and relevant tests without
 
 Endpoint preset guidance:
 
-- `bid_notice_service`: recommended first preset for YOnLab AI/SW 용역 notices.
-- `bid_notice_goods`: use only when intentionally reviewing 물품 notices.
-- `bid_notice_construction`: not a normal YOnLab target; use only for comparison.
+- `custom`: use `G2B_LIST_ENDPOINT_PATH` from local `.env`.
+- `approved_bid_public_info_service`: approved base path `/1230000/ad/BidPublicInfoService`.
 
-For full setup steps, see `docs/05_REAL_G2B_CONNECTION_GUIDE.md`.
+For full setup steps, see `docs/05_REAL_G2B_SMOKE_CHECKLIST.md`.
 
 ## `.env.example` Guidance
 
@@ -171,7 +170,7 @@ Important defaults:
 ```env
 G2B_ENABLE_REAL_API=false
 G2B_API_SERVICE_KEY=
-G2B_ENDPOINT_PRESET=
+G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService
 G2B_FIXTURE_MODE=true
 G2B_CAPTURE_REAL_RESPONSES=false
 G2B_CAPTURE_DIR=data/captured/g2b
@@ -191,6 +190,8 @@ For manual smoke checks, start the server first with `.\scripts\dev_start.ps1`, 
 Set-Location D:\Views\yonlab-g2b-agent-v2
 .\.venv\Scripts\Activate.ps1
 .\scripts\smoke_g2b_config.ps1
+.\scripts\smoke_g2b_endpoint_presets.ps1
+.\scripts\smoke_g2b_real_readiness.ps1
 .\scripts\smoke_g2b_search_fixture.ps1
 .\scripts\smoke_g2b_recommend_fixture.ps1
 .\scripts\smoke_g2b_real_guard_blocked.ps1

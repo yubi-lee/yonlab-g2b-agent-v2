@@ -15,19 +15,19 @@ from app.integrations.g2b.presets import (
 
 def test_endpoint_presets_include_yonlab_recommended_service_operation() -> None:
     presets = list_endpoint_presets()
-    service_preset = get_endpoint_preset("bid_notice_service")
+    service_preset = get_endpoint_preset("approved_bid_public_info_service")
 
-    assert len(presets) >= 3
+    assert len(presets) >= 2
     assert service_preset is not None
-    assert service_preset.recommended_for_yonlab is True
-    assert service_preset.endpoint_path.startswith("/")
-    assert "Servc" in service_preset.endpoint_path
+    assert service_preset.path == "/1230000/ad/BidPublicInfoService"
+    assert "Approved G2B BidPublicInfoService" in service_preset.description
+    assert get_endpoint_preset("custom") is not None
 
 
 def test_explicit_endpoint_path_overrides_preset() -> None:
     settings = Settings(
         g2b_list_endpoint_path="/explicit/path",
-        g2b_endpoint_preset="bid_notice_service",
+        g2b_endpoint_preset="approved_bid_public_info_service",
     )
 
     endpoint_path, source = resolve_endpoint_path(settings)
@@ -37,11 +37,11 @@ def test_explicit_endpoint_path_overrides_preset() -> None:
 
 
 def test_endpoint_preset_resolves_when_explicit_path_missing() -> None:
-    settings = Settings(g2b_endpoint_preset="bid_notice_service")
+    settings = Settings(g2b_endpoint_preset="approved_bid_public_info_service")
 
     endpoint_path, source = resolve_endpoint_path(settings)
 
-    assert endpoint_path.endswith("getBidPblancListInfoServc")
+    assert endpoint_path == "/1230000/ad/BidPublicInfoService"
     assert source == ENDPOINT_PATH_SOURCE_PRESET
 
 

@@ -7,13 +7,16 @@ SMOKE_SCRIPT_NAMES = (
     "smoke_g2b_config.ps1",
     "smoke_g2b_search_fixture.ps1",
     "smoke_g2b_recommend_fixture.ps1",
+    "smoke_g2b_endpoint_presets.ps1",
+    "smoke_g2b_real_readiness.ps1",
     "smoke_g2b_real_guard_blocked.ps1",
     "smoke_g2b_real_confirmed_template.ps1",
     "smoke_g2b_real_recommend_template.ps1",
 )
 VALIDATION_SCRIPT_NAME = "validate_local.ps1"
 REAL_READINESS_SCRIPT_NAME = "validate_g2b_real_readiness.ps1"
-NO_SECRET_SCRIPT_NAME = "validate_no_secrets.ps1"
+NO_SECRET_SCRIPT_NAME = "check_no_secrets.ps1"
+CREATE_ENV_TEMPLATE_SCRIPT_NAME = "create_env_template.ps1"
 
 
 def test_smoke_scripts_exist() -> None:
@@ -22,6 +25,7 @@ def test_smoke_scripts_exist() -> None:
     assert (PROJECT_ROOT / "scripts" / VALIDATION_SCRIPT_NAME).is_file()
     assert (PROJECT_ROOT / "scripts" / REAL_READINESS_SCRIPT_NAME).is_file()
     assert (PROJECT_ROOT / "scripts" / NO_SECRET_SCRIPT_NAME).is_file()
+    assert (PROJECT_ROOT / "scripts" / CREATE_ENV_TEMPLATE_SCRIPT_NAME).is_file()
 
 
 def test_smoke_scripts_use_explicit_utf8_response_handling() -> None:
@@ -57,7 +61,10 @@ def test_validate_local_script_runs_expected_validation_steps() -> None:
     assert "Start-Job" in content
     assert "-m uvicorn app.main:app" in content
     assert "Wait-ForHealth" in content
+    assert "check_no_secrets.ps1" in content
     assert "smoke_g2b_config.ps1" in content
+    assert "smoke_g2b_endpoint_presets.ps1" in content
+    assert "smoke_g2b_real_readiness.ps1" in content
     assert "smoke_g2b_search_fixture.ps1" in content
     assert "smoke_g2b_recommend_fixture.ps1" in content
     assert "smoke_g2b_real_guard_blocked.ps1" in content
@@ -69,7 +76,7 @@ def test_real_readiness_script_runs_offline_validation_steps() -> None:
     content = (PROJECT_ROOT / "scripts" / REAL_READINESS_SCRIPT_NAME).read_text(encoding="utf-8")
 
     assert "System.Text.UTF8Encoding($false)" in content
-    assert "validate_no_secrets.ps1" in content
+    assert "check_no_secrets.ps1" in content
     assert "tests\\test_g2b_endpoint_presets.py" in content
     assert "tests\\test_g2b_readiness.py" in content
     assert "-m app.integrations.g2b.readiness" in content
@@ -81,10 +88,22 @@ def test_real_readiness_script_runs_offline_validation_steps() -> None:
 def test_no_secret_script_validates_placeholders_and_ignored_paths() -> None:
     content = (PROJECT_ROOT / "scripts" / NO_SECRET_SCRIPT_NAME).read_text(encoding="utf-8")
 
-    assert "G2B_API_SERVICE_KEY empty" in content
-    assert "G2B_API_SERVICE_KEY=<your local key>" in content
-    assert 'git check-ignore -q ".env"' in content
-    assert 'git check-ignore -q "data/captured/g2b/sample.json"' in content
+    assert "G2B_API_SERVICE_KEY" in content
+    assert "serviceKey" in content
+    assert "git ls-files --cached --others --exclude-standard" in content
+    assert "<your local key>" in content
+
+
+def test_create_env_template_does_not_overwrite_env_or_print_key() -> None:
+    content = (PROJECT_ROOT / "scripts" / CREATE_ENV_TEMPLATE_SCRIPT_NAME).read_text(
+        encoding="utf-8"
+    )
+
+    assert "Test-Path -LiteralPath $EnvPath" in content
+    assert "It was not overwritten" in content
+    assert "Copy-Item" in content
+    assert "Set G2B_API_SERVICE_KEY manually in .env only" in content
+    assert "SECRET-KEY" not in content
 
 
 def test_real_smoke_templates_contain_no_service_key() -> None:

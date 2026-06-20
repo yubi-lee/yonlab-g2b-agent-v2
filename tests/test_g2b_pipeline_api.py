@@ -169,14 +169,14 @@ def test_g2b_config_with_endpoint_preset_reports_safe_source(monkeypatch) -> Non
     monkeypatch.setattr(
         routes,
         "get_settings",
-        lambda: Settings(g2b_endpoint_preset="bid_notice_service"),
+        lambda: Settings(g2b_endpoint_preset="approved_bid_public_info_service"),
     )
 
     response = client.get("/g2b/config")
 
     payload = response.json()
     assert payload["endpoint_path_configured"] is True
-    assert payload["endpoint_preset"] == "bid_notice_service"
+    assert payload["endpoint_preset"] == "approved_bid_public_info_service"
     assert payload["endpoint_path_source"] == "preset"
     assert "serviceKey" not in str(payload)
 
@@ -185,10 +185,26 @@ def test_g2b_endpoint_presets_are_safe_to_inspect() -> None:
     response = client.get("/g2b/endpoint-presets")
 
     payload = response.json()
-    assert payload["recommended_first_preset"] == "bid_notice_service"
-    assert any(preset["code"] == "bid_notice_service" for preset in payload["presets"])
+    assert any(
+        preset["name"] == "approved_bid_public_info_service"
+        and preset["path"] == "/1230000/ad/BidPublicInfoService"
+        for preset in payload["presets"]
+    )
     assert "serviceKey" not in str(payload)
     assert "SECRET-KEY" not in str(payload)
+
+
+def test_g2b_real_readiness_default_is_safe() -> None:
+    response = client.get("/g2b/real-readiness")
+
+    payload = response.json()
+    assert payload["ready"] is False
+    assert payload["checks"]["real_api_enabled"] is False
+    assert payload["checks"]["service_key_configured"] is False
+    assert "G2B_API_SERVICE_KEY" in payload["missing"]
+    assert "Set G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService" in str(payload)
+    assert "SECRET-KEY" not in str(payload)
+    assert "serviceKey" not in str(payload)
 
 
 def test_g2b_recommendations_fixture_compact_response() -> None:

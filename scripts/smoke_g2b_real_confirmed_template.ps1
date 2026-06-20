@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 # Run it only after configuring .env locally with:
 # - G2B_ENABLE_REAL_API=true
 # - G2B_API_SERVICE_KEY=<your local key>
-# - G2B_LIST_ENDPOINT_PATH=<the correct list endpoint path>
+# - G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService
 # Never commit .env or paste the service key into this script.
 
 $Utf8 = New-Object System.Text.UTF8Encoding($false)

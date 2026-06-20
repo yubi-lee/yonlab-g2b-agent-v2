@@ -32,7 +32,7 @@ function Invoke-ReadinessStep {
 }
 
 Invoke-ReadinessStep "no-secret validation" {
-    & (Join-Path $ProjectRoot "scripts\validate_no_secrets.ps1")
+    & (Join-Path $ProjectRoot "scripts\check_no_secrets.ps1")
 }
 
 Invoke-ReadinessStep "offline readiness tests" {
@@ -42,10 +42,16 @@ Invoke-ReadinessStep "offline readiness tests" {
         tests\test_g2b_pipeline_api.py `
         tests\test_g2b_readiness.py `
         tests\test_smoke_scripts.py
+    if ($LASTEXITCODE -ne 0) {
+        throw "Offline readiness tests failed."
+    }
 }
 
 Invoke-ReadinessStep "readiness summary" {
     & $Python -m app.integrations.g2b.readiness
+    if ($LASTEXITCODE -ne 0) {
+        throw "Readiness summary failed."
+    }
 }
 
 Write-Host ""

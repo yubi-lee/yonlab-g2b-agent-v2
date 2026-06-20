@@ -18,16 +18,15 @@ Do not run a confirmed real smoke until the offline readiness command passes.
 The app supports endpoint path presets to reduce copy/paste errors while preparing the first smoke.
 
 ```env
-G2B_ENDPOINT_PRESET=bid_notice_service
+G2B_ENDPOINT_PRESET=approved_bid_public_info_service
 ```
 
 Known presets:
 
 | Preset | Operation Guidance | YOnLab Use |
 | --- | --- | --- |
-| `bid_notice_service` | 입찰공고 목록 조회 - 용역 | Recommended first smoke for AI/SW 용역 notices |
-| `bid_notice_goods` | 입찰공고 목록 조회 - 물품 | Use only when intentionally checking 물품 notices |
-| `bid_notice_construction` | 입찰공고 목록 조회 - 공사 | Not a normal YOnLab target |
+| `custom` | Use `G2B_LIST_ENDPOINT_PATH` from `.env` | Manual endpoint path |
+| `approved_bid_public_info_service` | `/1230000/ad/BidPublicInfoService` | Approved first smoke base path |
 
 `G2B_LIST_ENDPOINT_PATH` overrides `G2B_ENDPOINT_PRESET` when both are set.
 
@@ -35,11 +34,9 @@ Before a confirmed real call, verify the selected operation and endpoint path in
 
 ## Operation Selection
 
-Start with `bid_notice_service` because YOnLab's target opportunities are primarily AI, software, cloud, system development, and validation service projects.
+Start with `/1230000/ad/BidPublicInfoService` because the user has approved that G2B BidPublicInfoService base path for the first controlled smoke.
 
-Use `bid_notice_goods` only when intentionally checking equipment or package-style procurement. 단순 H/W 납품 공고 is usually low fit or risk for YOnLab.
-
-Avoid `bid_notice_construction` for normal recommendation work unless the goal is to confirm that non-target operations remain low priority.
+If a confirmed real smoke returns HTTP/path errors, confirm the exact operation path in the Public Data Portal Swagger before changing the endpoint.
 
 ## First-Real-Smoke Checklist
 
@@ -47,7 +44,7 @@ Avoid `bid_notice_construction` for normal recommendation work unless the goal i
 2. Keep `.env` local and untracked.
 3. Set `G2B_ENABLE_REAL_API=true`.
 4. Set `G2B_API_SERVICE_KEY` in `.env` only.
-5. Set `G2B_ENDPOINT_PRESET=bid_notice_service`, or set `G2B_LIST_ENDPOINT_PATH` explicitly.
+5. Set `G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService`.
 6. Keep `G2B_CAPTURE_REAL_RESPONSES=false` for the first connection attempt unless capture is intentionally needed.
 7. Run `.\scripts\validate_g2b_real_readiness.ps1`.
 8. Start the local FastAPI server.
@@ -87,13 +84,13 @@ The command:
 Run only the no-secret check:
 
 ```powershell
-.\scripts\validate_no_secrets.ps1
+.\scripts\check_no_secrets.ps1
 ```
 
 Expected result:
 
 ```text
-No-secret validation completed successfully.
+No-secret check completed successfully.
 ```
 
 If it fails, fix the reported placeholder or ignore-rule problem before running any real smoke.
