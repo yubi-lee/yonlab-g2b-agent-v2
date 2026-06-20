@@ -1,19 +1,36 @@
 $ErrorActionPreference = "Stop"
 
-$BaseUrl = $env:YONLAB_G2B_BASE_URL
-if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
-    $BaseUrl = "http://127.0.0.1:8000"
+$Utf8 = New-Object System.Text.UTF8Encoding($false)
+[Console]::OutputEncoding = $Utf8
+$OutputEncoding = $Utf8
+
+try {
+    chcp.com 65001 | Out-Null
+} catch {
+    # Ignore if chcp is unavailable.
 }
 
-$Body = @{
+$Uri = "http://127.0.0.1:8000/demo/recommendations"
+
+$BodyJson = @{
     include_reports = $false
     limit = 5
-} | ConvertTo-Json -Depth 5
+} | ConvertTo-Json -Depth 10
 
-$Response = Invoke-RestMethod `
+$Bytes = [System.Text.Encoding]::UTF8.GetBytes($BodyJson)
+
+$Response = Invoke-WebRequest `
     -Method Post `
-    -Uri "$BaseUrl/demo/recommendations" `
+    -Uri $Uri `
     -ContentType "application/json; charset=utf-8" `
-    -Body $Body
+    -Body $Bytes
 
-$Response | ConvertTo-Json -Depth 12
+if ($Response.RawContentStream) {
+    $Response.RawContentStream.Position = 0
+    $Reader = New-Object System.IO.StreamReader -ArgumentList $Response.RawContentStream, ([System.Text.Encoding]::UTF8)
+    $Text = $Reader.ReadToEnd()
+} else {
+    $Text = $Response.Content
+}
+
+$Text | ConvertFrom-Json | ConvertTo-Json -Depth 30

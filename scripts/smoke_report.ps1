@@ -1,24 +1,54 @@
 $ErrorActionPreference = "Stop"
 
-$BaseUrl = $env:YONLAB_G2B_BASE_URL
-if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
-    $BaseUrl = "http://127.0.0.1:8000"
+$Utf8 = New-Object System.Text.UTF8Encoding($false)
+[Console]::OutputEncoding = $Utf8
+$OutputEncoding = $Utf8
+
+try {
+    chcp.com 65001 | Out-Null
+} catch {
+    # Ignore if chcp is unavailable.
 }
 
-$Body = @{
-    "공고명" = "서울 AI 소프트웨어 개발"
-    "수요기관" = "테스트기관"
-    "추정가격" = "55,000,000원"
-    "입찰마감일시" = "2026-07-20"
-    "지역제한" = "서울특별시"
-    "참가자격" = "소프트웨어사업자, 소기업, 창업기업 우대"
-    "과업내용" = "AI Agent 정보시스템개발서비스 클라우드 시스템 구축"
-} | ConvertTo-Json -Depth 5
+$Uri = "http://127.0.0.1:8000/recommendations/report"
 
-$Response = Invoke-RestMethod `
+$BodyJson = @(
+    '{',
+    '  "title": "\uc11c\uc6b8 AI \uc18c\ud504\ud2b8\uc6e8\uc5b4 \uac1c\ubc1c",',
+    '  "agency": "\uc11c\uc6b8\ud2b9\ubcc4\uc2dc \uac15\ub0a8\uad6c",',
+    '  "budget_amount": 55000000,',
+    '  "deadline": "2026-07-15",',
+    '  "region": "\uc11c\uc6b8",',
+    '  "contract_type": "\ud611\uc0c1\uc5d0 \uc758\ud55c \uacc4\uc57d",',
+    '  "business_type": "\uc6a9\uc5ed",',
+    '  "qualification_text": "\uc18c\ud504\ud2b8\uc6e8\uc5b4\uc0ac\uc5c5\uc790, \uc18c\uae30\uc5c5 \ub610\ub294 \uc18c\uc0c1\uacf5\uc778",',
+    '  "description": "\uc778\uacf5\uc9c0\ub2a5 \uc18c\ud504\ud2b8\uc6e8\uc5b4 \uac1c\ubc1c \ubc0f \ud074\ub77c\uc6b0\ub4dc \uae30\ubc18 \uc2dc\uc2a4\ud15c \uad6c\ucd95",',
+    '  "keywords": ["AI", "cloud", "software"]',
+    '}'
+) -join "`n"
+
+$Bytes = [System.Text.Encoding]::UTF8.GetBytes($BodyJson)
+
+$Response = Invoke-WebRequest `
     -Method Post `
-    -Uri "$BaseUrl/recommendations/report" `
+    -Uri $Uri `
     -ContentType "application/json; charset=utf-8" `
-    -Body $Body
+    -Body $Bytes
 
-$Response | ConvertTo-Json -Depth 12
+if ($Response.RawContentStream) {
+    $Response.RawContentStream.Position = 0
+    $Reader = New-Object System.IO.StreamReader -ArgumentList $Response.RawContentStream, ([System.Text.Encoding]::UTF8)
+    $Text = $Reader.ReadToEnd()
+} else {
+    $Text = $Response.Content
+}
+
+$Object = $Text | ConvertFrom-Json
+
+if ($Object.markdown) {
+    $Object.markdown
+} elseif ($Object.report.markdown) {
+    $Object.report.markdown
+} else {
+    $Object | ConvertTo-Json -Depth 30
+}
