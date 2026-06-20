@@ -19,6 +19,7 @@ This repository is independent from the previous v1 project:
 - FastAPI MVP with fixture recommendations.
 - Guarded real API client and request models.
 - Real API calls are disabled by default.
+- Real response capture is disabled by default and writes only sanitized JSON when enabled.
 - Tests do not call any real G2B/Public Data Portal API.
 - Korean UTF-8 regression tests cover fixture data, API responses, and report output.
 - No database, frontend, or LLM is required.
@@ -120,6 +121,29 @@ Real API calls require all of the following:
 
 If any condition is missing, the API returns a controlled error response and does not call the network. The service key is never returned by `/g2b/config`, errors, tests, or docs.
 
+## Controlled Real G2B Smoke
+
+Fixture mode remains the default and recommended local path. A real G2B/Public Data Portal smoke should only be run from a local `.env` after you have configured a private service key and endpoint path.
+
+Required local settings:
+
+```env
+G2B_ENABLE_REAL_API=true
+G2B_API_SERVICE_KEY=<your local key>
+G2B_LIST_ENDPOINT_PATH=<configured list endpoint path>
+```
+
+Every real request must also include `confirm_real_api_call=true`. The template smoke scripts use `num_rows=3` for a small first real check.
+
+Optional response capture:
+
+```env
+G2B_CAPTURE_REAL_RESPONSES=false
+G2B_CAPTURE_DIR=data/captured/g2b
+```
+
+Captured responses are disabled by default. When enabled, captures are written as UTF-8 JSON with request secrets masked. `data/captured/` is ignored by Git.
+
 ## `.env.example` Guidance
 
 Copy values from `.env.example` only when you are ready to configure a local environment. Do not commit `.env`.
@@ -130,6 +154,8 @@ Important defaults:
 G2B_ENABLE_REAL_API=false
 G2B_API_SERVICE_KEY=
 G2B_FIXTURE_MODE=true
+G2B_CAPTURE_REAL_RESPONSES=false
+G2B_CAPTURE_DIR=data/captured/g2b
 ```
 
 ## Smoke Scripts
@@ -148,6 +174,7 @@ Set-Location D:\Views\yonlab-g2b-agent-v2
 .\scripts\smoke_g2b_config.ps1
 .\scripts\smoke_g2b_search_fixture.ps1
 .\scripts\smoke_g2b_recommend_fixture.ps1
+.\scripts\smoke_g2b_real_guard_blocked.ps1
 .\scripts\smoke_demo.ps1
 .\scripts\smoke_report.ps1
 ```
@@ -155,6 +182,15 @@ Set-Location D:\Views\yonlab-g2b-agent-v2
 The smoke scripts set console output to UTF-8 and decode API response streams as UTF-8 so Korean text such as `서울 AI 기반 행정지원 업무 자동화 시스템 구축`, `적극 추천`, and `와이온랩 맞춤 추천 공고` prints correctly.
 
 Set `YONLAB_G2B_BASE_URL` to target a non-default local URL.
+
+Real API templates are provided for explicit manual use only:
+
+```powershell
+.\scripts\smoke_g2b_real_confirmed_template.ps1
+.\scripts\smoke_g2b_real_recommend_template.ps1
+```
+
+Do not add service keys to these scripts. Keep keys in local `.env` only.
 
 ## Korean UTF-8 Regression Coverage
 

@@ -61,3 +61,13 @@ Reason:
 - Manual smoke validation required multiple terminal windows and repeated commands.
 - The runner executes pytest, starts a temporary local FastAPI server, waits for `/health`, runs fixture and report smoke scripts, and stops the server reliably.
 - This keeps Korean UTF-8 smoke validation repeatable without real G2B/Public Data Portal calls.
+
+## 2026-06-20 Controlled Real G2B Smoke and Capture
+
+Decision: Add explicit real API smoke templates and optional sanitized response capture while keeping all default validation fixture-only.
+
+Reason:
+
+- Real G2B/Public Data Portal calls must require enabled settings, a service key, endpoint path, real mode, and per-request confirmation.
+- Guard-blocked smoke validation proves the safety gates work without calling the real network.
+- Captured real responses can help future field mapping work, but captures are opt-in, UTF-8 JSON, secret-masked, and ignored by Git.

@@ -5,6 +5,7 @@ import httpx
 
 from app.core.config import Settings
 from app.domain.search import G2BSearchRequest
+from app.integrations.g2b.capture import MASKED_VALUE, capture_real_response
 from app.integrations.g2b.errors import G2BClientError
 
 
@@ -31,20 +32,41 @@ class G2BClient:
         except httpx.HTTPError as exc:
             raise G2BClientError("transport_error", "G2B request failed.") from exc
 
-        return self._extract_notices(response)
+        payload = self._extract_payload(response)
+        notices = _find_notice_items(payload)
+        if notices is None:
+            raise G2BClientError(
+                "unexpected_response_shape",
+                "G2B response did not contain recognizable notice items.",
+            )
+
+        if self.settings.g2b_capture_real_responses:
+            capture_real_response(
+                capture_dir=self.settings.g2b_capture_dir,
+                request_metadata={
+                    "url": self._build_url(),
+                    "params": self._masked_params(params),
+                },
+                response_payload=payload,
+            )
+
+        return notices
 
     def _ensure_real_api_allowed(self, confirm_real_api_call: bool) -> None:
         if not self.settings.g2b_enable_real_api:
             raise G2BClientError("real_api_disabled", "Real G2B API access is disabled.")
         if not confirm_real_api_call:
             raise G2BClientError(
-                "confirmation_required",
+                "real_api_confirmation_required",
                 "Real G2B API access requires confirm_real_api_call=true.",
             )
         if not self.settings.g2b_api_service_key:
             raise G2BClientError("service_key_missing", "G2B API service key is not configured.")
         if not self.settings.g2b_list_endpoint_path:
-            raise G2BClientError("endpoint_missing", "G2B list endpoint path is not configured.")
+            raise G2BClientError(
+                "endpoint_path_missing",
+                "G2B list endpoint path is not configured.",
+            )
 
     def _build_url(self) -> str:
         base_url = self.settings.g2b_api_base_url.rstrip("/") + "/"
@@ -67,16 +89,26 @@ class G2BClient:
         params.update({key: value for key, value in optional_params.items() if value})
         return params
 
-    def _extract_notices(self, response: httpx.Response) -> list[dict[str, Any]]:
-        try:
-            payload = response.json()
-        except ValueError as exc:
-            raise G2BClientError("invalid_response", "G2B response was not valid JSON.") from exc
+    def _extract_payload(self, response: httpx.Response) -> Any:
+        if not response.content:
+            raise G2BClientError("empty_response", "G2B response was empty.")
 
-        notices = _find_notice_items(payload)
-        if notices is None:
-            raise G2BClientError("invalid_response", "G2B response did not contain notice items.")
-        return notices
+        try:
+            return response.json()
+        except ValueError as exc:
+            response_text = response.text.strip()
+            if response_text.startswith("<"):
+                raise G2BClientError(
+                    "unsupported_response_format",
+                    "G2B response format is not supported.",
+                ) from exc
+            raise G2BClientError("invalid_json", "G2B response was not valid JSON.") from exc
+
+    def _masked_params(self, params: dict[str, Any]) -> dict[str, Any]:
+        masked = dict(params)
+        if "serviceKey" in masked:
+            masked["serviceKey"] = MASKED_VALUE
+        return masked
 
 
 def _find_notice_items(payload: Any) -> list[dict[str, Any]] | None:
@@ -86,6 +118,7 @@ def _find_notice_items(payload: Any) -> list[dict[str, Any]] | None:
         return None
 
     candidates = [
+        payload.get("item"),
         payload.get("items"),
         payload.get("data"),
         payload.get("notices"),
@@ -100,7 +133,7 @@ def _find_notice_items(payload: Any) -> list[dict[str, Any]] | None:
             if isinstance(item, list):
                 return [entry for entry in item if isinstance(entry, dict)]
             return [candidate]
-    return []
+    return None
 
 
 def _nested_get(payload: dict[str, Any], path: tuple[str, ...]) -> Any:

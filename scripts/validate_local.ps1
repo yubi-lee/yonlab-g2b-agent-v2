@@ -85,6 +85,9 @@ try {
     Invoke-ValidationStep "smoke_g2b_recommend_fixture" {
         & (Join-Path $ProjectRoot "scripts\smoke_g2b_recommend_fixture.ps1")
     }
+    Invoke-ValidationStep "smoke_g2b_real_guard_blocked" {
+        & (Join-Path $ProjectRoot "scripts\smoke_g2b_real_guard_blocked.ps1")
+    }
     Invoke-ValidationStep "smoke_report" {
         & (Join-Path $ProjectRoot "scripts\smoke_report.ps1")
     }

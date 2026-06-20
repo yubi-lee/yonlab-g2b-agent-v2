@@ -16,7 +16,7 @@ Use one command for local end-to-end validation:
 .\scripts\validate_local.ps1
 ```
 
-The script runs `python -m pytest -q`, starts a temporary FastAPI server on `127.0.0.1:8000`, waits for `/health`, runs fixture smoke scripts, runs the Korean markdown report smoke check, and stops the server in a `finally` block.
+The script runs `python -m pytest -q`, starts a temporary FastAPI server on `127.0.0.1:8000`, waits for `/health`, runs fixture smoke scripts, verifies the real API guard-blocked smoke path, runs the Korean markdown report smoke check, and stops the server in a `finally` block.
 
 ## Current Test Coverage
 
@@ -42,6 +42,9 @@ Tests must never call the real G2B/Public Data Portal API. Real API behavior is 
 - missing-service-key blocking.
 - mocked httpx success response.
 - mocked empty response.
+- mocked HTTP error, timeout, unsupported XML, and unexpected JSON shape.
+- optional capture behavior with sanitized request metadata.
+- guard-blocked smoke script execution through `scripts/validate_local.ps1`.
 
 ## Rules
 

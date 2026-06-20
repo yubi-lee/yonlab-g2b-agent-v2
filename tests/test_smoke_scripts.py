@@ -7,6 +7,9 @@ SMOKE_SCRIPT_NAMES = (
     "smoke_g2b_config.ps1",
     "smoke_g2b_search_fixture.ps1",
     "smoke_g2b_recommend_fixture.ps1",
+    "smoke_g2b_real_guard_blocked.ps1",
+    "smoke_g2b_real_confirmed_template.ps1",
+    "smoke_g2b_real_recommend_template.ps1",
 )
 VALIDATION_SCRIPT_NAME = "validate_local.ps1"
 
@@ -53,8 +56,23 @@ def test_validate_local_script_runs_expected_validation_steps() -> None:
     assert "smoke_g2b_config.ps1" in content
     assert "smoke_g2b_search_fixture.ps1" in content
     assert "smoke_g2b_recommend_fixture.ps1" in content
+    assert "smoke_g2b_real_guard_blocked.ps1" in content
     assert "smoke_report.ps1" in content
     assert "Stop-Job" in content
+
+
+def test_real_smoke_templates_contain_no_service_key() -> None:
+    script_names = (
+        "smoke_g2b_real_confirmed_template.ps1",
+        "smoke_g2b_real_recommend_template.ps1",
+    )
+    for script_name in script_names:
+        content = (PROJECT_ROOT / "scripts" / script_name).read_text(encoding="utf-8")
+
+        assert "G2B_API_SERVICE_KEY=<your local key>" in content
+        assert "SECRET-KEY" not in content
+        assert "confirm_real_api_call = $true" in content
+        assert "mode = \"real\"" in content
 
 
 def test_gitattributes_contains_line_ending_policy() -> None:

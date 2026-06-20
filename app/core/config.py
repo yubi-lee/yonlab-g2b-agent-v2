@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     g2b_default_page_no: int = 1
     g2b_list_endpoint_path: str = ""
     g2b_fixture_mode: bool = True
+    g2b_capture_real_responses: bool = False
+    g2b_capture_dir: str = "data/captured/g2b"
 
     log_level: str = "INFO"
 

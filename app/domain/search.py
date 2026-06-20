@@ -59,3 +59,4 @@ class G2BConfigResponse(BaseModel):
     default_page_no: int
     endpoint_path_configured: bool
     fixture_mode: bool
+    capture_real_responses: bool

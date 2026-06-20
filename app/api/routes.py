@@ -65,6 +65,7 @@ def get_g2b_config() -> G2BConfigResponse:
         default_page_no=settings.g2b_default_page_no,
         endpoint_path_configured=bool(settings.g2b_list_endpoint_path),
         fixture_mode=settings.g2b_fixture_mode,
+        capture_real_responses=settings.g2b_capture_real_responses,
     )
 
 

@@ -10,4 +10,6 @@ __pycache__/
 htmlcov/
 data/raw/
 data/private/
+data/captured/
+.test_captured/
 *.log
