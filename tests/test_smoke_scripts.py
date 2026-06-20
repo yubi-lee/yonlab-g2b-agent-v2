@@ -24,7 +24,16 @@ def test_smoke_scripts_use_explicit_utf8_response_handling() -> None:
         assert "$OutputEncoding = $Utf8" in content
         assert "chcp.com 65001" in content
         assert "Invoke-WebRequest" in content
+        assert "-UseBasicParsing" in content
         assert "RawContentStream" in content
+
+
+def test_smoke_report_script_is_ascii_safe_for_windows_powershell_parser() -> None:
+    script_bytes = (PROJECT_ROOT / "scripts" / "smoke_report.ps1").read_bytes()
+    script_text = script_bytes.decode("ascii")
+
+    assert '"\\uacf5\\uace0\\uba85"' in script_text
+    assert "공고명" not in script_text
 
 
 def test_gitattributes_contains_line_ending_policy() -> None:

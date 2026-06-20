@@ -24,6 +24,7 @@ $Response = Invoke-WebRequest `
     -Method Post `
     -Uri "$BaseUrl/g2b/search" `
     -ContentType "application/json; charset=utf-8" `
+    -UseBasicParsing `
     -Body $Bytes
 
 if ($Response.RawContentStream) {

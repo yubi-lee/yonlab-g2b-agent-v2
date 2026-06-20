@@ -12,6 +12,7 @@ if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
 
 $Response = Invoke-WebRequest `
     -Method Get `
+    -UseBasicParsing `
     -Uri "$BaseUrl/g2b/config"
 
 if ($Response.RawContentStream) {

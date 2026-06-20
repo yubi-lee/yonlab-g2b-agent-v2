@@ -10,9 +10,11 @@ client = TestClient(app)
 
 EXPECTED_TITLE = "서울 AI 기반 행정지원 업무 자동화 시스템 구축"
 EXPECTED_AGENCY = "서울특별시 산하기관"
+EXPECTED_BUSAN_TITLE = "부산 지역 AI 관제 시스템 구축"
 EXPECTED_RECOMMENDATION = "적극 추천"
 EXPECTED_REPORT_HEADING = "와이온랩 맞춤 추천 공고"
 MOJIBAKE_FRAGMENTS = ("ì", "ê", "ë", "í")
+DUPLICATED_KOREAN_FRAGMENT = "부부산산 지지역역 AI 관관제제 시시스스템템 구구축축"
 
 
 def test_fixture_file_is_utf8_without_bom_and_loader_returns_korean_title() -> None:
@@ -22,6 +24,15 @@ def test_fixture_file_is_utf8_without_bom_and_loader_returns_korean_title() -> N
     assert not fixture_bytes.startswith(b"\xef\xbb\xbf")
     assert EXPECTED_TITLE in fixture_path.read_text(encoding="utf-8")
     assert load_normalized_sample_notices()[0].title == EXPECTED_TITLE
+
+
+def test_fixture_raw_source_does_not_contain_duplicated_korean_text() -> None:
+    notices = load_normalized_sample_notices()
+    busan_notice = notices[4]
+
+    assert busan_notice.title == EXPECTED_BUSAN_TITLE
+    assert busan_notice.raw_source["bidNtceNm"] == EXPECTED_BUSAN_TITLE
+    assert DUPLICATED_KOREAN_FRAGMENT not in str(busan_notice.raw_source)
 
 
 def test_g2b_search_fixture_response_preserves_korean() -> None:
