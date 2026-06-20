@@ -39,7 +39,83 @@ from app.reports.markdown_report import generate_markdown_report
 from app.scoring.score_engine import score_notice
 
 router = APIRouter()
-OPTIONAL_JSON_BODY = Body(default=None)
+NOTICE_REQUEST_BODY = Body(
+    openapi_examples={
+        "yonlab_ai_notice": {
+            "summary": "Score a real-looking AI/SW notice",
+            "value": {
+                "raw_notice": {
+                    "bidNtceNo": "G2B-SWAGGER-001",
+                    "bidNtceNm": "서울 AI 소프트웨어 검증 플랫폼 구축",
+                    "dminsttNm": "서울특별시 산하기관",
+                    "asignBdgtAmt": "55000000",
+                    "bidClseDt": "2026-07-20",
+                    "regionRestriction": "서울특별시",
+                    "qualification": "소프트웨어사업자, 소기업 또는 소상공인, 창업기업 우대",
+                    "descriptionText": "AI Agent 기반 정보시스템개발서비스 및 클라우드 시스템 구축",
+                }
+            },
+        }
+    }
+)
+DEMO_RECOMMENDATIONS_BODY = Body(
+    default=None,
+    openapi_examples={
+        "fixture_recommendations": {
+            "summary": "Use local fixture notices",
+            "value": {"include_reports": False, "limit": 3},
+        },
+        "custom_notice_recommendations": {
+            "summary": "Rank custom AI/SW notices",
+            "value": {
+                "include_reports": False,
+                "limit": 3,
+                "notices": [
+                    {
+                        "bidNtceNo": "G2B-SWAGGER-001",
+                        "bidNtceNm": "서울 AI 소프트웨어 검증 플랫폼 구축",
+                        "dminsttNm": "서울특별시 산하기관",
+                        "asignBdgtAmt": "55000000",
+                        "bidClseDt": "2026-07-20",
+                        "regionRestriction": "서울특별시",
+                        "qualification": "소프트웨어사업자, 소기업 또는 소상공인, 창업기업 우대",
+                        "descriptionText": (
+                            "AI Agent 기반 정보시스템개발서비스 및 클라우드 시스템 구축"
+                        ),
+                    }
+                ],
+            },
+        },
+    },
+)
+G2B_SEARCH_BODY = Body(
+    openapi_examples={
+        "fixture_search": {
+            "summary": "Search local fixtures without real API access",
+            "value": {
+                "mode": "fixture",
+                "keyword": "AI",
+                "num_rows": 3,
+                "active_only": False,
+                "confirm_real_api_call": False,
+            },
+        }
+    }
+)
+G2B_RECOMMENDATION_BODY = Body(
+    openapi_examples={
+        "fixture_recommendations": {
+            "summary": "Rank local fixture notices",
+            "value": {
+                "mode": "fixture",
+                "keyword": "AI",
+                "include_reports": False,
+                "active_only": False,
+                "confirm_real_api_call": False,
+            },
+        }
+    }
+)
 
 
 @router.get("/health")
@@ -100,12 +176,14 @@ def get_g2b_real_readiness() -> G2BRealReadinessResponse:
 
 
 @router.post("/g2b/search", response_model=G2BSearchResponse)
-def search_g2b_notices(request: G2BSearchRequest) -> G2BSearchResponse:
+def search_g2b_notices(request: G2BSearchRequest = G2B_SEARCH_BODY) -> G2BSearchResponse:
     return _search_g2b_notices(request)
 
 
 @router.post("/g2b/recommendations", response_model=G2BRecommendationResponse)
-def g2b_recommendations(request: G2BRecommendationRequest) -> G2BRecommendationResponse:
+def g2b_recommendations(
+    request: G2BRecommendationRequest = G2B_RECOMMENDATION_BODY,
+) -> G2BRecommendationResponse:
     search_response = _search_g2b_notices(request)
     if not search_response.ok:
         return G2BRecommendationResponse(
@@ -150,18 +228,18 @@ def g2b_recommendations(request: G2BRecommendationRequest) -> G2BRecommendationR
 
 
 @router.post("/notices/normalize", response_model=NormalizedNoticeResponse)
-def normalize_notice(payload: NoticeRequest) -> NormalizedNoticeResponse:
+def normalize_notice(payload: NoticeRequest = NOTICE_REQUEST_BODY) -> NormalizedNoticeResponse:
     return NormalizedNoticeResponse(notice=normalize_g2b_notice(_notice_input(payload)))
 
 
 @router.post("/recommendations/score", response_model=RecommendationScore)
-def score_recommendation(payload: NoticeRequest) -> RecommendationScore:
+def score_recommendation(payload: NoticeRequest = NOTICE_REQUEST_BODY) -> RecommendationScore:
     notice = normalize_g2b_notice(_notice_input(payload))
     return score_notice(notice)
 
 
 @router.post("/recommendations/report", response_model=RecommendationReport)
-def recommendation_report(payload: NoticeRequest) -> RecommendationReport:
+def recommendation_report(payload: NoticeRequest = NOTICE_REQUEST_BODY) -> RecommendationReport:
     notice = normalize_g2b_notice(_notice_input(payload))
     score = score_notice(notice)
     return generate_markdown_report(notice, score)
@@ -169,7 +247,7 @@ def recommendation_report(payload: NoticeRequest) -> RecommendationReport:
 
 @router.post("/demo/recommendations", response_model=DemoRecommendationResponse)
 def demo_recommendations(
-    payload: DemoRecommendationsRequest | None = OPTIONAL_JSON_BODY,
+    payload: DemoRecommendationsRequest | None = DEMO_RECOMMENDATIONS_BODY,
 ) -> DemoRecommendationResponse:
     request = payload or DemoRecommendationsRequest()
     raw_notices = _demo_input_notices(request)

@@ -1,9 +1,13 @@
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.bid_notice import BidNotice
+from app.domain.request_validation import (
+    ensure_meaningful_notice_payload,
+    ensure_no_swagger_placeholders,
+)
 
 
 class SignalKind(StrEnum):
@@ -148,6 +152,24 @@ class NoticeRequest(BaseModel):
         description="Raw G2B-like or Korean-field notice JSON.",
     )
 
+    @model_validator(mode="after")
+    def reject_swagger_placeholders(self) -> "NoticeRequest":
+        if self.notice is not None:
+            notice_payload = self.notice.model_dump()
+            ensure_no_swagger_placeholders(notice_payload, "notice")
+            ensure_meaningful_notice_payload(notice_payload, "notice")
+        if self.raw_notice is not None:
+            ensure_no_swagger_placeholders(self.raw_notice, "raw_notice")
+            ensure_meaningful_notice_payload(self.raw_notice, "raw_notice")
+
+        extra_payload = dict(self.model_extra or {})
+        if self.notice is None and self.raw_notice is None:
+            ensure_no_swagger_placeholders(extra_payload, "request body")
+            ensure_meaningful_notice_payload(extra_payload, "request body")
+        elif extra_payload:
+            ensure_no_swagger_placeholders(extra_payload, "request body")
+        return self
+
 
 class DemoRecommendationsRequest(BaseModel):
     include_reports: bool = Field(
@@ -159,3 +181,15 @@ class DemoRecommendationsRequest(BaseModel):
         default=None,
         description="Optional raw notices. If omitted, local G2B fixtures are used.",
     )
+
+    @model_validator(mode="after")
+    def reject_placeholder_notices(self) -> "DemoRecommendationsRequest":
+        if self.notices is None:
+            return self
+        if not self.notices:
+            raise ValueError("notices must be omitted or contain at least one real notice.")
+        for index, notice in enumerate(self.notices, start=1):
+            field_name = f"notices[{index}]"
+            ensure_no_swagger_placeholders(notice, field_name)
+            ensure_meaningful_notice_payload(notice, field_name)
+        return self

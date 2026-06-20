@@ -1,10 +1,11 @@
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.bid_notice import BidNotice
 from app.domain.recommendation import CompactDemoRecommendation, DemoRecommendation
+from app.domain.request_validation import ensure_no_swagger_placeholders
 
 
 class G2BSearchMode(StrEnum):
@@ -13,6 +14,20 @@ class G2BSearchMode(StrEnum):
 
 
 class G2BSearchRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "mode": "fixture",
+                    "keyword": "AI",
+                    "num_rows": 3,
+                    "active_only": False,
+                    "confirm_real_api_call": False,
+                }
+            ]
+        }
+    )
+
     mode: G2BSearchMode = G2BSearchMode.FIXTURE
     keyword: str | None = None
     start_date: str | None = None
@@ -23,6 +38,20 @@ class G2BSearchRequest(BaseModel):
     region: str | None = None
     active_only: bool | None = None
     confirm_real_api_call: bool = False
+
+    @model_validator(mode="after")
+    def reject_placeholder_search_values(self) -> "G2BSearchRequest":
+        ensure_no_swagger_placeholders(
+            {
+                "keyword": self.keyword,
+                "start_date": self.start_date,
+                "end_date": self.end_date,
+                "business_type": self.business_type,
+                "region": self.region,
+            },
+            "G2B search request",
+        )
+        return self
 
 
 class G2BAttachmentCandidate(BaseModel):
@@ -60,6 +89,20 @@ class G2BSearchResponse(BaseModel):
 
 
 class G2BRecommendationRequest(G2BSearchRequest):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "mode": "fixture",
+                    "keyword": "AI",
+                    "include_reports": False,
+                    "active_only": False,
+                    "confirm_real_api_call": False,
+                }
+            ]
+        }
+    )
+
     include_reports: bool = False
 
 

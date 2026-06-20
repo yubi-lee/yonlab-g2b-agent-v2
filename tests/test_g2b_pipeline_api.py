@@ -156,6 +156,31 @@ def test_g2b_recommendations_real_mode_blocked_safely() -> None:
     assert payload["error_code"] == "real_api_disabled"
 
 
+def test_g2b_recommendations_rejects_swagger_string_keyword() -> None:
+    response = client.post(
+        "/g2b/recommendations",
+        json={
+            "mode": "fixture",
+            "keyword": "string",
+            "include_reports": False,
+            "confirm_real_api_call": False,
+        },
+    )
+
+    assert response.status_code == 422
+    assert "Swagger placeholder" in str(response.json())
+
+
+def test_g2b_recommendations_openapi_uses_fixture_safe_example() -> None:
+    openapi = client.get("/openapi.json").json()
+
+    request_body = openapi["paths"]["/g2b/recommendations"]["post"]["requestBody"]
+
+    assert "fixture_recommendations" in str(request_body)
+    assert '"keyword": "AI"' in str(request_body) or "'keyword': 'AI'" in str(request_body)
+    assert "additionalProp1" not in str(request_body)
+
+
 def test_g2b_config_with_service_key_only_reports_boolean(monkeypatch) -> None:  # noqa: ANN001
     monkeypatch.setattr(
         routes,

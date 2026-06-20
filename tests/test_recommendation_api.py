@@ -86,7 +86,50 @@ def test_openapi_uses_explicit_request_schemas() -> None:
     openapi = client.get("/openapi.json").json()
 
     score_schema = openapi["paths"]["/recommendations/score"]["post"]["requestBody"]
+    report_schema = openapi["paths"]["/recommendations/report"]["post"]["requestBody"]
     demo_schema = openapi["paths"]["/demo/recommendations"]["post"]["requestBody"]
 
     assert "NoticeRequest" in str(score_schema)
+    assert "NoticeRequest" in str(report_schema)
     assert "DemoRecommendationsRequest" in str(demo_schema)
+    assert "G2B-SWAGGER-001" in str(score_schema)
+    assert "G2B-SWAGGER-001" in str(demo_schema)
+    assert "additionalProp1" not in str(score_schema)
+    assert "additionalProp1" not in str(demo_schema)
+
+
+def test_score_endpoint_rejects_swagger_placeholder_raw_notice() -> None:
+    response = client.post(
+        "/recommendations/score",
+        json={"raw_notice": {"additionalProp1": {}}},
+    )
+
+    assert response.status_code == 422
+    assert "Swagger placeholder" in str(response.json())
+
+
+def test_score_endpoint_rejects_string_placeholder_notice_value() -> None:
+    response = client.post(
+        "/recommendations/score",
+        json={"raw_notice": {"bidNtceNm": "string"}},
+    )
+
+    assert response.status_code == 422
+    assert "Swagger placeholder" in str(response.json())
+
+
+def test_report_endpoint_rejects_empty_notice_payload() -> None:
+    response = client.post("/recommendations/report", json={"raw_notice": {}})
+
+    assert response.status_code == 422
+    assert "at least one real notice field" in str(response.json())
+
+
+def test_demo_recommendations_rejects_placeholder_notice_list() -> None:
+    response = client.post(
+        "/demo/recommendations",
+        json={"include_reports": False, "notices": [{"additionalProp1": {}}]},
+    )
+
+    assert response.status_code == 422
+    assert "Swagger placeholder" in str(response.json())
