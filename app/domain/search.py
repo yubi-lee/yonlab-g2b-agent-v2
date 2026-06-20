@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.bid_notice import BidNotice
 from app.domain.recommendation import CompactDemoRecommendation, DemoRecommendation
-from app.domain.request_validation import ensure_no_swagger_placeholders
+from app.domain.request_validation import optional_filter_value
 
 
 class G2BSearchMode(StrEnum):
@@ -40,17 +40,12 @@ class G2BSearchRequest(BaseModel):
     confirm_real_api_call: bool = False
 
     @model_validator(mode="after")
-    def reject_placeholder_search_values(self) -> "G2BSearchRequest":
-        ensure_no_swagger_placeholders(
-            {
-                "keyword": self.keyword,
-                "start_date": self.start_date,
-                "end_date": self.end_date,
-                "business_type": self.business_type,
-                "region": self.region,
-            },
-            "G2B search request",
-        )
+    def normalize_placeholder_search_values(self) -> "G2BSearchRequest":
+        self.keyword = optional_filter_value(self.keyword)
+        self.start_date = optional_filter_value(self.start_date)
+        self.end_date = optional_filter_value(self.end_date)
+        self.business_type = optional_filter_value(self.business_type)
+        self.region = optional_filter_value(self.region)
         return self
 
 

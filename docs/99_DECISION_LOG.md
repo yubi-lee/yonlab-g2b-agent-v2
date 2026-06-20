@@ -113,3 +113,14 @@ Reason:
 - Real list responses already include public `bidNtceDtlUrl`, `bidNtceUrl`, `ntceSpecDocUrl*`, and `ntceSpecFileNm*` fields needed for the next analysis step.
 - Recommendation quality can improve by surfacing attachment and risk metadata before any attachment download feature exists.
 - The queue is metadata-only: it does not download files, create local artifacts, or expose service keys.
+
+## 2026-06-20 Swagger Placeholder Handling
+
+Decision: Make Swagger examples practical and treat generated placeholder inputs as empty or ignorable for recommendation convenience paths.
+
+Reason:
+
+- Users may run Swagger-generated examples containing `"string"` or `{"additionalProp1": {}}`.
+- G2B recommendation filter placeholders should behave like omitted filters so fixture recommendations still return useful results.
+- Demo recommendation placeholder notices should be ignored, falling back to fixtures when no valid custom notice remains.
+- Real API safety gates remain unchanged: real calls still require enabled settings, service key configuration, endpoint path, real mode, and explicit confirmation.

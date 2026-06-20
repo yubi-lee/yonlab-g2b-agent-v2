@@ -28,6 +28,56 @@ Use one command before the first confirmed real smoke:
 
 The script runs `scripts/check_no_secrets.ps1`, targeted offline tests, and `python -m app.integrations.g2b.readiness`. It does not call the real G2B/Public Data Portal API and does not print service key values.
 
+## Swagger Testing Guide
+
+Swagger examples should use practical fixture-safe request bodies, not generated placeholders.
+
+Recommended `/demo/recommendations` compact fixture body:
+
+```json
+{
+  "include_reports": false,
+  "limit": 5
+}
+```
+
+Recommended `/g2b/recommendations` fixture body:
+
+```json
+{
+  "mode": "fixture",
+  "keyword": "AI",
+  "page_no": 1,
+  "num_rows": 5,
+  "active_only": false,
+  "confirm_real_api_call": false,
+  "include_reports": false
+}
+```
+
+Recommended controlled real template:
+
+```json
+{
+  "mode": "real",
+  "keyword": "AI",
+  "start_date": "2026-06-01",
+  "end_date": "2026-06-20",
+  "page_no": 1,
+  "num_rows": 3,
+  "active_only": false,
+  "confirm_real_api_call": true,
+  "include_reports": false
+}
+```
+
+Placeholder strings such as `"string"` in G2B filter fields are treated as empty filters.
+Placeholder notice objects such as `{"additionalProp1": {}}` in `/demo/recommendations`
+are ignored; if no valid custom notice remains, fixtures are used. Attachment-specific
+routes such as `/g2b/detail-analysis-queue` and `/g2b/attachment-analysis-plan` are not
+separate endpoints yet; current G2B recommendation responses expose `detail_analysis_queue`
+metadata without downloads.
+
 ## Current Test Coverage
 
 - `tests/test_app_health.py`: health endpoint.

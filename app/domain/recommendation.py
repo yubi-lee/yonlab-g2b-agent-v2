@@ -181,15 +181,3 @@ class DemoRecommendationsRequest(BaseModel):
         default=None,
         description="Optional raw notices. If omitted, local G2B fixtures are used.",
     )
-
-    @model_validator(mode="after")
-    def reject_placeholder_notices(self) -> "DemoRecommendationsRequest":
-        if self.notices is None:
-            return self
-        if not self.notices:
-            raise ValueError("notices must be omitted or contain at least one real notice.")
-        for index, notice in enumerate(self.notices, start=1):
-            field_name = f"notices[{index}]"
-            ensure_no_swagger_placeholders(notice, field_name)
-            ensure_meaningful_notice_payload(notice, field_name)
-        return self

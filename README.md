@@ -78,6 +78,64 @@ http://127.0.0.1:8000/health
 - `POST /g2b/search`
 - `POST /g2b/recommendations`
 
+## Swagger Testing Guide
+
+Use `/docs` with practical fixture-safe examples instead of Swagger placeholders such as
+`"string"` or `{"additionalProp1": {}}`.
+
+`POST /demo/recommendations` fixture compact:
+
+```json
+{
+  "include_reports": false,
+  "limit": 5
+}
+```
+
+`POST /demo/recommendations` fixture full:
+
+```json
+{
+  "include_reports": true,
+  "limit": 3
+}
+```
+
+`POST /g2b/recommendations` fixture recommendation:
+
+```json
+{
+  "mode": "fixture",
+  "keyword": "AI",
+  "page_no": 1,
+  "num_rows": 5,
+  "active_only": false,
+  "confirm_real_api_call": false,
+  "include_reports": false
+}
+```
+
+`POST /g2b/recommendations` controlled real template:
+
+```json
+{
+  "mode": "real",
+  "keyword": "AI",
+  "start_date": "2026-06-01",
+  "end_date": "2026-06-20",
+  "page_no": 1,
+  "num_rows": 3,
+  "active_only": false,
+  "confirm_real_api_call": true,
+  "include_reports": false
+}
+```
+
+Attachment-specific endpoints such as `/g2b/detail-analysis-queue` and
+`/g2b/attachment-analysis-plan` are not separate API routes yet. Today, real
+`/g2b/search` and `/g2b/recommendations` responses include `detail_analysis_queue`
+metadata without downloading attachments.
+
 ## Fixture Mode Example
 
 ```powershell

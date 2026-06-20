@@ -94,6 +94,8 @@ def test_openapi_uses_explicit_request_schemas() -> None:
     assert "DemoRecommendationsRequest" in str(demo_schema)
     assert "G2B-SWAGGER-001" in str(score_schema)
     assert "G2B-SWAGGER-001" in str(demo_schema)
+    assert "fixture_recommendations" in str(demo_schema)
+    assert "fixture_full_reports" in str(demo_schema)
     assert "additionalProp1" not in str(score_schema)
     assert "additionalProp1" not in str(demo_schema)
 
@@ -125,11 +127,55 @@ def test_report_endpoint_rejects_empty_notice_payload() -> None:
     assert "at least one real notice field" in str(response.json())
 
 
-def test_demo_recommendations_rejects_placeholder_notice_list() -> None:
+def test_demo_recommendations_empty_notice_list_uses_fixtures() -> None:
     response = client.post(
         "/demo/recommendations",
-        json={"include_reports": False, "notices": [{"additionalProp1": {}}]},
+        json={"include_reports": False, "limit": 3, "notices": []},
     )
 
-    assert response.status_code == 422
-    assert "Swagger placeholder" in str(response.json())
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["source_count"] >= 5
+    assert len(payload["recommendations"]) == 3
+    assert all(recommendation["title"] for recommendation in payload["recommendations"])
+
+
+def test_demo_recommendations_placeholder_notice_list_uses_fixtures() -> None:
+    response = client.post(
+        "/demo/recommendations",
+        json={"include_reports": False, "limit": 3, "notices": [{"additionalProp1": {}}]},
+    )
+
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["source_count"] >= 5
+    assert len(payload["recommendations"]) == 3
+    assert all(recommendation["title"] for recommendation in payload["recommendations"])
+
+
+def test_demo_recommendations_uses_valid_custom_notices_only() -> None:
+    response = client.post(
+        "/demo/recommendations",
+        json={
+            "include_reports": False,
+            "limit": 5,
+            "notices": [
+                {"additionalProp1": {}},
+                {
+                    "bidNtceNo": "CUSTOM-001",
+                    "bidNtceNm": "서울 AI 소프트웨어 개발",
+                    "dminsttNm": "서울특별시 강남구",
+                    "asignBdgtAmt": "55000000",
+                    "bidClseDt": "2026-07-15",
+                    "qualification": "소프트웨어사업자, 소기업 또는 소상공인",
+                    "descriptionText": "AI 소프트웨어 개발 및 클라우드 시스템 구축",
+                },
+            ],
+        },
+    )
+
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["source_count"] == 1
+    assert len(payload["recommendations"]) == 1
+    assert payload["recommendations"][0]["notice_id"] == "CUSTOM-001"

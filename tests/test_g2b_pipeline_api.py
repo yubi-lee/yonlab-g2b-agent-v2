@@ -156,7 +156,7 @@ def test_g2b_recommendations_real_mode_blocked_safely() -> None:
     assert payload["error_code"] == "real_api_disabled"
 
 
-def test_g2b_recommendations_rejects_swagger_string_keyword() -> None:
+def test_g2b_recommendations_treats_swagger_string_keyword_as_empty_filter() -> None:
     response = client.post(
         "/g2b/recommendations",
         json={
@@ -167,8 +167,47 @@ def test_g2b_recommendations_rejects_swagger_string_keyword() -> None:
         },
     )
 
-    assert response.status_code == 422
-    assert "Swagger placeholder" in str(response.json())
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["ok"] is True
+    assert payload["source"] == "fixture"
+    assert len(payload["recommendations"]) >= 1
+
+
+def test_g2b_recommendations_treats_swagger_string_business_type_as_empty_filter() -> None:
+    response = client.post(
+        "/g2b/recommendations",
+        json={
+            "mode": "fixture",
+            "keyword": "AI",
+            "business_type": "string",
+            "include_reports": False,
+            "confirm_real_api_call": False,
+        },
+    )
+
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["ok"] is True
+    assert len(payload["recommendations"]) >= 1
+
+
+def test_g2b_recommendations_treats_swagger_string_region_as_empty_filter() -> None:
+    response = client.post(
+        "/g2b/recommendations",
+        json={
+            "mode": "fixture",
+            "keyword": "AI",
+            "region": "string",
+            "include_reports": False,
+            "confirm_real_api_call": False,
+        },
+    )
+
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["ok"] is True
+    assert len(payload["recommendations"]) >= 1
 
 
 def test_g2b_recommendations_openapi_uses_fixture_safe_example() -> None:
@@ -177,6 +216,8 @@ def test_g2b_recommendations_openapi_uses_fixture_safe_example() -> None:
     request_body = openapi["paths"]["/g2b/recommendations"]["post"]["requestBody"]
 
     assert "fixture_recommendations" in str(request_body)
+    assert "real_controlled_recommendations" in str(request_body)
+    assert "real_active_only_recommendations" in str(request_body)
     assert '"keyword": "AI"' in str(request_body) or "'keyword': 'AI'" in str(request_body)
     assert "additionalProp1" not in str(request_body)
 

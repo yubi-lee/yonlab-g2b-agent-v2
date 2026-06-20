@@ -4,6 +4,21 @@ SWAGGER_PLACEHOLDER_KEYS = {"additionalProp1", "additionalProp2", "additionalPro
 SWAGGER_PLACEHOLDER_VALUES = {"string"}
 
 
+def optional_filter_value(value: str | None) -> str | None:
+    if value is None:
+        return None
+    text = value.strip()
+    if not text or text.casefold() in SWAGGER_PLACEHOLDER_VALUES:
+        return None
+    if text in SWAGGER_PLACEHOLDER_KEYS:
+        return None
+    return text
+
+
+def meaningful_notice_payload(value: Any) -> bool:
+    return not _contains_swagger_placeholder(value) and _has_meaningful_value(value)
+
+
 def ensure_no_swagger_placeholders(value: Any, field_name: str) -> None:
     if _contains_swagger_placeholder(value):
         raise ValueError(

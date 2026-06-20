@@ -16,6 +16,7 @@ from app.domain.recommendation import (
     RecommendationReport,
     RecommendationScore,
 )
+from app.domain.request_validation import meaningful_notice_payload
 from app.domain.search import (
     G2BConfigResponse,
     G2BEndpointPresetListResponse,
@@ -63,13 +64,17 @@ DEMO_RECOMMENDATIONS_BODY = Body(
     openapi_examples={
         "fixture_recommendations": {
             "summary": "Use local fixture notices",
-            "value": {"include_reports": False, "limit": 3},
+            "value": {"include_reports": False, "limit": 5},
+        },
+        "fixture_full_reports": {
+            "summary": "Use local fixture notices with full reports",
+            "value": {"include_reports": True, "limit": 3},
         },
         "custom_notice_recommendations": {
             "summary": "Rank custom AI/SW notices",
             "value": {
-                "include_reports": False,
-                "limit": 3,
+                "include_reports": True,
+                "limit": 1,
                 "notices": [
                     {
                         "bidNtceNo": "G2B-SWAGGER-001",
@@ -95,7 +100,8 @@ G2B_SEARCH_BODY = Body(
             "value": {
                 "mode": "fixture",
                 "keyword": "AI",
-                "num_rows": 3,
+                "page_no": 1,
+                "num_rows": 5,
                 "active_only": False,
                 "confirm_real_api_call": False,
             },
@@ -109,11 +115,41 @@ G2B_RECOMMENDATION_BODY = Body(
             "value": {
                 "mode": "fixture",
                 "keyword": "AI",
+                "page_no": 1,
+                "num_rows": 5,
                 "include_reports": False,
                 "active_only": False,
                 "confirm_real_api_call": False,
             },
-        }
+        },
+        "real_controlled_recommendations": {
+            "summary": "Template for controlled real API recommendation smoke",
+            "value": {
+                "mode": "real",
+                "keyword": "AI",
+                "start_date": "2026-06-01",
+                "end_date": "2026-06-20",
+                "page_no": 1,
+                "num_rows": 3,
+                "active_only": False,
+                "confirm_real_api_call": True,
+                "include_reports": False,
+            },
+        },
+        "real_active_only_recommendations": {
+            "summary": "Template for controlled real API active-only recommendations",
+            "value": {
+                "mode": "real",
+                "keyword": "AI",
+                "start_date": "2026-06-01",
+                "end_date": "2026-06-20",
+                "page_no": 1,
+                "num_rows": 3,
+                "active_only": True,
+                "confirm_real_api_call": True,
+                "include_reports": False,
+            },
+        },
     }
 )
 
@@ -279,7 +315,10 @@ def _notice_input(payload: NoticeRequest) -> dict[str, Any] | BidNotice:
 def _demo_input_notices(payload: DemoRecommendationsRequest) -> list[dict[str, Any] | BidNotice]:
     if not payload.notices:
         return load_sample_g2b_notices()
-    return payload.notices
+    valid_notices = [notice for notice in payload.notices if meaningful_notice_payload(notice)]
+    if not valid_notices:
+        return load_sample_g2b_notices()
+    return valid_notices
 
 
 def _demo_recommendation_items(
