@@ -37,6 +37,12 @@ Or:
 .\scripts\run_tests.ps1
 ```
 
+Preferred full local validation, including pytest, temporary local server startup, fixture smoke scripts, and shutdown:
+
+```powershell
+.\scripts\validate_local.ps1
+```
+
 ## Start Server
 
 ```powershell
@@ -128,7 +134,13 @@ G2B_FIXTURE_MODE=true
 
 ## Smoke Scripts
 
-Start the server first with `.\scripts\dev_start.ps1`, then run in another Windows PowerShell terminal:
+For routine local validation, prefer:
+
+```powershell
+.\scripts\validate_local.ps1
+```
+
+For manual smoke checks, start the server first with `.\scripts\dev_start.ps1`, then run in another Windows PowerShell terminal:
 
 ```powershell
 Set-Location D:\Views\yonlab-g2b-agent-v2

@@ -51,3 +51,13 @@ Reason:
 - G2B/Narajangteo data contains Korean text in notice titles, agencies, qualification text, and descriptions.
 - Fixture files were valid UTF-8, but Windows PowerShell response rendering could produce mojibake without explicit UTF-8 console/output and response-stream decoding.
 - Smoke scripts now set UTF-8 output, use UTF-8 request bytes, decode API response streams as UTF-8, and print readable JSON or markdown.
+
+## 2026-06-20 One-Command Local Validation
+
+Decision: Add `scripts/validate_local.ps1` as the preferred local validation entrypoint.
+
+Reason:
+
+- Manual smoke validation required multiple terminal windows and repeated commands.
+- The runner executes pytest, starts a temporary local FastAPI server, waits for `/health`, runs fixture and report smoke scripts, and stops the server reliably.
+- This keeps Korean UTF-8 smoke validation repeatable without real G2B/Public Data Portal calls.

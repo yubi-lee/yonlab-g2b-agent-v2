@@ -8,11 +8,13 @@ SMOKE_SCRIPT_NAMES = (
     "smoke_g2b_search_fixture.ps1",
     "smoke_g2b_recommend_fixture.ps1",
 )
+VALIDATION_SCRIPT_NAME = "validate_local.ps1"
 
 
 def test_smoke_scripts_exist() -> None:
     for script_name in SMOKE_SCRIPT_NAMES:
         assert (PROJECT_ROOT / "scripts" / script_name).is_file()
+    assert (PROJECT_ROOT / "scripts" / VALIDATION_SCRIPT_NAME).is_file()
 
 
 def test_smoke_scripts_use_explicit_utf8_response_handling() -> None:
@@ -34,6 +36,25 @@ def test_smoke_report_script_is_ascii_safe_for_windows_powershell_parser() -> No
 
     assert '"\\uacf5\\uace0\\uba85"' in script_text
     assert "공고명" not in script_text
+    for mojibake_fragment in ("怨", "쒖", "뚰", "媛"):
+        assert mojibake_fragment not in script_text
+
+
+def test_validate_local_script_runs_expected_validation_steps() -> None:
+    content = (PROJECT_ROOT / "scripts" / VALIDATION_SCRIPT_NAME).read_text(encoding="utf-8")
+
+    assert "System.Text.UTF8Encoding($false)" in content
+    assert "Activate.ps1" in content
+    assert "python.exe" in content
+    assert "-m pytest -q" in content
+    assert "Start-Job" in content
+    assert "-m uvicorn app.main:app" in content
+    assert "Wait-ForHealth" in content
+    assert "smoke_g2b_config.ps1" in content
+    assert "smoke_g2b_search_fixture.ps1" in content
+    assert "smoke_g2b_recommend_fixture.ps1" in content
+    assert "smoke_report.ps1" in content
+    assert "Stop-Job" in content
 
 
 def test_gitattributes_contains_line_ending_policy() -> None:

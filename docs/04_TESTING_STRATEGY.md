@@ -8,6 +8,16 @@ Set-Location D:\Views\yonlab-g2b-agent-v2
 python -m pytest -q
 ```
 
+## Preferred Local Validation
+
+Use one command for local end-to-end validation:
+
+```powershell
+.\scripts\validate_local.ps1
+```
+
+The script runs `python -m pytest -q`, starts a temporary FastAPI server on `127.0.0.1:8000`, waits for `/health`, runs fixture smoke scripts, runs the Korean markdown report smoke check, and stops the server in a `finally` block.
+
 ## Current Test Coverage
 
 - `tests/test_app_health.py`: health endpoint.
@@ -42,6 +52,8 @@ Tests must never call the real G2B/Public Data Portal API. Real API behavior is 
 ## Korean UTF-8 Regression Rule
 
 Korean UTF-8 regression tests are included because G2B/Narajangteo data contains Korean text in notice titles, agencies, qualification text, and descriptions.
+
+PowerShell smoke scripts are UTF-8 guarded because Windows PowerShell can otherwise corrupt Korean-heavy G2B/Narajangteo JSON and markdown output.
 
 The regression suite checks:
 
