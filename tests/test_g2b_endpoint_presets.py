@@ -15,12 +15,18 @@ from app.integrations.g2b.presets import (
 
 def test_endpoint_presets_include_yonlab_recommended_service_operation() -> None:
     presets = list_endpoint_presets()
-    service_preset = get_endpoint_preset("approved_bid_public_info_service")
+    base_preset = get_endpoint_preset("approved_bid_public_info_service_base")
+    service_preset = get_endpoint_preset("servc_pps_search")
 
-    assert len(presets) >= 2
+    assert len(presets) >= 4
+    assert base_preset is not None
+    assert base_preset.path == "/1230000/ad/BidPublicInfoService"
     assert service_preset is not None
-    assert service_preset.path == "/1230000/ad/BidPublicInfoService"
-    assert "Approved G2B BidPublicInfoService" in service_preset.description
+    assert (
+        service_preset.path
+        == "/1230000/ad/BidPublicInfoService/getBidPblancListInfoServcPPSSrch"
+    )
+    assert "Recommended first operation" in service_preset.description
     assert get_endpoint_preset("custom") is not None
 
 
@@ -37,11 +43,11 @@ def test_explicit_endpoint_path_overrides_preset() -> None:
 
 
 def test_endpoint_preset_resolves_when_explicit_path_missing() -> None:
-    settings = Settings(g2b_endpoint_preset="approved_bid_public_info_service")
+    settings = Settings(g2b_endpoint_preset="servc_pps_search")
 
     endpoint_path, source = resolve_endpoint_path(settings)
 
-    assert endpoint_path == "/1230000/ad/BidPublicInfoService"
+    assert endpoint_path == "/1230000/ad/BidPublicInfoService/getBidPblancListInfoServcPPSSrch"
     assert source == ENDPOINT_PATH_SOURCE_PRESET
 
 

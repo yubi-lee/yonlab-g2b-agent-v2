@@ -81,5 +81,15 @@ Reason:
 - First real integration needs repeatable local setup without weakening the default fixture-first safety model.
 - The approved first-smoke base path is `/1230000/ad/BidPublicInfoService`.
 - `G2B_ENDPOINT_PRESET=approved_bid_public_info_service` is available, but `.env.example`
-  uses `G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService` directly.
+  originally used `G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService` directly.
 - Readiness validation must prove configuration safety without calling the real API or printing service keys.
+
+## 2026-06-20 G2B Service Operation Path and Diagnostics
+
+Decision: Use `/1230000/ad/BidPublicInfoService/getBidPblancListInfoServcPPSSrch` as the recommended first real service-search operation path.
+
+Reason:
+
+- The approved service base path alone can return HTTP/path errors for real list/search calls.
+- Service search requires operation-compatible query parameters such as `ServiceKey`, `type=json`, `inqryDiv=1`, inquiry date range, and `bidNtceNm`.
+- HTTP error responses should include safe diagnostics such as status code and endpoint path without exposing the service key.

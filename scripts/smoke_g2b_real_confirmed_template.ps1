@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 # Run it only after configuring .env locally with:
 # - G2B_ENABLE_REAL_API=true
 # - G2B_API_SERVICE_KEY=<your local key>
-# - G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService
+# - G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService/getBidPblancListInfoServcPPSSrch
 # Never commit .env or paste the service key into this script.
 
 $Utf8 = New-Object System.Text.UTF8Encoding($false)
@@ -21,6 +21,8 @@ if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
 $BodyJson = @{
     mode = "real"
     keyword = "AI"
+    start_date = "2026-06-01"
+    end_date = "2026-06-20"
     page_no = 1
     num_rows = 3
     confirm_real_api_call = $true

@@ -31,6 +31,9 @@ class G2BSearchResponse(BaseModel):
     raw_count: int = 0
     message: str = ""
     error_code: str | None = None
+    status_code: int | None = None
+    safe_endpoint_path: str | None = None
+    service_key_exposed: bool = False
 
 
 class G2BRecommendationRequest(G2BSearchRequest):
@@ -49,6 +52,9 @@ class G2BRecommendationResponse(BaseModel):
     source_count: int = 0
     message: str = ""
     error_code: str | None = None
+    status_code: int | None = None
+    safe_endpoint_path: str | None = None
+    service_key_exposed: bool = False
 
 
 class G2BConfigResponse(BaseModel):

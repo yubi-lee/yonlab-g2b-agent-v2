@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 from urllib.parse import urljoin
 
@@ -33,7 +34,12 @@ class G2BClient:
         except httpx.TimeoutException as exc:
             raise G2BClientError("timeout", "G2B request timed out.") from exc
         except httpx.HTTPStatusError as exc:
-            raise G2BClientError("http_error", "G2B request returned an HTTP error.") from exc
+            raise G2BClientError(
+                "http_error",
+                "G2B request returned an HTTP error.",
+                status_code=exc.response.status_code,
+                safe_endpoint_path=self._safe_endpoint_path(),
+            ) from exc
         except httpx.HTTPError as exc:
             raise G2BClientError("transport_error", "G2B request failed.") from exc
 
@@ -87,19 +93,21 @@ class G2BClient:
 
     def _build_params(self, request: G2BSearchRequest) -> dict[str, Any]:
         params: dict[str, Any] = {
-            "serviceKey": self.settings.g2b_api_service_key,
+            "ServiceKey": self.settings.g2b_api_service_key,
+            "type": "json",
             "pageNo": request.page_no or self.settings.g2b_default_page_no,
             "numOfRows": request.num_rows or self.settings.g2b_default_num_rows,
-            "_type": "json",
+            "inqryDiv": "1",
+            "inqryBgnDt": _format_inquiry_date(request.start_date, end_of_day=False),
+            "inqryEndDt": _format_inquiry_date(request.end_date, end_of_day=True),
         }
-        optional_params = {
-            "keyword": request.keyword,
-            "startDate": request.start_date,
-            "endDate": request.end_date,
-            "businessType": request.business_type,
-        }
+        optional_params = {"bidNtceNm": request.keyword, "businessType": request.business_type}
         params.update({key: value for key, value in optional_params.items() if value})
         return params
+
+    def _safe_endpoint_path(self) -> str | None:
+        endpoint_path, _ = resolve_endpoint_path(self.settings)
+        return endpoint_path or None
 
     def _extract_payload(self, response: httpx.Response) -> Any:
         if not response.content:
@@ -118,8 +126,9 @@ class G2BClient:
 
     def _masked_params(self, params: dict[str, Any]) -> dict[str, Any]:
         masked = dict(params)
-        if "serviceKey" in masked:
-            masked["serviceKey"] = MASKED_VALUE
+        for key in ("ServiceKey", "serviceKey"):
+            if key in masked:
+                masked[key] = MASKED_VALUE
         return masked
 
 
@@ -155,3 +164,27 @@ def _nested_get(payload: dict[str, Any], path: tuple[str, ...]) -> Any:
             return None
         current = current.get(key)
     return current
+
+
+def _format_inquiry_date(value: str | None, *, end_of_day: bool) -> str:
+    if not value:
+        raise G2BClientError(
+            "date_range_required",
+            "Real G2B search requires start_date and end_date.",
+        )
+
+    compact_value = value.strip().replace("-", "")
+    if len(compact_value) == 8 and compact_value.isdigit():
+        time_suffix = "2359" if end_of_day else "0000"
+        return f"{compact_value}{time_suffix}"
+    if len(compact_value) == 12 and compact_value.isdigit():
+        return compact_value
+
+    try:
+        parsed = datetime.fromisoformat(value.strip())
+    except ValueError as exc:
+        raise G2BClientError(
+            "invalid_date_format",
+            "Real G2B search dates must be YYYY-MM-DD or YYYYMMDDHHMM.",
+        ) from exc
+    return parsed.strftime("%Y%m%d%H%M")

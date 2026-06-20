@@ -17,6 +17,7 @@ VALIDATION_SCRIPT_NAME = "validate_local.ps1"
 REAL_READINESS_SCRIPT_NAME = "validate_g2b_real_readiness.ps1"
 NO_SECRET_SCRIPT_NAME = "check_no_secrets.ps1"
 CREATE_ENV_TEMPLATE_SCRIPT_NAME = "create_env_template.ps1"
+SHOW_REAL_ENV_STATUS_SCRIPT_NAME = "show_g2b_real_env_status.ps1"
 
 
 def test_smoke_scripts_exist() -> None:
@@ -26,6 +27,7 @@ def test_smoke_scripts_exist() -> None:
     assert (PROJECT_ROOT / "scripts" / REAL_READINESS_SCRIPT_NAME).is_file()
     assert (PROJECT_ROOT / "scripts" / NO_SECRET_SCRIPT_NAME).is_file()
     assert (PROJECT_ROOT / "scripts" / CREATE_ENV_TEMPLATE_SCRIPT_NAME).is_file()
+    assert (PROJECT_ROOT / "scripts" / SHOW_REAL_ENV_STATUS_SCRIPT_NAME).is_file()
 
 
 def test_smoke_scripts_use_explicit_utf8_response_handling() -> None:
@@ -106,6 +108,18 @@ def test_create_env_template_does_not_overwrite_env_or_print_key() -> None:
     assert "SECRET-KEY" not in content
 
 
+def test_show_real_env_status_prints_only_safe_fields() -> None:
+    content = (PROJECT_ROOT / "scripts" / SHOW_REAL_ENV_STATUS_SCRIPT_NAME).read_text(
+        encoding="utf-8"
+    )
+
+    assert "service_key_configured" in content
+    assert "current_endpoint_path" in content
+    assert "recommended_endpoint_path" in content
+    assert "G2B_API_SERVICE_KEY" in content
+    assert "SECRET-KEY" not in content
+
+
 def test_real_smoke_templates_contain_no_service_key() -> None:
     script_names = (
         "smoke_g2b_real_confirmed_template.ps1",
@@ -118,6 +132,9 @@ def test_real_smoke_templates_contain_no_service_key() -> None:
         assert "SECRET-KEY" not in content
         assert "confirm_real_api_call = $true" in content
         assert "mode = \"real\"" in content
+        assert "start_date = \"2026-06-01\"" in content
+        assert "end_date = \"2026-06-20\"" in content
+        assert "getBidPblancListInfoServcPPSSrch" in content
 
 
 def test_gitattributes_contains_line_ending_policy() -> None:

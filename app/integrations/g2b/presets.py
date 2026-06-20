@@ -29,6 +29,22 @@ G2B_ENDPOINT_PRESETS = [
             "path in Public Data Portal Swagger if real smoke returns HTTP/path errors."
         ),
     },
+    {
+        "name": "approved_bid_public_info_service_base",
+        "path": "/1230000/ad/BidPublicInfoService",
+        "description": (
+            "Approved G2B BidPublicInfoService base path. This is not usually sufficient "
+            "for a real search call unless the service supports base-path dispatch."
+        ),
+    },
+    {
+        "name": "servc_pps_search",
+        "path": "/1230000/ad/BidPublicInfoService/getBidPblancListInfoServcPPSSrch",
+        "description": (
+            "Bid notice service search operation for service-type procurement notices. "
+            "Recommended first operation for YOnLab AI/SW service opportunity search."
+        ),
+    },
 ]
 
 

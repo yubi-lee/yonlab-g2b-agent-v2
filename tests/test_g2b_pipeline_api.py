@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 import app.api.routes as routes
 from app.core.config import Settings
+from app.integrations.g2b.errors import G2BClientError
 from app.main import app
 
 client = TestClient(app)
@@ -190,6 +191,12 @@ def test_g2b_endpoint_presets_are_safe_to_inspect() -> None:
         and preset["path"] == "/1230000/ad/BidPublicInfoService"
         for preset in payload["presets"]
     )
+    assert any(
+        preset["name"] == "servc_pps_search"
+        and preset["path"]
+        == "/1230000/ad/BidPublicInfoService/getBidPblancListInfoServcPPSSrch"
+        for preset in payload["presets"]
+    )
     assert "serviceKey" not in str(payload)
     assert "SECRET-KEY" not in str(payload)
 
@@ -202,9 +209,46 @@ def test_g2b_real_readiness_default_is_safe() -> None:
     assert payload["checks"]["real_api_enabled"] is False
     assert payload["checks"]["service_key_configured"] is False
     assert "G2B_API_SERVICE_KEY" in payload["missing"]
-    assert "Set G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService" in str(payload)
+    assert (
+        "Set G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService/"
+        "getBidPblancListInfoServcPPSSrch" in str(payload)
+    )
     assert "SECRET-KEY" not in str(payload)
     assert "serviceKey" not in str(payload)
+
+
+def test_g2b_search_http_error_returns_safe_diagnostics(monkeypatch) -> None:  # noqa: ANN001
+    class FakeG2BClient:
+        def __init__(self, settings):  # noqa: ANN001
+            self.settings = settings
+
+        def search(self, request):  # noqa: ANN001
+            raise G2BClientError(
+                "http_error",
+                "G2B request returned an HTTP error.",
+                status_code=404,
+                safe_endpoint_path="/1230000/ad/BidPublicInfoService/example",
+            )
+
+    monkeypatch.setattr(routes, "G2BClient", FakeG2BClient)
+    response = client.post(
+        "/g2b/search",
+        json={
+            "mode": "real",
+            "keyword": "AI",
+            "start_date": "2026-06-01",
+            "end_date": "2026-06-20",
+            "confirm_real_api_call": True,
+        },
+    )
+
+    payload = response.json()
+    assert payload["ok"] is False
+    assert payload["error_code"] == "http_error"
+    assert payload["status_code"] == 404
+    assert payload["safe_endpoint_path"] == "/1230000/ad/BidPublicInfoService/example"
+    assert payload["service_key_exposed"] is False
+    assert "SECRET-KEY" not in str(payload)
 
 
 def test_g2b_recommendations_fixture_compact_response() -> None:

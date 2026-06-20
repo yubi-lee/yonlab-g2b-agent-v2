@@ -22,7 +22,7 @@ def test_readiness_can_use_endpoint_preset_without_exposing_secret() -> None:
         Settings(
             g2b_enable_real_api=True,
             g2b_api_service_key="SECRET-KEY",
-            g2b_endpoint_preset="approved_bid_public_info_service",
+            g2b_endpoint_preset="servc_pps_search",
         )
     )
 
@@ -30,7 +30,10 @@ def test_readiness_can_use_endpoint_preset_without_exposing_secret() -> None:
     assert readiness["checks"]["endpoint_path_configured"] is True
     assert readiness["missing"] == []
     assert "SECRET-KEY" not in str(readiness)
-    assert "Set G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService" in str(readiness)
+    assert (
+        "Set G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService/"
+        "getBidPblancListInfoServcPPSSrch" in str(readiness)
+    )
 
 
 def test_readiness_marks_unknown_endpoint_preset_not_ready() -> None:
@@ -53,4 +56,7 @@ def test_env_example_keeps_service_key_empty() -> None:
     )
 
     assert PROJECT_ENV_EXAMPLE in content
-    assert "G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService" in content
+    assert (
+        "G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService/"
+        "getBidPblancListInfoServcPPSSrch" in content
+    )

@@ -132,10 +132,12 @@ Required local settings:
 ```env
 G2B_ENABLE_REAL_API=true
 G2B_API_SERVICE_KEY=<your local key>
-G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService
+G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService/getBidPblancListInfoServcPPSSrch
 ```
 
-Every real request must also include `confirm_real_api_call=true`. The template smoke scripts use `num_rows=3` for a small first real check.
+The approved service endpoint is `https://apis.data.go.kr/1230000/ad/BidPublicInfoService`. For real list/search calls, use a business-operation path such as `/1230000/ad/BidPublicInfoService/getBidPblancListInfoServcPPSSrch`.
+
+Every real request must also include `confirm_real_api_call=true`. The template smoke scripts use `num_rows=3` and explicit `start_date`/`end_date` values for a small first real check.
 
 Optional response capture:
 
@@ -150,14 +152,17 @@ Before the first confirmed smoke, run the offline readiness check:
 
 ```powershell
 .\scripts\validate_g2b_real_readiness.ps1
+.\scripts\show_g2b_real_env_status.ps1
 ```
 
-It checks no-secret rules, endpoint preset readiness, and relevant tests without calling the real API.
+It checks no-secret rules, endpoint preset readiness, current endpoint path, and relevant tests without calling the real API. Restart the FastAPI server after changing `.env` so the new endpoint path is loaded.
 
 Endpoint preset guidance:
 
 - `custom`: use `G2B_LIST_ENDPOINT_PATH` from local `.env`.
 - `approved_bid_public_info_service`: approved base path `/1230000/ad/BidPublicInfoService`.
+- `approved_bid_public_info_service_base`: approved base path; useful for diagnostics.
+- `servc_pps_search`: recommended first YOnLab service-search operation path.
 
 For full setup steps, see `docs/05_REAL_G2B_SMOKE_CHECKLIST.md`.
 
@@ -170,7 +175,7 @@ Important defaults:
 ```env
 G2B_ENABLE_REAL_API=false
 G2B_API_SERVICE_KEY=
-G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService
+G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService/getBidPblancListInfoServcPPSSrch
 G2B_FIXTURE_MODE=true
 G2B_CAPTURE_REAL_RESPONSES=false
 G2B_CAPTURE_DIR=data/captured/g2b

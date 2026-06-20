@@ -114,7 +114,15 @@ def test_mocked_successful_real_api_response_is_normalized() -> None:
     notice = normalize_g2b_notice(raw_notices[0])
 
     assert http_client.called is True
-    assert http_client.params["serviceKey"] == "SECRET-KEY"
+    assert http_client.params["ServiceKey"] == "SECRET-KEY"
+    assert http_client.params["type"] == "json"
+    assert http_client.params["pageNo"] == 1
+    assert http_client.params["numOfRows"] == 3
+    assert http_client.params["inqryDiv"] == "1"
+    assert http_client.params["inqryBgnDt"] == "202606010000"
+    assert http_client.params["inqryEndDt"] == "202606202359"
+    assert http_client.params["bidNtceNm"] == "AI"
+    assert "keyword" not in http_client.params
     assert notice.notice_id == "REAL-001"
     assert notice.title == "AI 시스템 구축"
 
@@ -144,6 +152,9 @@ def test_mocked_http_error_returns_controlled_error() -> None:
     error = _capture_error(client)
 
     assert error.code == "http_error"
+    assert error.status_code == 500
+    assert error.safe_endpoint_path == "/g2b/list"
+    assert error.service_key_exposed is False
     assert "SECRET-KEY" not in str(error)
 
 
@@ -188,6 +199,39 @@ def test_unexpected_json_shape_returns_controlled_error() -> None:
     assert error.code == "unexpected_response_shape"
 
 
+def test_real_api_call_blocked_when_dates_missing() -> None:
+    settings = _enabled_settings()
+    http_client = RecordingHttpClient()
+    client = G2BClient(settings, http_client=http_client)
+
+    error = _capture_error(
+        client,
+        request=G2BSearchRequest(mode=G2BSearchMode.REAL, confirm_real_api_call=True),
+    )
+
+    assert error.code == "date_range_required"
+    assert http_client.called is False
+
+
+def test_real_request_builder_accepts_compact_datetimes() -> None:
+    settings = _enabled_settings()
+    http_client = RecordingHttpClient(response=_success_response())
+    client = G2BClient(settings, http_client=http_client)
+
+    client.search(
+        G2BSearchRequest(
+            mode=G2BSearchMode.REAL,
+            keyword="AI",
+            start_date="202606010830",
+            end_date="202606201730",
+            confirm_real_api_call=True,
+        )
+    )
+
+    assert http_client.params["inqryBgnDt"] == "202606010830"
+    assert http_client.params["inqryEndDt"] == "202606201730"
+
+
 def test_capture_disabled_by_default_writes_no_files() -> None:
     settings = _enabled_settings(g2b_capture_dir="data/captured/g2b")
     client = G2BClient(settings, http_client=RecordingHttpClient(response=_success_response()))
@@ -215,7 +259,7 @@ def test_capture_enabled_passes_sanitized_metadata(monkeypatch) -> None:  # noqa
     client.search(_real_request())
 
     assert captured["capture_dir"] == "data/captured/g2b"
-    assert captured["request_metadata"]["params"]["serviceKey"] == MASKED_VALUE
+    assert captured["request_metadata"]["params"]["ServiceKey"] == MASKED_VALUE
     assert "SECRET-KEY" not in str(captured)
     response_item = captured["response_payload"]["response"]["body"]["items"]["item"][0]
     assert response_item["bidNtceNo"] == "REAL-001"
@@ -252,6 +296,8 @@ def _real_request(confirm_real_api_call: bool = True) -> G2BSearchRequest:
     return G2BSearchRequest(
         mode=G2BSearchMode.REAL,
         keyword="AI",
+        start_date="2026-06-01",
+        end_date="2026-06-20",
         confirm_real_api_call=confirm_real_api_call,
     )
 
@@ -291,9 +337,10 @@ def _success_response() -> httpx.Response:
 def _capture_error(
     client: G2BClient,
     confirm_real_api_call: bool = True,
+    request: G2BSearchRequest | None = None,
 ) -> G2BClientError:
     try:
-        client.search(_real_request(confirm_real_api_call=confirm_real_api_call))
+        client.search(request or _real_request(confirm_real_api_call=confirm_real_api_call))
     except G2BClientError as exc:
         return exc
     raise AssertionError("Expected G2BClientError.")

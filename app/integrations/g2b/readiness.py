@@ -38,7 +38,10 @@ def build_real_readiness(settings: Settings) -> dict[str, Any]:
             "Create .env from .env.example",
             "Set G2B_ENABLE_REAL_API=true",
             "Set G2B_API_SERVICE_KEY manually",
-            "Set G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService",
+            (
+                "Set G2B_LIST_ENDPOINT_PATH=/1230000/ad/BidPublicInfoService/"
+                "getBidPblancListInfoServcPPSSrch"
+            ),
             "Run guarded blocked smoke before confirmed real smoke",
         ],
     }

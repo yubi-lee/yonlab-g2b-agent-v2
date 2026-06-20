@@ -116,6 +116,9 @@ def g2b_recommendations(request: G2BRecommendationRequest) -> G2BRecommendationR
             source_count=0,
             message=search_response.message,
             error_code=search_response.error_code,
+            status_code=search_response.status_code,
+            safe_endpoint_path=search_response.safe_endpoint_path,
+            service_key_exposed=search_response.service_key_exposed,
         )
 
     scored = []
@@ -259,6 +262,9 @@ def _search_g2b_notices(request: G2BSearchRequest) -> G2BSearchResponse:
             raw_count=0,
             message=str(exc),
             error_code=exc.code,
+            status_code=exc.status_code,
+            safe_endpoint_path=exc.safe_endpoint_path,
+            service_key_exposed=exc.service_key_exposed,
         )
 
     normalized = [normalize_g2b_notice(notice) for notice in raw_notices]
