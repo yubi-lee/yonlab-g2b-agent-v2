@@ -203,3 +203,18 @@ Reason:
   quality-summary metadata before routine real usage.
 - Local validation must remain fixture-only; a real operations call is allowed only through
   `scripts\validate_real_ops_controlled.ps1 -ConfirmRealApiCall`.
+
+## 2026-06-21 YOnLab G2B Agent v2 Task 27
+
+Decision: Add an offline real operations runtime readiness diagnostic before retrying any
+confirmed real operations call.
+
+Reason:
+
+- Task 26 showed `real_ops_disabled`: the confirm flag was present, but the separate
+  `YONLAB_AUTO_RUN_REAL_API` operations runtime gate was disabled.
+- Operators need a no-secret checklist that distinguishes real API master enablement,
+  runtime gate enablement, service key presence, endpoint configuration, and explicit
+  confirmation.
+- The diagnostic must not call the real API, print `.env` values, write reports, or become
+  part of `validate_local.ps1`.

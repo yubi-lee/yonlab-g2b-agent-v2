@@ -316,11 +316,26 @@ Before the first confirmed smoke, run the offline readiness check:
 ```powershell
 .\scripts\validate_g2b_real_readiness.ps1
 .\scripts\validate_g2b_real_ops_readiness.ps1
+.\scripts\check_real_ops_readiness.ps1
 .\scripts\validate_real_ops_controlled.ps1
 .\scripts\show_g2b_real_env_status.ps1
 ```
 
 These checks cover no-secret rules, endpoint preset readiness, current endpoint path, controlled operations readiness, and relevant tests without calling the real API. Restart the FastAPI server after changing `.env` so the new endpoint path is loaded.
+
+Task 26 produced `real_ops_disabled` because `confirm_real_api_call=true` was present but
+the separate operations runtime gate was still disabled. A controlled real operations run
+requires all of these conditions before the confirmed command is useful:
+
+- `G2B_ENABLE_REAL_API=true`
+- `G2B_API_SERVICE_KEY` present in local `.env`
+- `G2B_API_BASE_URL` configured
+- `G2B_LIST_ENDPOINT_PATH` or `G2B_ENDPOINT_PRESET` configured
+- `YONLAB_AUTO_RUN_REAL_API=true` for the short controlled validation window only
+- explicit confirmed command or request flag
+
+`scripts/check_real_ops_readiness.ps1` prints boolean/status fields only. It does not call
+the real API, connect to the server, print service key values, or write reports.
 
 For one intentional controlled operations run, use:
 

@@ -93,11 +93,32 @@ Before a controlled real operations validation, run:
 
 ```powershell
 .\scripts\validate_g2b_real_ops_readiness.ps1
+.\scripts\check_real_ops_readiness.ps1
 .\scripts\validate_real_ops_controlled.ps1
 ```
 
 The readiness endpoint and default controlled validation are read-only and do not call the
 real API.
+
+`real_ops_disabled` means the request reached the operations runner but
+`YONLAB_AUTO_RUN_REAL_API` was not enabled. This is separate from the G2B master flag and
+separate from `confirm_real_api_call=true`.
+
+Controlled real operations checklist:
+
+- `G2B_ENABLE_REAL_API=true`
+- `G2B_API_SERVICE_KEY` is present in local `.env`
+- `G2B_API_BASE_URL` is configured
+- `G2B_LIST_ENDPOINT_PATH` or `G2B_ENDPOINT_PRESET` is configured
+- `YONLAB_AUTO_RUN_REAL_API=true` only for the controlled validation window
+- the operator explicitly confirms the controlled real command
+
+Keep these modes distinct:
+
+- `validate_local.ps1`: fixture-safe local validation; no confirmed real call.
+- `validate_real_ops_controlled.ps1`: safe by default; no confirmed real call without the flag.
+- `YONLAB_AUTO_RUN_REAL_API`: runtime gate that allows operations runner real mode.
+- confirmed real network call: only after the runtime gate and explicit confirmation are both present.
 
 For one intentional controlled real operations run:
 

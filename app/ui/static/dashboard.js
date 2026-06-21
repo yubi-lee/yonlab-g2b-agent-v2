@@ -46,6 +46,7 @@ async function loadQualitySummary() {
   text("quality-not-recommended", summary.not_recommended_count);
   text("quality-latest-run", summary.latest_run_id || "none");
   text("quality-latest-at", summary.latest_run_created_at || "none");
+  text("quality-latest-error", summary.latest_run?.error_code || "none");
   text("quality-real-runs", `${summary.real_run_count ?? 0} (${summary.real_mode_status || "empty"})`);
   text("quality-warnings", summary.warning_count ?? 0);
   text("quality-errors", summary.error_count ?? 0);

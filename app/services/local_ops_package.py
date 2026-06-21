@@ -28,6 +28,7 @@ PACKAGE_SCRIPTS = [
     "scripts/validate_local.ps1",
     "scripts/validate_ops_package.ps1",
     "scripts/validate_g2b_real_ops_readiness.ps1",
+    "scripts/check_real_ops_readiness.ps1",
     "scripts/validate_real_ops_controlled.ps1",
     "scripts/run_ops_fixture.ps1",
     "scripts/run_ops_real_controlled.ps1",

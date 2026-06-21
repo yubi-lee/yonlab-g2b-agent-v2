@@ -31,6 +31,7 @@ OPS_SCRIPT_NAMES = (
     "validate_ops_package.ps1",
     "validate_g2b_real_ops_readiness.ps1",
     "validate_real_ops_controlled.ps1",
+    "check_real_ops_readiness.ps1",
     "run_ops_real_controlled.ps1",
     "open_latest_report_dir.ps1",
     "run_daily_fixture.ps1",
@@ -132,16 +133,36 @@ def test_controlled_real_ops_scripts_are_guarded_and_secret_safe() -> None:
     assert "run_ops_real_controlled.ps1\") -ConfirmRealApiCall" in validate_script
     assert "/g2b/config" in validate_script
     assert "/g2b/real-readiness" in validate_script
+    assert "/ops/real-readiness" in validate_script
     assert "/ops/runs?limit=1" in validate_script
     assert "/ops/recommendations?limit=5" in validate_script
     assert "/ops/quality-summary" in validate_script
     assert "/ops/report-index?limit=20" in validate_script
+    assert "ops_runtime_gate_enabled" in validate_script
+    assert "controlled_confirm_flag_detected" in validate_script
+    assert "real_network_call_attempted" in validate_script
+    assert "real_report_created" in validate_script
+    assert "safe_next_action" in validate_script
     assert "confirmed_real_step_executed" in validate_script
     assert "real_operation_error_code" in validate_script
     assert "failure_classification" in validate_script
     for secret_marker in ("SECRET-KEY", "G2B_API_SERVICE_KEY=<your local key>"):
         assert secret_marker not in run_script
         assert secret_marker not in validate_script
+
+
+def test_check_real_ops_readiness_script_is_offline_and_secret_safe() -> None:
+    content = (PROJECT_ROOT / "scripts" / "check_real_ops_readiness.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "System.Text.UTF8Encoding($false)" in content
+    assert "-m\", \"app.services.real_ops_runtime_readiness" in content
+    assert "ConfirmControlledRealCallIntent" in content
+    assert "Invoke-WebRequest" not in content
+    assert "run_ops_real_controlled.ps1" not in content
+    assert "-ConfirmRealApiCall" not in content
+    assert "SECRET-KEY" not in content
 
 
 def test_reset_local_ops_data_script_only_targets_generated_data() -> None:

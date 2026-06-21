@@ -124,6 +124,27 @@ function Get-FailureClassification {
     return "operations"
 }
 
+function Get-SafeNextAction {
+    param(
+        [Parameter(Mandatory = $false)]
+        [object] $Operation,
+        [Parameter(Mandatory = $false)]
+        [object] $OpsReadiness,
+        [bool] $ConfirmFlag
+    )
+
+    if (-not $ConfirmFlag) {
+        return "No-confirm validation completed. Do not run a real call until readiness is green and an operator approves the confirmed command."
+    }
+    if ($Operation.error_code -eq "real_ops_disabled") {
+        return "Set YONLAB_AUTO_RUN_REAL_API=true only for a short controlled validation window, then rerun the confirmed validation once."
+    }
+    if ($OpsReadiness -and -not $OpsReadiness.ready) {
+        return "Resolve /ops/real-readiness missing items before any confirmed real operation."
+    }
+    return "Review quality summary and report index, then disable the runtime gate after validation."
+}
+
 try {
     if (-not (Test-Health)) {
         Write-Host "FastAPI server is not reachable. Starting temporary server..."
@@ -141,6 +162,7 @@ try {
 
     $Config = $null
     $Readiness = $null
+    $OpsReadiness = $null
     $LatestRunId = $null
     $ReportIndex = $null
     $Quality = $null
@@ -156,6 +178,11 @@ try {
     Invoke-ControlledValidationStep "g2b real readiness" {
         $script:Readiness = Read-JsonEndpoint "/g2b/real-readiness"
         $script:Readiness | ConvertTo-Json -Depth 20
+    }
+
+    Invoke-ControlledValidationStep "ops real readiness" {
+        $script:OpsReadiness = Read-JsonEndpoint "/ops/real-readiness"
+        $script:OpsReadiness | ConvertTo-Json -Depth 20
     }
 
     Invoke-ControlledValidationStep "guard blocked real smoke" {
@@ -215,11 +242,16 @@ try {
         service_key_configured = [bool] $Config.service_key_configured
         endpoint_path_configured = [bool] $Config.endpoint_path_configured
         readiness = [bool] $Readiness.ready
+        ops_runtime_gate_enabled = [bool] $OpsReadiness.checks.real_ops_enabled
+        controlled_confirm_flag_detected = [bool] $ConfirmRealApiCall
         real_call_executed = [bool] $RealCallExecuted
+        real_network_call_attempted = [bool] $RealCallExecuted
+        real_report_created = [bool] ($RealOperation -and $RealOperation.report_count -gt 0)
         confirmed_real_step_executed = [bool] $ConfirmedRealStepExecuted
         real_operation_status = $RealOperation.status
         real_operation_error_code = $RealOperation.error_code
         failure_classification = Get-FailureClassification -Operation $RealOperation
+        safe_next_action = Get-SafeNextAction -Operation $RealOperation -OpsReadiness $OpsReadiness -ConfirmFlag ([bool] $ConfirmRealApiCall)
         latest_run_id = $LatestRunId
         report_index_reflected = [bool] ($ReportIndex -and $ReportIndex.report_count -gt 0)
         quality_summary_status = $Quality.summary_status
