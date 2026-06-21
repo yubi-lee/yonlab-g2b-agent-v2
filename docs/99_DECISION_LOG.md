@@ -189,3 +189,17 @@ Reason:
   run cannot start by accident.
 - `scripts/validate_real_ops_controlled.ps1` supports a safe default validation path and calls
   the controlled real runner only when the explicit confirmation flag is passed.
+
+## 2026-06-21 YOnLab G2B Agent v2 Task 26
+
+Decision: Treat this repository's next work item as v2 Task 26 and keep it separate from the
+older `D:\Views\yonlab-bid-agent` task numbering.
+
+Reason:
+
+- Latest v2 baseline before this task was commit `5410627`, which finalized real operations
+  validation scripts and the quality gate.
+- Operators need one controlled real operations validation path plus clearer report-index and
+  quality-summary metadata before routine real usage.
+- Local validation must remain fixture-only; a real operations call is allowed only through
+  `scripts\validate_real_ops_controlled.ps1 -ConfirmRealApiCall`.

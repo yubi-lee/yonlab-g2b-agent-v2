@@ -139,20 +139,42 @@ def test_ops_quality_summary_returns_expected_fields_without_secrets(
     payload = client.get("/ops/quality-summary").json()
 
     assert run_response.status_code == 200
-    assert set(payload) == {
+    expected_fields = {
         "total_runs",
+        "total_reports",
         "total_recommendations",
         "strong_recommend_count",
         "recommend_count",
         "consider_count",
         "not_recommended_count",
         "average_score",
+        "summary_status",
         "latest_run_id",
+        "latest_run_created_at",
+        "latest_run",
+        "successful_run_count",
+        "failed_run_count",
+        "warning_count",
+        "error_count",
+        "real_run_count",
+        "fixture_run_count",
+        "real_mode_executed",
+        "real_mode_status",
+        "quality_label_distribution",
         "service_key_exposed",
     }
+    assert expected_fields.issubset(payload)
     assert payload["total_runs"] == 1
+    assert payload["total_reports"] >= 1
     assert payload["total_recommendations"] >= 1
+    assert payload["summary_status"] == "success"
     assert payload["latest_run_id"] == run_response.json()["run_id"]
+    assert payload["latest_run_created_at"]
+    assert payload["latest_run"]["mode"] == "fixture"
+    assert payload["fixture_run_count"] == 1
+    assert payload["real_run_count"] == 0
+    assert payload["real_mode_executed"] is False
+    assert payload["quality_label_distribution"]
     assert payload["service_key_exposed"] is False
     assert "LOCAL_ONLY_SECRET" not in str(payload)
 
@@ -172,6 +194,11 @@ def test_ops_report_index_returns_safe_report_metadata_without_secrets(
 
     assert run_response.status_code == 200
     assert payload["service_key_exposed"] is False
+    assert payload["status"] == "success"
+    assert payload["report_count"] >= 1
+    assert payload["latest_run_id"] == run_response.json()["run_id"]
+    assert payload["warning_count"] >= 0
+    assert payload["error_count"] == 0
     assert payload["reports"]
     first_report = payload["reports"][0]
     assert {
@@ -180,11 +207,65 @@ def test_ops_report_index_returns_safe_report_metadata_without_secrets(
         "title",
         "report_path",
         "created_at",
+        "mode",
+        "source",
+        "keyword",
+        "query_label",
+        "total_items",
+        "recommendation_count",
+        "recommended_count",
+        "average_score",
+        "score_min",
+        "score_max",
+        "matching_score",
+        "recommendation_grade",
+        "quality_label",
+        "warning_count",
+        "run_warning_count",
+        "error_count",
+        "report_metadata_reference",
+        "report_content_url",
     }.issubset(first_report)
+    assert first_report["mode"] == "fixture"
+    assert first_report["source"] == "fixture"
+    assert first_report["recommendation_count"] >= 1
+    assert first_report["matching_score"] >= 0
+    assert first_report["recommendation_grade"]
+    assert first_report["run_warning_count"] >= first_report["warning_count"]
+    assert first_report["quality_label"] in {
+        "strong_fit",
+        "recommended",
+        "review",
+        "low_fit",
+        "empty",
+        "failure",
+    }
+    assert first_report["report_metadata_reference"] == (
+        f"{first_report['run_id']}:{first_report['notice_id']}"
+    )
+    assert first_report["report_content_url"].startswith("/ops/report-content/")
     assert Path(first_report["report_path"]).resolve().is_relative_to(
         Path(settings.yonlab_report_dir).resolve()
     )
     assert "LOCAL_ONLY_SECRET" not in str(payload)
+
+
+def test_ops_quality_summary_and_report_index_do_not_create_db_file(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:  # noqa: ANN001
+    settings = _tmp_settings(tmp_path)
+    db_path = Path(settings.yonlab_storage_db_path)
+    monkeypatch.setattr(routes, "get_settings", lambda: settings)
+
+    quality_payload = client.get("/ops/quality-summary").json()
+    index_payload = client.get("/ops/report-index").json()
+
+    assert quality_payload["summary_status"] == "empty"
+    assert quality_payload["real_mode_status"] == "empty"
+    assert index_payload["status"] == "empty"
+    assert index_payload["reports"] == []
+    assert not db_path.exists()
 
 
 def test_ops_api_real_mode_is_blocked_by_default(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001

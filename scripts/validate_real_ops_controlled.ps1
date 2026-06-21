@@ -79,6 +79,51 @@ function Read-JsonEndpoint {
     return $Text | ConvertFrom-Json
 }
 
+function Test-RealApiCallExecuted {
+    param(
+        [Parameter(Mandatory = $false)]
+        [object] $Operation
+    )
+
+    if ($null -eq $Operation) {
+        return $false
+    }
+
+    $LocalGateErrors = @(
+        "real_ops_disabled",
+        "real_api_disabled",
+        "real_api_service_key_missing",
+        "real_api_endpoint_missing",
+        "real_api_confirmation_required"
+    )
+    if ($Operation.error_code -and $LocalGateErrors -contains $Operation.error_code) {
+        return $false
+    }
+
+    return $true
+}
+
+function Get-FailureClassification {
+    param(
+        [Parameter(Mandatory = $false)]
+        [object] $Operation
+    )
+
+    if ($null -eq $Operation -or -not $Operation.error_code) {
+        return $null
+    }
+    if ($Operation.error_code -eq "real_ops_disabled") {
+        return "credential/config"
+    }
+    if ($Operation.error_code -like "*http*" -or $Operation.error_code -like "*transport*") {
+        return "transport"
+    }
+    if ($Operation.error_code -like "*schema*" -or $Operation.error_code -like "*normalization*") {
+        return "schema/normalization"
+    }
+    return "operations"
+}
+
 try {
     if (-not (Test-Health)) {
         Write-Host "FastAPI server is not reachable. Starting temporary server..."
@@ -97,6 +142,10 @@ try {
     $Config = $null
     $Readiness = $null
     $LatestRunId = $null
+    $ReportIndex = $null
+    $Quality = $null
+    $RealOperation = $null
+    $ConfirmedRealStepExecuted = $false
     $RealCallExecuted = $false
 
     Invoke-ControlledValidationStep "g2b config" {
@@ -126,21 +175,33 @@ try {
     }
 
     Invoke-ControlledValidationStep "ops quality summary" {
-        $Quality = Read-JsonEndpoint "/ops/quality-summary"
-        if ($Quality.latest_run_id) {
-            $script:LatestRunId = $Quality.latest_run_id
+        $script:Quality = Read-JsonEndpoint "/ops/quality-summary"
+        if ($script:Quality.latest_run_id) {
+            $script:LatestRunId = $script:Quality.latest_run_id
         }
-        $Quality | ConvertTo-Json -Depth 20
+        $script:Quality | ConvertTo-Json -Depth 20
+    }
+
+    Invoke-ControlledValidationStep "ops report index" {
+        $script:ReportIndex = Read-JsonEndpoint "/ops/report-index?limit=20"
+        $script:ReportIndex | ConvertTo-Json -Depth 20
     }
 
     if ($ConfirmRealApiCall) {
         Invoke-ControlledValidationStep "controlled real operation" {
-            & (Join-Path $ProjectRoot "scripts\run_ops_real_controlled.ps1") -ConfirmRealApiCall
-            $script:RealCallExecuted = $true
+            $Output = & (Join-Path $ProjectRoot "scripts\run_ops_real_controlled.ps1") -ConfirmRealApiCall
+            $Output
+            $JsonText = ($Output | Out-String).Trim()
+            if (-not [string]::IsNullOrWhiteSpace($JsonText)) {
+                $script:RealOperation = $JsonText | ConvertFrom-Json
+            }
+            $script:ConfirmedRealStepExecuted = $true
+            $script:RealCallExecuted = Test-RealApiCallExecuted -Operation $script:RealOperation
         }
-        $Quality = Read-JsonEndpoint "/ops/quality-summary"
-        if ($Quality.latest_run_id) {
-            $LatestRunId = $Quality.latest_run_id
+        $script:Quality = Read-JsonEndpoint "/ops/quality-summary"
+        $script:ReportIndex = Read-JsonEndpoint "/ops/report-index?limit=20"
+        if ($script:Quality.latest_run_id) {
+            $LatestRunId = $script:Quality.latest_run_id
         }
     } else {
         Write-Host ""
@@ -155,7 +216,14 @@ try {
         endpoint_path_configured = [bool] $Config.endpoint_path_configured
         readiness = [bool] $Readiness.ready
         real_call_executed = [bool] $RealCallExecuted
+        confirmed_real_step_executed = [bool] $ConfirmedRealStepExecuted
+        real_operation_status = $RealOperation.status
+        real_operation_error_code = $RealOperation.error_code
+        failure_classification = Get-FailureClassification -Operation $RealOperation
         latest_run_id = $LatestRunId
+        report_index_reflected = [bool] ($ReportIndex -and $ReportIndex.report_count -gt 0)
+        quality_summary_status = $Quality.summary_status
+        quality_real_mode_executed = [bool] $Quality.real_mode_executed
     } | ConvertTo-Json -Depth 10
 } finally {
     if ($ServerJob) {

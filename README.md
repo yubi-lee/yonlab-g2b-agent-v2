@@ -106,6 +106,7 @@ From the dashboard you can:
 - view recent saved runs from `/ops/runs`.
 - view saved recommendations from `/ops/recommendations`.
 - open saved markdown reports through `/ops/report-content/{run_id}/{notice_id}`.
+- inspect enriched report metadata through `/ops/report-index` and aggregate quality state through `/ops/quality-summary`.
 
 Default operations mode is fixture. Real API mode still requires `.env` configuration,
 `confirm_real_api_call=true`, and the existing real API safety gates. Service key values are
@@ -324,12 +325,14 @@ These checks cover no-secret rules, endpoint preset readiness, current endpoint 
 For one intentional controlled operations run, use:
 
 ```powershell
-.\scripts\run_ops_real_controlled.ps1 -ConfirmRealApiCall
+.\scripts\validate_real_ops_controlled.ps1 -ConfirmRealApiCall
 ```
 
-Without `-ConfirmRealApiCall`, the controlled real ops runner exits before calling
-`/ops/run-recommendations`. Service key values stay in local `.env` only and are never
-shown by the UI, quality summary, report index, or validation scripts.
+Without `-ConfirmRealApiCall`, the controlled real ops validation exits before the real
+operation step. With the flag, it performs one guarded real run and then checks whether the
+new run is reflected in `/ops/quality-summary` and `/ops/report-index`. Service key values
+stay in local `.env` only and are never shown by the UI, quality summary, report index, or
+validation scripts.
 
 Endpoint preset guidance:
 

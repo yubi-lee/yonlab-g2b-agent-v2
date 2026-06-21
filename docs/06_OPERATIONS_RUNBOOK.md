@@ -31,6 +31,10 @@ GET /ops/quality-summary
 GET /ops/report-index
 ```
 
+`/ops/quality-summary` and `/ops/report-index` include operator-friendly run metadata:
+latest run time, run mode, recommendation counts, quality labels, warning/error counts, and
+safe report references. They do not expose service keys.
+
 ## Run a Fixture Recommendation Job
 
 The dashboard defaults to fixture mode with keyword `AI`, page `1`, and `num_rows=5`.
@@ -92,16 +96,19 @@ Before a controlled real operations validation, run:
 .\scripts\validate_real_ops_controlled.ps1
 ```
 
-The readiness endpoint and script are read-only and do not call the real API.
+The readiness endpoint and default controlled validation are read-only and do not call the
+real API.
 
 For one intentional controlled real operations run:
 
 ```powershell
-.\scripts\run_ops_real_controlled.ps1 -ConfirmRealApiCall
+.\scripts\validate_real_ops_controlled.ps1 -ConfirmRealApiCall
 ```
 
-Without `-ConfirmRealApiCall`, the runner exits before calling `/ops/run-recommendations`.
-Service key values are never printed by the controlled scripts.
+Without `-ConfirmRealApiCall`, the controlled validation exits before the real operation step.
+With the flag, it performs one small real operations run through the guarded runner, then
+checks `/ops/quality-summary` and `/ops/report-index` for persisted report metadata. Service
+key values are never printed by the controlled scripts.
 
 ## Validation
 

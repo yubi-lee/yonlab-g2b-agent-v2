@@ -32,6 +32,8 @@ def test_ui_dashboard_returns_html_without_service_key(monkeypatch) -> None:  # 
     assert "YOnLab G2B Agent" in response.text
     assert "Run recommendation" in response.text
     assert "Recommendation Quality Summary" in response.text
+    assert "Total Reports" in response.text
+    assert "Real Runs" in response.text
     assert "Real mode uses live G2B API quota. Use only when necessary." in response.text
     assert "SECRET" not in response.text
 
@@ -157,6 +159,8 @@ def test_ui_javascript_blocks_unconfirmed_real_mode_and_sets_row_defaults() -> N
     assert 'rowsInput.value = "3"' in js_text
     assert 'rowsInput.value = "5"' in js_text
     assert 'apiJson("/ops/quality-summary")' in js_text
+    assert "quality-summary-status" in js_text
+    assert "quality-real-runs" in js_text
 
 
 def test_duplicated_korean_fragments_absent_from_fixture_and_fresh_ops_output(

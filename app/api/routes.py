@@ -619,7 +619,7 @@ def ops_quality_summary() -> dict[str, Any]:
 def ops_report_index(limit: int = 20) -> dict[str, Any]:
     settings = get_settings()
     if not Path(settings.yonlab_storage_db_path).is_file():
-        return {"reports": [], "service_key_exposed": False}
+        return _empty_report_index()
 
     repository = OperationsRepository(settings.yonlab_storage_db_path)
     reports = []
@@ -634,9 +634,39 @@ def ops_report_index(limit: int = 20) -> dict[str, Any]:
                 "title": report["title"],
                 "report_path": str(report_path),
                 "created_at": report["created_at"],
+                "mode": report["mode"],
+                "source": report["source"],
+                "keyword": report["keyword"],
+                "query_label": report["query_label"],
+                "total_items": report["total_items"],
+                "recommendation_count": report["recommendation_count"],
+                "recommended_count": report["recommended_count"],
+                "average_score": report["average_score"],
+                "score_min": report["score_min"],
+                "score_max": report["score_max"],
+                "matching_score": report["matching_score"],
+                "recommendation_grade": report["recommendation_grade"],
+                "quality_label": report["quality_label"],
+                "warning_count": report["warning_count"],
+                "run_warning_count": report["run_warning_count"],
+                "error_count": report["error_count"],
+                "report_metadata_reference": report["report_metadata_reference"],
+                "report_content_url": (
+                    f"/ops/report-content/{report['run_id']}/{report['notice_id']}"
+                ),
             }
         )
-    return {"reports": reports, "service_key_exposed": False}
+    return {
+        "status": "success" if reports else "empty",
+        "report_count": len(reports),
+        "total_items": len(reports),
+        "latest_run_id": reports[0]["run_id"] if reports else None,
+        "quality_label_distribution": _count_by_key(reports, "quality_label"),
+        "warning_count": sum(int(report["warning_count"]) for report in reports),
+        "error_count": sum(int(report["error_count"]) for report in reports),
+        "reports": reports,
+        "service_key_exposed": False,
+    }
 
 
 @router.get("/ops/report-content/{run_id}/{notice_id}")
@@ -698,15 +728,50 @@ def _safe_report_path(report_path: str, report_dir: str) -> Path | None:
 def _empty_quality_summary() -> dict[str, Any]:
     return {
         "total_runs": 0,
+        "total_reports": 0,
         "total_recommendations": 0,
         "strong_recommend_count": 0,
         "recommend_count": 0,
         "consider_count": 0,
         "not_recommended_count": 0,
         "average_score": 0,
+        "summary_status": "empty",
         "latest_run_id": None,
+        "latest_run_created_at": None,
+        "latest_run": None,
+        "successful_run_count": 0,
+        "failed_run_count": 0,
+        "warning_count": 0,
+        "error_count": 0,
+        "real_run_count": 0,
+        "fixture_run_count": 0,
+        "real_mode_executed": False,
+        "real_mode_status": "empty",
+        "quality_label_distribution": {},
         "service_key_exposed": False,
     }
+
+
+def _empty_report_index() -> dict[str, Any]:
+    return {
+        "status": "empty",
+        "report_count": 0,
+        "total_items": 0,
+        "latest_run_id": None,
+        "quality_label_distribution": {},
+        "warning_count": 0,
+        "error_count": 0,
+        "reports": [],
+        "service_key_exposed": False,
+    }
+
+
+def _count_by_key(items: list[dict[str, Any]], key: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for item in items:
+        value = str(item.get(key) or "unknown")
+        counts[value] = counts.get(value, 0) + 1
+    return counts
 
 
 def _is_fixture_document_path(file_path: str) -> bool:

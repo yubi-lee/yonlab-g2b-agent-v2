@@ -134,6 +134,11 @@ def test_controlled_real_ops_scripts_are_guarded_and_secret_safe() -> None:
     assert "/g2b/real-readiness" in validate_script
     assert "/ops/runs?limit=1" in validate_script
     assert "/ops/recommendations?limit=5" in validate_script
+    assert "/ops/quality-summary" in validate_script
+    assert "/ops/report-index?limit=20" in validate_script
+    assert "confirmed_real_step_executed" in validate_script
+    assert "real_operation_error_code" in validate_script
+    assert "failure_classification" in validate_script
     for secret_marker in ("SECRET-KEY", "G2B_API_SERVICE_KEY=<your local key>"):
         assert secret_marker not in run_script
         assert secret_marker not in validate_script
