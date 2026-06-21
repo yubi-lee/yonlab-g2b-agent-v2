@@ -296,6 +296,7 @@ def _real_request(confirm_real_api_call: bool = True) -> G2BSearchRequest:
     return G2BSearchRequest(
         mode=G2BSearchMode.REAL,
         keyword="AI",
+        num_rows=3,
         start_date="2026-06-01",
         end_date="2026-06-20",
         confirm_real_api_call=confirm_real_api_call,
