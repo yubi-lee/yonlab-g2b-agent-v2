@@ -155,6 +155,59 @@ class OperationsRepository:
             ).fetchall()
         return [_row_to_dict(row) for row in rows]
 
+    def list_report_index(self, limit: int = 20) -> list[dict[str, Any]]:
+        with connect_database(self.db_path) as connection:
+            rows = connection.execute(
+                """
+                SELECT run_id, notice_id, title, report_path, created_at
+                FROM reports
+                ORDER BY created_at DESC, id DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [_row_to_dict(row) for row in rows]
+
+    def build_quality_summary(self) -> dict[str, Any]:
+        with connect_database(self.db_path) as connection:
+            run_count = connection.execute("SELECT COUNT(*) FROM search_runs").fetchone()[0]
+            recommendation_row = connection.execute(
+                """
+                SELECT
+                    COUNT(*) AS total_recommendations,
+                    COALESCE(AVG(total_score), 0) AS average_score,
+                    SUM(CASE WHEN recommendation_label = '적극 추천' THEN 1 ELSE 0 END)
+                        AS strong_recommend_count,
+                    SUM(CASE WHEN recommendation_label = '추천' THEN 1 ELSE 0 END)
+                        AS recommend_count,
+                    SUM(CASE WHEN recommendation_label = '조건부 검토' THEN 1 ELSE 0 END)
+                        AS consider_count,
+                    SUM(CASE WHEN recommendation_label = '비추천' THEN 1 ELSE 0 END)
+                        AS not_recommended_count
+                FROM recommendations
+                """
+            ).fetchone()
+            latest_run = connection.execute(
+                """
+                SELECT run_id
+                FROM search_runs
+                ORDER BY created_at DESC, id DESC
+                LIMIT 1
+                """
+            ).fetchone()
+
+        return {
+            "total_runs": int(run_count or 0),
+            "total_recommendations": int(recommendation_row["total_recommendations"] or 0),
+            "strong_recommend_count": int(recommendation_row["strong_recommend_count"] or 0),
+            "recommend_count": int(recommendation_row["recommend_count"] or 0),
+            "consider_count": int(recommendation_row["consider_count"] or 0),
+            "not_recommended_count": int(recommendation_row["not_recommended_count"] or 0),
+            "average_score": round(float(recommendation_row["average_score"] or 0), 2),
+            "latest_run_id": latest_run["run_id"] if latest_run else None,
+            "service_key_exposed": False,
+        }
+
     def get_report(self, run_id: str, notice_id: str) -> dict[str, Any] | None:
         with connect_database(self.db_path) as connection:
             row = connection.execute(

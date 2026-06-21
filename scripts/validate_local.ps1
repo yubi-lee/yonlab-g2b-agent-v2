@@ -143,6 +143,12 @@ try {
     Invoke-ValidationStep "run_ops_fixture" {
         & (Join-Path $ProjectRoot "scripts\run_ops_fixture.ps1")
     }
+    Invoke-ValidationStep "smoke_ops_quality_summary" {
+        & (Join-Path $ProjectRoot "scripts\smoke_ops_quality_summary.ps1")
+    }
+    Invoke-ValidationStep "smoke_ops_report_index" {
+        & (Join-Path $ProjectRoot "scripts\smoke_ops_report_index.ps1")
+    }
     Invoke-ValidationStep "smoke_ops_ui_flow" {
         & (Join-Path $ProjectRoot "scripts\smoke_ops_ui_flow.ps1")
     }

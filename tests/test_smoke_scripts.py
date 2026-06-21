@@ -22,12 +22,16 @@ SMOKE_SCRIPT_NAMES = (
     "smoke_ui_health.ps1",
     "smoke_ops_package_info.ps1",
     "smoke_ops_real_readiness.ps1",
+    "smoke_ops_quality_summary.ps1",
+    "smoke_ops_report_index.ps1",
     "smoke_ops_ui_flow.ps1",
 )
 OPS_SCRIPT_NAMES = (
     "start_local_ops.ps1",
     "validate_ops_package.ps1",
     "validate_g2b_real_ops_readiness.ps1",
+    "validate_real_ops_controlled.ps1",
+    "run_ops_real_controlled.ps1",
     "open_latest_report_dir.ps1",
     "run_daily_fixture.ps1",
     "register_daily_task_template.ps1",
@@ -94,6 +98,8 @@ def test_validate_local_script_runs_expected_validation_steps() -> None:
     assert "smoke_ui_health.ps1" in content
     assert "run_ops_fixture.ps1" in content
     assert "smoke_ops_real_readiness.ps1" in content
+    assert "smoke_ops_quality_summary.ps1" in content
+    assert "smoke_ops_report_index.ps1" in content
     assert "smoke_ops_ui_flow.ps1" in content
     assert "show_ops_runs.ps1" in content
     assert "show_ops_recommendations.ps1" in content
@@ -102,7 +108,49 @@ def test_validate_local_script_runs_expected_validation_steps() -> None:
     assert "smoke_g2b_pdf_text_analysis_fixture.ps1" in content
     assert "smoke_g2b_real_guard_blocked.ps1" in content
     assert "smoke_report.ps1" in content
+    assert "run_ops_real_controlled.ps1 -ConfirmRealApiCall" not in content
+    assert "validate_real_ops_controlled.ps1 -ConfirmRealApiCall" not in content
+    assert "smoke_g2b_real_confirmed_template.ps1" not in content
+    assert "smoke_g2b_real_recommend_template.ps1" not in content
     assert "Stop-Job" in content
+
+
+def test_controlled_real_ops_scripts_are_guarded_and_secret_safe() -> None:
+    run_script = (PROJECT_ROOT / "scripts" / "run_ops_real_controlled.ps1").read_text(
+        encoding="utf-8"
+    )
+    validate_script = (
+        PROJECT_ROOT / "scripts" / "validate_real_ops_controlled.ps1"
+    ).read_text(encoding="utf-8")
+
+    assert "ConfirmRealApiCall" in run_script
+    assert "if (-not $ConfirmRealApiCall)" in run_script
+    assert "exit 0" in run_script
+    assert "/ops/run-recommendations" in run_script
+    assert "-ConfirmRealApiCall" in validate_script
+    assert "if ($ConfirmRealApiCall)" in validate_script
+    assert "run_ops_real_controlled.ps1\") -ConfirmRealApiCall" in validate_script
+    assert "/g2b/config" in validate_script
+    assert "/g2b/real-readiness" in validate_script
+    assert "/ops/runs?limit=1" in validate_script
+    assert "/ops/recommendations?limit=5" in validate_script
+    for secret_marker in ("SECRET-KEY", "G2B_API_SERVICE_KEY=<your local key>"):
+        assert secret_marker not in run_script
+        assert secret_marker not in validate_script
+
+
+def test_reset_local_ops_data_script_only_targets_generated_data() -> None:
+    content = (PROJECT_ROOT / "scripts" / "reset_local_ops_data.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "data\\ops" in content
+    assert "data\\reports" in content
+    assert "data\\downloaded" in content
+    assert "data\\extracted" in content
+    assert "source fixtures were not touched" in content
+    assert ".env and source fixtures were not touched" in content
+    assert "Remove-Item -LiteralPath $Path" in content
 
 
 def test_real_readiness_script_runs_offline_validation_steps() -> None:

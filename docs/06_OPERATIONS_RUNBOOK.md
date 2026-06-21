@@ -27,6 +27,8 @@ Inspect safe package metadata:
 ```text
 GET /ops/package-info
 GET /ops/real-readiness
+GET /ops/quality-summary
+GET /ops/report-index
 ```
 
 ## Run a Fixture Recommendation Job
@@ -87,9 +89,19 @@ Before a controlled real operations validation, run:
 
 ```powershell
 .\scripts\validate_g2b_real_ops_readiness.ps1
+.\scripts\validate_real_ops_controlled.ps1
 ```
 
 The readiness endpoint and script are read-only and do not call the real API.
+
+For one intentional controlled real operations run:
+
+```powershell
+.\scripts\run_ops_real_controlled.ps1 -ConfirmRealApiCall
+```
+
+Without `-ConfirmRealApiCall`, the runner exits before calling `/ops/run-recommendations`.
+Service key values are never printed by the controlled scripts.
 
 ## Validation
 
@@ -98,6 +110,7 @@ python -m pytest -q
 .\scripts\validate_local.ps1
 .\scripts\validate_ops_package.ps1
 .\scripts\validate_g2b_real_ops_readiness.ps1
+.\scripts\validate_real_ops_controlled.ps1
 ```
 
 `validate_local.ps1` runs fixture-safe UI and operations smoke checks. It does not call the

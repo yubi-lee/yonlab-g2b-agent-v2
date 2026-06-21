@@ -173,3 +173,19 @@ Reason:
   writing files, or returning service key values.
 - Local validation should keep proving fixture-first behavior, no-secret handling, and clean
   Korean UTF-8 output before controlled real usage.
+
+## 2026-06-21 Real Ops Quality Gate Finalization
+
+Decision: Complete controlled real operations scripts and add safe local quality/report
+smoke checks to the Local Operations v1.0 validation gate.
+
+Reason:
+
+- Operators need `/ops/quality-summary` and `/ops/report-index` to inspect saved local
+  recommendation quality and report metadata without exposing service keys.
+- `scripts/validate_local.ps1` should include only fixture-safe and read-only checks; it must
+  not run confirmed real API templates.
+- `scripts/run_ops_real_controlled.ps1` requires `-ConfirmRealApiCall` so a real operations
+  run cannot start by accident.
+- `scripts/validate_real_ops_controlled.ps1` supports a safe default validation path and calls
+  the controlled real runner only when the explicit confirmation flag is passed.

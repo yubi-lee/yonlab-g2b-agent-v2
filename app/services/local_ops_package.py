@@ -14,6 +14,8 @@ PACKAGE_ROUTES = [
     "/g2b/pdf-text-analysis",
     "/ops/package-info",
     "/ops/real-readiness",
+    "/ops/quality-summary",
+    "/ops/report-index",
     "/ops/run-recommendations",
     "/ops/runs",
     "/ops/recommendations",
@@ -26,7 +28,11 @@ PACKAGE_SCRIPTS = [
     "scripts/validate_local.ps1",
     "scripts/validate_ops_package.ps1",
     "scripts/validate_g2b_real_ops_readiness.ps1",
+    "scripts/validate_real_ops_controlled.ps1",
     "scripts/run_ops_fixture.ps1",
+    "scripts/run_ops_real_controlled.ps1",
+    "scripts/smoke_ops_quality_summary.ps1",
+    "scripts/smoke_ops_report_index.ps1",
     "scripts/show_ops_runs.ps1",
     "scripts/show_ops_recommendations.ps1",
     "scripts/open_latest_report_dir.ps1",
@@ -42,6 +48,8 @@ PACKAGE_CAPABILITIES = [
     "Document/PDF risk planning layer",
     "Local SQLite operations storage",
     "Saved report content endpoint",
+    "Recommendation quality summary",
+    "Controlled real operations validation scripts",
 ]
 
 

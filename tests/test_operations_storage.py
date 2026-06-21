@@ -124,6 +124,69 @@ def test_ops_api_fixture_run_and_queries(tmp_path: Path, monkeypatch) -> None:  
     assert "serviceKey" not in str(detail_payload)
 
 
+def test_ops_quality_summary_returns_expected_fields_without_secrets(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:  # noqa: ANN001
+    settings = _tmp_settings(tmp_path, g2b_api_service_key="LOCAL_ONLY_SECRET")
+    monkeypatch.setattr(routes, "get_settings", lambda: settings)
+
+    run_response = client.post(
+        "/ops/run-recommendations",
+        json={"mode": "fixture", "keyword": "AI", "num_rows": 3, "include_reports": True},
+    )
+
+    payload = client.get("/ops/quality-summary").json()
+
+    assert run_response.status_code == 200
+    assert set(payload) == {
+        "total_runs",
+        "total_recommendations",
+        "strong_recommend_count",
+        "recommend_count",
+        "consider_count",
+        "not_recommended_count",
+        "average_score",
+        "latest_run_id",
+        "service_key_exposed",
+    }
+    assert payload["total_runs"] == 1
+    assert payload["total_recommendations"] >= 1
+    assert payload["latest_run_id"] == run_response.json()["run_id"]
+    assert payload["service_key_exposed"] is False
+    assert "LOCAL_ONLY_SECRET" not in str(payload)
+
+
+def test_ops_report_index_returns_safe_report_metadata_without_secrets(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:  # noqa: ANN001
+    settings = _tmp_settings(tmp_path, g2b_api_service_key="LOCAL_ONLY_SECRET")
+    monkeypatch.setattr(routes, "get_settings", lambda: settings)
+
+    run_response = client.post(
+        "/ops/run-recommendations",
+        json={"mode": "fixture", "keyword": "AI", "num_rows": 2, "include_reports": True},
+    )
+    payload = client.get("/ops/report-index", params={"limit": 10}).json()
+
+    assert run_response.status_code == 200
+    assert payload["service_key_exposed"] is False
+    assert payload["reports"]
+    first_report = payload["reports"][0]
+    assert {
+        "run_id",
+        "notice_id",
+        "title",
+        "report_path",
+        "created_at",
+    }.issubset(first_report)
+    assert Path(first_report["report_path"]).resolve().is_relative_to(
+        Path(settings.yonlab_report_dir).resolve()
+    )
+    assert "LOCAL_ONLY_SECRET" not in str(payload)
+
+
 def test_ops_api_real_mode_is_blocked_by_default(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
     settings = _tmp_settings(
         tmp_path,

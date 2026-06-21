@@ -1,15 +1,19 @@
 $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
-$OpsPath = Join-Path $ProjectRoot "data\ops"
-$ReportsPath = Join-Path $ProjectRoot "data\reports"
+# Safety: this removes only generated local operation data. It does not touch .env or source fixtures.
+$GeneratedPaths = @(
+    (Join-Path $ProjectRoot "data\ops"),
+    (Join-Path $ProjectRoot "data\reports"),
+    (Join-Path $ProjectRoot "data\downloaded"),
+    (Join-Path $ProjectRoot "data\extracted")
+)
 
-if (Test-Path -LiteralPath $OpsPath) {
-    Remove-Item -LiteralPath $OpsPath -Recurse -Force
-}
-if (Test-Path -LiteralPath $ReportsPath) {
-    Remove-Item -LiteralPath $ReportsPath -Recurse -Force
+foreach ($Path in $GeneratedPaths) {
+    if (Test-Path -LiteralPath $Path) {
+        Remove-Item -LiteralPath $Path -Recurse -Force
+    }
 }
 
-Write-Host "Deleted generated local ops data under data\ops and data\reports."
+Write-Host "Deleted generated local operation data under data\ops, data\reports, data\downloaded, and data\extracted."
 Write-Host ".env and source fixtures were not touched."

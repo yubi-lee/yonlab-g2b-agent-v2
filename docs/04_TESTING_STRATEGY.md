@@ -37,6 +37,16 @@ Before a controlled real operations run through `/ui` or `/ops/run-recommendatio
 This adds offline checks for `/ops/real-readiness`, local operations storage/report
 configuration, no-secret rules, and safe operations tests. It also does not call the real API.
 
+For controlled real operations validation without making a real call:
+
+```powershell
+.\scripts\validate_real_ops_controlled.ps1
+```
+
+This starts a local server only if needed, checks `/g2b/config`, `/g2b/real-readiness`,
+guard-blocked real smoke, `/ops/runs`, `/ops/recommendations`, and `/ops/quality-summary`.
+It calls `run_ops_real_controlled.ps1` only when `-ConfirmRealApiCall` is explicitly passed.
+
 ## Swagger Testing Guide
 
 Swagger examples should use practical fixture-safe request bodies, not generated placeholders.
@@ -150,6 +160,7 @@ Tests must never call the real G2B/Public Data Portal API. Real API behavior is 
 - PDF candidate planning from attachment metadata without downloads.
 - blocked-by-default PDF text extraction and attachment download behavior.
 - controlled real operations readiness checks that never trigger network or SQLite writes.
+- quality summary and report index smoke scripts through `scripts/validate_local.ps1`.
 
 ## Rules
 

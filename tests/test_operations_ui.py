@@ -31,6 +31,8 @@ def test_ui_dashboard_returns_html_without_service_key(monkeypatch) -> None:  # 
     assert "text/html" in response.headers["content-type"]
     assert "YOnLab G2B Agent" in response.text
     assert "Run recommendation" in response.text
+    assert "Recommendation Quality Summary" in response.text
+    assert "Real mode uses live G2B API quota. Use only when necessary." in response.text
     assert "SECRET" not in response.text
 
 
@@ -141,6 +143,20 @@ def test_ui_smoke_scripts_exist_and_validate_local_references_them() -> None:
     )
     assert "smoke_ui_health.ps1" in validate_local
     assert "smoke_ops_ui_flow.ps1" in validate_local
+    assert "smoke_ops_quality_summary.ps1" in validate_local
+    assert "smoke_ops_report_index.ps1" in validate_local
+
+
+def test_ui_javascript_blocks_unconfirmed_real_mode_and_sets_row_defaults() -> None:
+    js_text = (PROJECT_ROOT / "app" / "ui" / "static" / "dashboard.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'payload.mode === "real" && !payload.confirm_real_api_call' in js_text
+    assert "Real mode uses live G2B API quota" in js_text
+    assert 'rowsInput.value = "3"' in js_text
+    assert 'rowsInput.value = "5"' in js_text
+    assert 'apiJson("/ops/quality-summary")' in js_text
 
 
 def test_duplicated_korean_fragments_absent_from_fixture_and_fresh_ops_output(

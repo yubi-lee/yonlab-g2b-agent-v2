@@ -33,6 +33,18 @@ async function loadStatus() {
   renderPackageInfo(packageInfo);
 }
 
+async function loadQualitySummary() {
+  const summary = await apiJson("/ops/quality-summary");
+  text("quality-total-runs", summary.total_runs);
+  text("quality-total-recommendations", summary.total_recommendations);
+  text("quality-average-score", summary.average_score);
+  text("quality-strong", summary.strong_recommend_count);
+  text("quality-recommend", summary.recommend_count);
+  text("quality-consider", summary.consider_count);
+  text("quality-not-recommended", summary.not_recommended_count);
+  text("quality-latest-run", summary.latest_run_id || "none");
+}
+
 function requestFromForm(form) {
   const data = new FormData(form);
   const payload = {
@@ -57,6 +69,12 @@ async function runRecommendation(event) {
   const form = event.currentTarget;
   text("run-state", "Running");
   const payload = requestFromForm(form);
+  if (payload.mode === "real" && !payload.confirm_real_api_call) {
+    text("run-state", "Blocked: confirm real API call first");
+    document.getElementById("run-result").textContent =
+      "Real mode uses live G2B API quota. Check Confirm real API call before submitting.";
+    return;
+  }
   const result = await apiJson("/ops/run-recommendations", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -65,7 +83,7 @@ async function runRecommendation(event) {
   document.getElementById("run-result").textContent = JSON.stringify(result, null, 2);
   text("run-state", "Done");
   state.currentRunId = result.run_id || "";
-  await Promise.all([loadRuns(), loadRecommendations()]);
+  await Promise.all([loadRuns(), loadRecommendations(), loadQualitySummary()]);
   if (state.currentRunId) await loadRunDetail(state.currentRunId);
 }
 
@@ -199,12 +217,28 @@ function renderList(elementId, values) {
   }
 }
 
+function updateRunModeDefaults() {
+  const mode = document.querySelector('[name="mode"]').value;
+  const rowsInput = document.querySelector('[name="num_rows"]');
+  const submitButton = document.querySelector('#run-form button[type="submit"]');
+  if (mode === "real") {
+    rowsInput.value = "3";
+    submitButton.textContent = "Run controlled real job";
+  } else {
+    rowsInput.value = "5";
+    submitButton.textContent = "Run fixture-safe job";
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("refresh-status").addEventListener("click", loadStatus);
+  document.getElementById("refresh-quality").addEventListener("click", loadQualitySummary);
   document.getElementById("refresh-runs").addEventListener("click", loadRuns);
   document.getElementById("run-form").addEventListener("submit", runRecommendation);
+  document.querySelector('[name="mode"]').addEventListener("change", updateRunModeDefaults);
   document
     .getElementById("apply-rec-filters")
     .addEventListener("click", applyRecommendationFilters);
-  await Promise.all([loadStatus(), loadRuns(), loadRecommendations()]);
+  updateRunModeDefaults();
+  await Promise.all([loadStatus(), loadQualitySummary(), loadRuns(), loadRecommendations()]);
 });

@@ -124,10 +124,15 @@ To reset generated local operations data without touching `.env` or source fixtu
 .\scripts\reset_local_ops_data.ps1
 ```
 
+The reset script removes only generated local operation data under `data/ops`,
+`data/reports`, `data/downloaded`, and `data/extracted`.
+
 Operations endpoints:
 
 - `GET /ops/package-info`
 - `GET /ops/real-readiness`
+- `GET /ops/quality-summary`
+- `GET /ops/report-index`
 - `POST /ops/run-recommendations`
 - `GET /ops/runs`
 - `GET /ops/runs/{run_id}`
@@ -310,10 +315,21 @@ Before the first confirmed smoke, run the offline readiness check:
 ```powershell
 .\scripts\validate_g2b_real_readiness.ps1
 .\scripts\validate_g2b_real_ops_readiness.ps1
+.\scripts\validate_real_ops_controlled.ps1
 .\scripts\show_g2b_real_env_status.ps1
 ```
 
 These checks cover no-secret rules, endpoint preset readiness, current endpoint path, controlled operations readiness, and relevant tests without calling the real API. Restart the FastAPI server after changing `.env` so the new endpoint path is loaded.
+
+For one intentional controlled operations run, use:
+
+```powershell
+.\scripts\run_ops_real_controlled.ps1 -ConfirmRealApiCall
+```
+
+Without `-ConfirmRealApiCall`, the controlled real ops runner exits before calling
+`/ops/run-recommendations`. Service key values stay in local `.env` only and are never
+shown by the UI, quality summary, report index, or validation scripts.
 
 Endpoint preset guidance:
 
@@ -356,6 +372,8 @@ Set-Location D:\Views\yonlab-g2b-agent-v2
 .\scripts\smoke_g2b_endpoint_presets.ps1
 .\scripts\smoke_g2b_real_readiness.ps1
 .\scripts\smoke_ops_real_readiness.ps1
+.\scripts\smoke_ops_quality_summary.ps1
+.\scripts\smoke_ops_report_index.ps1
 .\scripts\smoke_g2b_search_fixture.ps1
 .\scripts\smoke_g2b_recommend_fixture.ps1
 .\scripts\smoke_ui_health.ps1

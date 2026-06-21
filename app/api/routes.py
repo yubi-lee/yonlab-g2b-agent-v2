@@ -606,6 +606,39 @@ def ops_list_reports(run_id: str) -> dict[str, Any]:
     return {"reports": repository.list_reports(run_id)}
 
 
+@router.get("/ops/quality-summary")
+def ops_quality_summary() -> dict[str, Any]:
+    settings = get_settings()
+    if not Path(settings.yonlab_storage_db_path).is_file():
+        return _empty_quality_summary()
+    repository = OperationsRepository(settings.yonlab_storage_db_path)
+    return repository.build_quality_summary()
+
+
+@router.get("/ops/report-index")
+def ops_report_index(limit: int = 20) -> dict[str, Any]:
+    settings = get_settings()
+    if not Path(settings.yonlab_storage_db_path).is_file():
+        return {"reports": [], "service_key_exposed": False}
+
+    repository = OperationsRepository(settings.yonlab_storage_db_path)
+    reports = []
+    for report in repository.list_report_index(limit=limit):
+        report_path = _safe_report_path(str(report["report_path"]), settings.yonlab_report_dir)
+        if report_path is None:
+            continue
+        reports.append(
+            {
+                "run_id": report["run_id"],
+                "notice_id": report["notice_id"],
+                "title": report["title"],
+                "report_path": str(report_path),
+                "created_at": report["created_at"],
+            }
+        )
+    return {"reports": reports, "service_key_exposed": False}
+
+
 @router.get("/ops/report-content/{run_id}/{notice_id}")
 def ops_report_content(run_id: str, notice_id: str) -> dict[str, str]:
     settings = get_settings()
@@ -660,6 +693,20 @@ def _safe_report_path(report_path: str, report_dir: str) -> Path | None:
     except ValueError:
         return None
     return resolved
+
+
+def _empty_quality_summary() -> dict[str, Any]:
+    return {
+        "total_runs": 0,
+        "total_recommendations": 0,
+        "strong_recommend_count": 0,
+        "recommend_count": 0,
+        "consider_count": 0,
+        "not_recommended_count": 0,
+        "average_score": 0,
+        "latest_run_id": None,
+        "service_key_exposed": False,
+    }
 
 
 def _is_fixture_document_path(file_path: str) -> bool:
