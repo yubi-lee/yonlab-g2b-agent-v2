@@ -15,6 +15,15 @@ SMOKE_SCRIPT_NAMES = (
     "smoke_g2b_pdf_text_analysis_fixture.ps1",
     "smoke_g2b_real_confirmed_template.ps1",
     "smoke_g2b_real_recommend_template.ps1",
+    "run_ops_fixture.ps1",
+    "run_ops_real_template.ps1",
+    "show_ops_runs.ps1",
+    "show_ops_recommendations.ps1",
+)
+OPS_SCRIPT_NAMES = (
+    "open_latest_report_dir.ps1",
+    "run_daily_fixture.ps1",
+    "register_daily_task_template.ps1",
 )
 VALIDATION_SCRIPT_NAME = "validate_local.ps1"
 REAL_READINESS_SCRIPT_NAME = "validate_g2b_real_readiness.ps1"
@@ -25,6 +34,8 @@ SHOW_REAL_ENV_STATUS_SCRIPT_NAME = "show_g2b_real_env_status.ps1"
 
 def test_smoke_scripts_exist() -> None:
     for script_name in SMOKE_SCRIPT_NAMES:
+        assert (PROJECT_ROOT / "scripts" / script_name).is_file()
+    for script_name in OPS_SCRIPT_NAMES:
         assert (PROJECT_ROOT / "scripts" / script_name).is_file()
     assert (PROJECT_ROOT / "scripts" / VALIDATION_SCRIPT_NAME).is_file()
     assert (PROJECT_ROOT / "scripts" / REAL_READINESS_SCRIPT_NAME).is_file()
@@ -72,6 +83,9 @@ def test_validate_local_script_runs_expected_validation_steps() -> None:
     assert "smoke_g2b_real_readiness.ps1" in content
     assert "smoke_g2b_search_fixture.ps1" in content
     assert "smoke_g2b_recommend_fixture.ps1" in content
+    assert "run_ops_fixture.ps1" in content
+    assert "show_ops_runs.ps1" in content
+    assert "show_ops_recommendations.ps1" in content
     assert "smoke_g2b_document_risk_analysis.ps1" in content
     assert "smoke_g2b_pdf_analysis_candidates_fixture.ps1" in content
     assert "smoke_g2b_pdf_text_analysis_fixture.ps1" in content

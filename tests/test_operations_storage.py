@@ -1,0 +1,172 @@
+import sqlite3
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+import app.api.routes as routes
+import app.services.operations_runner as operations_runner
+from app.core.config import Settings
+from app.main import app
+from app.services.operations_runner import run_recommendation_job
+from app.storage.database import initialize_database
+from app.storage.repository import OperationsRepository
+
+client = TestClient(app)
+
+
+def test_operations_database_initializes_expected_tables(tmp_path: Path) -> None:
+    db_path = tmp_path / "ops.sqlite3"
+
+    initialize_database(db_path)
+
+    with sqlite3.connect(db_path) as connection:
+        table_names = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            ).fetchall()
+        }
+    assert {"search_runs", "recommendations", "reports"}.issubset(table_names)
+
+
+def test_fixture_operation_run_persists_records_and_reports(tmp_path: Path) -> None:
+    settings = _tmp_settings(tmp_path, g2b_api_service_key="LOCAL_ONLY_SECRET")
+
+    summary = run_recommendation_job(
+        settings=settings,
+        mode="fixture",
+        keyword="AI",
+        num_rows=3,
+        include_reports=True,
+    )
+
+    repository = OperationsRepository(settings.yonlab_storage_db_path)
+    run = repository.get_run(summary.run_id)
+    recommendations = repository.list_recommendations(limit=10, run_id=summary.run_id)
+    reports = repository.list_reports(summary.run_id)
+
+    assert summary.status == "success"
+    assert summary.source_count >= 1
+    assert summary.recommendation_count >= 1
+    assert summary.report_count == len(reports)
+    assert run is not None
+    assert run["mode"] == "fixture"
+    assert run["service_key_exposed"] is False
+    assert recommendations
+    assert recommendations[0]["top_reasons"]
+    assert Path(recommendations[0]["report_path"]).is_file()
+    assert Path(recommendations[0]["raw_json_path"]).is_file()
+    assert reports
+
+    persisted_text = _read_generated_text(tmp_path)
+    assert "LOCAL_ONLY_SECRET" not in persisted_text
+    assert "serviceKey" not in persisted_text
+
+
+def test_real_mode_operations_are_guarded_without_http_call(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:  # noqa: ANN001
+    class FailingG2BClient:
+        def __init__(self, settings):  # noqa: ANN001
+            raise AssertionError("Real G2B client must not be constructed by default.")
+
+    monkeypatch.setattr(operations_runner, "G2BClient", FailingG2BClient)
+    settings = _tmp_settings(
+        tmp_path,
+        g2b_enable_real_api=True,
+        g2b_api_service_key="LOCAL_ONLY_SECRET",
+        g2b_list_endpoint_path="/1230000/ad/BidPublicInfoService/getBidPblancListInfoServcPPSSrch",
+    )
+
+    summary = run_recommendation_job(
+        settings=settings,
+        mode="real",
+        keyword="AI",
+        start_date="2026-06-01",
+        end_date="2026-06-20",
+        confirm_real_api_call=True,
+    )
+
+    assert summary.status == "error"
+    assert summary.error_code == "real_ops_disabled"
+    assert summary.recommendation_count == 0
+    assert "LOCAL_ONLY_SECRET" not in summary.model_dump_json()
+
+
+def test_ops_api_fixture_run_and_queries(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    settings = _tmp_settings(tmp_path)
+    monkeypatch.setattr(routes, "get_settings", lambda: settings)
+
+    run_response = client.post(
+        "/ops/run-recommendations",
+        json={"mode": "fixture", "keyword": "AI", "num_rows": 2, "include_reports": True},
+    )
+
+    assert run_response.status_code == 200
+    summary = run_response.json()
+    assert summary["status"] == "success"
+    assert summary["service_key_exposed"] is False
+
+    runs_payload = client.get("/ops/runs", params={"limit": 5}).json()
+    detail_payload = client.get(f"/ops/runs/{summary['run_id']}").json()
+    recommendations_payload = client.get(
+        "/ops/recommendations",
+        params={"limit": 5, "keyword": "AI"},
+    ).json()
+    reports_payload = client.get(f"/ops/reports/{summary['run_id']}").json()
+
+    assert any(run["run_id"] == summary["run_id"] for run in runs_payload["runs"])
+    assert detail_payload["run"]["run_id"] == summary["run_id"]
+    assert detail_payload["recommendations"]
+    assert recommendations_payload["recommendations"]
+    assert reports_payload["reports"]
+    assert "serviceKey" not in str(detail_payload)
+
+
+def test_ops_api_real_mode_is_blocked_by_default(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    settings = _tmp_settings(
+        tmp_path,
+        g2b_enable_real_api=True,
+        g2b_api_service_key="LOCAL_ONLY_SECRET",
+        g2b_list_endpoint_path="/1230000/ad/BidPublicInfoService/getBidPblancListInfoServcPPSSrch",
+    )
+    monkeypatch.setattr(routes, "get_settings", lambda: settings)
+
+    response = client.post(
+        "/ops/run-recommendations",
+        json={
+            "mode": "real",
+            "keyword": "AI",
+            "start_date": "2026-06-01",
+            "end_date": "2026-06-20",
+            "confirm_real_api_call": True,
+        },
+    )
+
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["status"] == "error"
+    assert payload["error_code"] == "real_ops_disabled"
+    assert payload["recommendation_count"] == 0
+    assert "LOCAL_ONLY_SECRET" not in str(payload)
+
+
+def _tmp_settings(tmp_path: Path, **overrides) -> Settings:  # noqa: ANN001
+    values = {
+        "yonlab_storage_db_path": str(tmp_path / "ops" / "yonlab.sqlite3"),
+        "yonlab_report_dir": str(tmp_path / "reports"),
+        "yonlab_default_run_mode": "fixture",
+        "yonlab_default_keyword": "AI",
+        "yonlab_default_num_rows": 3,
+    }
+    values.update(overrides)
+    return Settings(**values)
+
+
+def _read_generated_text(tmp_path: Path) -> str:
+    parts = []
+    for path in tmp_path.rglob("*"):
+        if path.is_file() and path.suffix in {".json", ".md", ".sqlite3"}:
+            parts.append(path.read_bytes().decode("utf-8", errors="ignore"))
+    return "\n".join(parts)

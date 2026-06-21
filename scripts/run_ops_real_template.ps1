@@ -1,0 +1,42 @@
+$ErrorActionPreference = "Stop"
+
+$Utf8 = New-Object System.Text.UTF8Encoding($false)
+[Console]::OutputEncoding = $Utf8
+$OutputEncoding = $Utf8
+try { chcp.com 65001 | Out-Null } catch {}
+
+Write-Host "Template only. Set G2B_API_SERVICE_KEY manually in .env and enable real operations locally before use."
+
+$BaseUrl = $env:YONLAB_G2B_BASE_URL
+if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
+    $BaseUrl = "http://127.0.0.1:8000"
+}
+
+$BodyJson = @{
+    mode = "real"
+    keyword = "AI"
+    start_date = "2026-06-01"
+    end_date = "2026-06-20"
+    num_rows = 3
+    include_reports = $true
+    confirm_real_api_call = $true
+} | ConvertTo-Json -Depth 5
+
+$Bytes = [System.Text.Encoding]::UTF8.GetBytes($BodyJson)
+
+$Response = Invoke-WebRequest `
+    -Method Post `
+    -Uri "$BaseUrl/ops/run-recommendations" `
+    -ContentType "application/json; charset=utf-8" `
+    -UseBasicParsing `
+    -Body $Bytes
+
+if ($Response.RawContentStream) {
+    $Response.RawContentStream.Position = 0
+    $Reader = New-Object System.IO.StreamReader -ArgumentList $Response.RawContentStream, ([System.Text.Encoding]::UTF8)
+    $Text = $Reader.ReadToEnd()
+} else {
+    $Text = $Response.Content
+}
+
+$Text | ConvertFrom-Json | ConvertTo-Json -Depth 30

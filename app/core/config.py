@@ -26,6 +26,13 @@ class Settings(BaseSettings):
     g2b_enable_attachment_download: bool = False
     g2b_attachment_max_bytes: int = 20_000_000
 
+    yonlab_storage_db_path: str = "data/ops/yonlab_g2b_agent.sqlite3"
+    yonlab_report_dir: str = "data/reports/g2b"
+    yonlab_default_run_mode: str = "fixture"
+    yonlab_default_keyword: str = "AI"
+    yonlab_default_num_rows: int = 10
+    yonlab_auto_run_real_api: bool = False
+
     log_level: str = "INFO"
 
     model_config = SettingsConfigDict(

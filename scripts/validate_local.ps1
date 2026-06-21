@@ -98,6 +98,15 @@ try {
     Invoke-ValidationStep "smoke_g2b_recommend_fixture" {
         & (Join-Path $ProjectRoot "scripts\smoke_g2b_recommend_fixture.ps1")
     }
+    Invoke-ValidationStep "run_ops_fixture" {
+        & (Join-Path $ProjectRoot "scripts\run_ops_fixture.ps1")
+    }
+    Invoke-ValidationStep "show_ops_runs" {
+        & (Join-Path $ProjectRoot "scripts\show_ops_runs.ps1")
+    }
+    Invoke-ValidationStep "show_ops_recommendations" {
+        & (Join-Path $ProjectRoot "scripts\show_ops_recommendations.ps1")
+    }
     Invoke-ValidationStep "smoke_g2b_document_risk_analysis" {
         & (Join-Path $ProjectRoot "scripts\smoke_g2b_document_risk_analysis.ps1")
     }

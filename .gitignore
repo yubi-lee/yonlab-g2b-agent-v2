@@ -12,5 +12,7 @@ data/raw/
 data/private/
 data/captured/
 data/extracted/
+data/ops/
+data/reports/
 .test_captured/
 *.log

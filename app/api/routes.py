@@ -57,7 +57,10 @@ from app.services.attachment_analysis_planner import (
 )
 from app.services.attachment_downloader import build_attachment_download_plan_items
 from app.services.document_risk_analyzer import analyze_document_risks
+from app.services.operations_runner import run_recommendation_job
 from app.services.pdf_text_extractor import extract_pdf_text_from_file
+from app.storage.models import OperationsRunSummary, OpsRunRequest
+from app.storage.repository import OperationsRepository
 
 router = APIRouter()
 NOTICE_REQUEST_BODY = Body(
@@ -521,6 +524,60 @@ def demo_recommendations(
         ranked_order=[_demo_notice_id(item) for item in recommendations],
         source_count=len(raw_notices),
     )
+
+
+@router.post("/ops/run-recommendations", response_model=OperationsRunSummary)
+def ops_run_recommendations(request: OpsRunRequest | None = None) -> OperationsRunSummary:
+    payload = request or OpsRunRequest()
+    settings = get_settings()
+    return run_recommendation_job(
+        settings=settings,
+        mode=payload.mode or settings.yonlab_default_run_mode,
+        keyword=payload.keyword or settings.yonlab_default_keyword,
+        start_date=payload.start_date,
+        end_date=payload.end_date,
+        page_no=payload.page_no,
+        num_rows=payload.num_rows or settings.yonlab_default_num_rows,
+        include_reports=payload.include_reports,
+        active_only=payload.active_only,
+        confirm_real_api_call=payload.confirm_real_api_call,
+    )
+
+
+@router.get("/ops/runs")
+def ops_list_runs(limit: int = 20) -> dict[str, Any]:
+    repository = OperationsRepository(get_settings().yonlab_storage_db_path)
+    return {"runs": repository.list_runs(limit=limit)}
+
+
+@router.get("/ops/runs/{run_id}")
+def ops_get_run(run_id: str) -> dict[str, Any]:
+    repository = OperationsRepository(get_settings().yonlab_storage_db_path)
+    return repository.get_run_detail(run_id)
+
+
+@router.get("/ops/recommendations")
+def ops_list_recommendations(
+    limit: int = 20,
+    min_score: int | None = None,
+    label: str | None = None,
+    keyword: str | None = None,
+) -> dict[str, Any]:
+    repository = OperationsRepository(get_settings().yonlab_storage_db_path)
+    return {
+        "recommendations": repository.list_recommendations(
+            limit=limit,
+            min_score=min_score,
+            label=label,
+            keyword=keyword,
+        )
+    }
+
+
+@router.get("/ops/reports/{run_id}")
+def ops_list_reports(run_id: str) -> dict[str, Any]:
+    repository = OperationsRepository(get_settings().yonlab_storage_db_path)
+    return {"reports": repository.list_reports(run_id)}
 
 
 def _notice_input(payload: NoticeRequest) -> dict[str, Any] | BidNotice:
