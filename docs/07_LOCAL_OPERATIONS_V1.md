@@ -28,6 +28,7 @@ Use another port when needed:
 
 ```powershell
 .\scripts\validate_ops_package.ps1
+.\scripts\validate_g2b_real_ops_readiness.ps1
 ```
 
 This delegates to `scripts/validate_local.ps1`, which runs pytest, starts a temporary
@@ -38,11 +39,16 @@ It does not call the real G2B/Public Data Portal API.
 
 ```text
 GET /ops/package-info
+GET /ops/real-readiness
 ```
 
 The response includes package version, safe route/script lists, enabled capabilities,
 storage configuration status, and safety flags. It reports whether a service key is
 configured but never returns the service key value.
+
+`/ops/real-readiness` summarizes whether controlled real operations are configured. The
+endpoint is read-only: it does not call the real API, connect to SQLite, write files, or
+return service key values.
 
 ## Fixture Operations Flow
 
@@ -77,3 +83,9 @@ Real API mode is not used by default. Use it only for controlled manual smoke ch
 - `confirm_real_api_call=true`
 
 Do not run real mode repeatedly from the dashboard.
+
+Before a controlled real operations validation, run:
+
+```powershell
+.\scripts\validate_g2b_real_ops_readiness.ps1
+```

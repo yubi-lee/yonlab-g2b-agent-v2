@@ -28,6 +28,7 @@ This repository is independent from the previous v1 project:
 - Korean UTF-8 regression tests cover fixture data, API responses, and report output.
 - Local SQLite operations storage and a lightweight browser UI are available.
 - Local operations v1.0 packaging adds safe package metadata plus launcher and validation scripts.
+- Controlled real operations readiness can be inspected without calling the real API.
 - No frontend build tooling, external database server, or LLM is required.
 
 ## Run Tests
@@ -79,6 +80,7 @@ http://127.0.0.1:8000/health
 - `GET /ui`
 - `GET /health`
 - `GET /ops/package-info`
+- `GET /ops/real-readiness`
 - `GET /profile/yonlab`
 - `GET /fixtures/g2b/notices`
 - `POST /notices/normalize`
@@ -99,7 +101,7 @@ http://127.0.0.1:8000/ui
 
 From the dashboard you can:
 
-- inspect safe system status from `/health`, `/g2b/config`, and `/g2b/real-readiness`.
+- inspect safe system status from `/health`, `/g2b/config`, `/g2b/real-readiness`, and `/ops/real-readiness`.
 - run a fixture recommendation job through `/ops/run-recommendations`.
 - view recent saved runs from `/ops/runs`.
 - view saved recommendations from `/ops/recommendations`.
@@ -125,6 +127,7 @@ To reset generated local operations data without touching `.env` or source fixtu
 Operations endpoints:
 
 - `GET /ops/package-info`
+- `GET /ops/real-readiness`
 - `POST /ops/run-recommendations`
 - `GET /ops/runs`
 - `GET /ops/runs/{run_id}`
@@ -306,10 +309,11 @@ Before the first confirmed smoke, run the offline readiness check:
 
 ```powershell
 .\scripts\validate_g2b_real_readiness.ps1
+.\scripts\validate_g2b_real_ops_readiness.ps1
 .\scripts\show_g2b_real_env_status.ps1
 ```
 
-It checks no-secret rules, endpoint preset readiness, current endpoint path, and relevant tests without calling the real API. Restart the FastAPI server after changing `.env` so the new endpoint path is loaded.
+These checks cover no-secret rules, endpoint preset readiness, current endpoint path, controlled operations readiness, and relevant tests without calling the real API. Restart the FastAPI server after changing `.env` so the new endpoint path is loaded.
 
 Endpoint preset guidance:
 
@@ -351,6 +355,7 @@ Set-Location D:\Views\yonlab-g2b-agent-v2
 .\scripts\smoke_g2b_config.ps1
 .\scripts\smoke_g2b_endpoint_presets.ps1
 .\scripts\smoke_g2b_real_readiness.ps1
+.\scripts\smoke_ops_real_readiness.ps1
 .\scripts\smoke_g2b_search_fixture.ps1
 .\scripts\smoke_g2b_recommend_fixture.ps1
 .\scripts\smoke_ui_health.ps1

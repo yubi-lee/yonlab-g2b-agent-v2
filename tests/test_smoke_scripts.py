@@ -21,11 +21,13 @@ SMOKE_SCRIPT_NAMES = (
     "show_ops_recommendations.ps1",
     "smoke_ui_health.ps1",
     "smoke_ops_package_info.ps1",
+    "smoke_ops_real_readiness.ps1",
     "smoke_ops_ui_flow.ps1",
 )
 OPS_SCRIPT_NAMES = (
     "start_local_ops.ps1",
     "validate_ops_package.ps1",
+    "validate_g2b_real_ops_readiness.ps1",
     "open_latest_report_dir.ps1",
     "run_daily_fixture.ps1",
     "register_daily_task_template.ps1",
@@ -69,7 +71,7 @@ def test_smoke_report_script_is_ascii_safe_for_windows_powershell_parser() -> No
 
     assert '"\\uacf5\\uace0\\uba85"' in script_text
     assert "공고명" not in script_text
-    for mojibake_fragment in ("怨", "쒖", "뚰", "媛"):
+    for mojibake_fragment in ("\u6028", "\uc496", "\ub6b0", "\u5a9b"):
         assert mojibake_fragment not in script_text
 
 
@@ -91,6 +93,7 @@ def test_validate_local_script_runs_expected_validation_steps() -> None:
     assert "smoke_g2b_recommend_fixture.ps1" in content
     assert "smoke_ui_health.ps1" in content
     assert "run_ops_fixture.ps1" in content
+    assert "smoke_ops_real_readiness.ps1" in content
     assert "smoke_ops_ui_flow.ps1" in content
     assert "show_ops_runs.ps1" in content
     assert "show_ops_recommendations.ps1" in content

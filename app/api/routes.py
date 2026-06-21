@@ -61,6 +61,7 @@ from app.services.document_risk_analyzer import analyze_document_risks
 from app.services.local_ops_package import build_local_ops_package_info
 from app.services.operations_runner import run_recommendation_job
 from app.services.pdf_text_extractor import extract_pdf_text_from_file
+from app.services.real_ops_readiness import build_real_ops_readiness
 from app.storage.models import OperationsRunSummary, OpsRunRequest
 from app.storage.repository import OperationsRepository
 
@@ -292,6 +293,11 @@ def get_g2b_real_readiness() -> G2BRealReadinessResponse:
 @router.get("/ops/package-info")
 def get_ops_package_info() -> dict[str, object]:
     return build_local_ops_package_info(get_settings())
+
+
+@router.get("/ops/real-readiness")
+def get_ops_real_readiness() -> dict[str, Any]:
+    return build_real_ops_readiness(get_settings())
 
 
 @router.post("/g2b/document-risk-analysis", response_model=DocumentRiskAnalysisResult)

@@ -26,6 +26,7 @@ Inspect safe package metadata:
 
 ```text
 GET /ops/package-info
+GET /ops/real-readiness
 ```
 
 ## Run a Fixture Recommendation Job
@@ -82,12 +83,21 @@ Real API operations require local `.env` configuration, existing G2B safety gate
 `confirm_real_api_call=true`. Service key values are never displayed by `/ui`, `/g2b/config`,
 or operations endpoints.
 
+Before a controlled real operations validation, run:
+
+```powershell
+.\scripts\validate_g2b_real_ops_readiness.ps1
+```
+
+The readiness endpoint and script are read-only and do not call the real API.
+
 ## Validation
 
 ```powershell
 python -m pytest -q
 .\scripts\validate_local.ps1
 .\scripts\validate_ops_package.ps1
+.\scripts\validate_g2b_real_ops_readiness.ps1
 ```
 
 `validate_local.ps1` runs fixture-safe UI and operations smoke checks. It does not call the

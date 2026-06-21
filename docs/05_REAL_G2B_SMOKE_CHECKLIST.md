@@ -66,6 +66,7 @@ Run the offline validation bundle:
 
 ```powershell
 .\scripts\validate_g2b_real_readiness.ps1
+.\scripts\validate_g2b_real_ops_readiness.ps1
 ```
 
 This validates no-secret rules and targeted offline tests. It does not call the real API.
@@ -116,6 +117,15 @@ Real responses now include safe endpoint metadata and can use `active_only=true`
 Do not use the `/ui` real mode for repeated testing. If you use it for a controlled smoke,
 confirm that `.env` is configured locally, keep `num_rows` small, and check
 `confirm_real_api_call=true` only for the intentional run.
+
+Before a controlled real operations run through `/ui` or `/ops/run-recommendations`, inspect:
+
+```text
+GET /ops/real-readiness
+```
+
+The endpoint is read-only and does not call the real API, connect to SQLite, write files, or
+return the service key value.
 
 ## Attachment and PDF Follow-up
 

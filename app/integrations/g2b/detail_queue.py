@@ -100,7 +100,7 @@ def _has_joint_supply_block(value: str) -> bool:
     value_casefolded = value.casefold()
     return any(
         token.casefold() in value_casefolded
-        for token in ("joint_supply_not_allowed", "공동수급불허", "불허", "遺덊뿀")
+        for token in ("joint_supply_not_allowed", "공동수급불허", "공동수급 불가", "불허")
     )
 
 

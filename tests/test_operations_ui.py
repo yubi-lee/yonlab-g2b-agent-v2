@@ -14,11 +14,11 @@ from app.storage.repository import OperationsRepository
 client = TestClient(app)
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DUPLICATED_KOREAN_FRAGMENTS = (
-    "서서울울",
-    "부부산산",
-    "지지역역",
-    "시시스스템템",
-    "부부합합합니니다다",
+    "\uc11c\uc11c\uc6b8\uc6b8",
+    "\ubd80\ubd80\uc0b0\uc0b0",
+    "\uc9c0\uc9c0\uc5ed\uc5ed",
+    "\uc2dc\uc2dc\uc2a4\uc2a4\ud15c\ud15c",
+    "\ubd80\ubd80\ud569\ud569\ud569\ub2c8\ub2c8\ub2e4\ub2e4",
 )
 
 

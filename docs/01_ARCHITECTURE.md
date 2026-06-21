@@ -39,6 +39,7 @@ FastAPI routes
 - `app/services/attachment_downloader.py`: blocked-by-default attachment download planning.
 - `app/services/attachment_analysis_planner.py`: PDF/HWP/HWPX analysis planning from attachment metadata.
 - `app/services/local_ops_package.py`: safe local operations v1.0 package metadata builder.
+- `app/services/real_ops_readiness.py`: read-only controlled real operations readiness summary; no network or SQLite writes.
 - `app/services/operations_runner.py`: fixture-first operations job runner that persists saved runs, recommendations, and report files.
 - `app/services/report_persistence.py`: UTF-8 markdown and compact JSON artifact writer under the configured report directory.
 - `app/storage/database.py`: local SQLite schema initializer for operations storage.
@@ -83,6 +84,7 @@ browser
 -> static dashboard files
 -> safe status endpoints
 -> /ops/package-info metadata
+-> /ops/real-readiness summary
 -> operations endpoints
 -> saved report markdown viewer
 ```
@@ -98,6 +100,7 @@ browser
 - PDF text extraction is disabled by default, local-file only, size-limited, and controlled by explicit confirmation.
 - HWP/HWPX content extraction is not implemented; those files remain manual review.
 - `scripts/validate_g2b_real_readiness.ps1` checks readiness without calling the real API.
+- `scripts/validate_g2b_real_ops_readiness.ps1` checks controlled operations readiness without calling the real API or writing SQLite data.
 - The service key is never returned in API responses.
 - The operations UI only calls safe JSON endpoints and never displays service key values.
 - `GET /ops/report-content/{run_id}/{notice_id}` reads only report metadata recorded in SQLite and rejects paths outside the configured report directory.

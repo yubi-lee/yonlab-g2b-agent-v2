@@ -28,6 +28,15 @@ Use one command before the first confirmed real smoke:
 
 The script runs `scripts/check_no_secrets.ps1`, targeted offline tests, and `python -m app.integrations.g2b.readiness`. It does not call the real G2B/Public Data Portal API and does not print service key values.
 
+Before a controlled real operations run through `/ui` or `/ops/run-recommendations`, use:
+
+```powershell
+.\scripts\validate_g2b_real_ops_readiness.ps1
+```
+
+This adds offline checks for `/ops/real-readiness`, local operations storage/report
+configuration, no-secret rules, and safe operations tests. It also does not call the real API.
+
 ## Swagger Testing Guide
 
 Swagger examples should use practical fixture-safe request bodies, not generated placeholders.
@@ -119,6 +128,8 @@ Recommended `/g2b/pdf-analysis-candidates` body:
 - `tests/test_operations_storage.py`: local SQLite operations storage, fixture run persistence, report artifact writing, and real operations guard behavior.
 - `tests/test_operations_ui.py`: `/ui`, static assets, report-content safety, recommendation `run_id` filtering, UI smoke scripts, and duplicated Korean fixture artifact regression.
 - `tests/test_local_ops_package.py`: local operations v1.0 package metadata, dashboard surfacing, script presence, and no-DB-write safety.
+- `tests/test_real_ops_readiness.py`: controlled real operations readiness summary without network calls, DB writes, or service key exposure.
+- `tests/test_korean_text_artifacts.py`: app and fixture source regression guard for known Korean mojibake and duplicated text artifacts.
 
 ## Real API Test Rule
 
@@ -138,6 +149,7 @@ Tests must never call the real G2B/Public Data Portal API. Real API behavior is 
 - document risk analysis from local fixture text only.
 - PDF candidate planning from attachment metadata without downloads.
 - blocked-by-default PDF text extraction and attachment download behavior.
+- controlled real operations readiness checks that never trigger network or SQLite writes.
 
 ## Rules
 
@@ -161,4 +173,4 @@ The regression suite checks:
 - `/g2b/search` and `/g2b/recommendations` preserve Korean response fields.
 - `/recommendations/report` preserves Korean markdown headings.
 - common mojibake fragments do not appear in Korean content fields.
-- duplicated fixture fragments such as `서서울울`, `부부산산`, `지지역역`, `시시스스템템`, and `부부합합합니니다다` do not appear in fresh fixture operations output.
+- known duplicated Korean fixture fragments for Seoul, Busan, region, system, and status text do not appear in fresh fixture operations output.

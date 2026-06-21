@@ -160,3 +160,16 @@ Reason:
 - `/ops/package-info` lets the UI and smoke scripts verify version, routes, scripts,
   capabilities, and safety flags without touching SQLite or real APIs.
 - The package remains fixture-first by default and never returns service key values.
+
+## 2026-06-21 Local Operations v1.0 Quality Gate
+
+Decision: Add a read-only controlled real operations readiness summary and regression
+guards for known Korean text artifacts.
+
+Reason:
+
+- Operators need to confirm real operations prerequisites before an intentional validation run.
+- `/ops/real-readiness` reports readiness without calling the real API, connecting to SQLite,
+  writing files, or returning service key values.
+- Local validation should keep proving fixture-first behavior, no-secret handling, and clean
+  Korean UTF-8 output before controlled real usage.

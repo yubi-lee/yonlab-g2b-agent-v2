@@ -137,6 +137,9 @@ try {
     Invoke-ValidationStep "smoke_ops_package_info" {
         & (Join-Path $ProjectRoot "scripts\smoke_ops_package_info.ps1")
     }
+    Invoke-ValidationStep "smoke_ops_real_readiness" {
+        & (Join-Path $ProjectRoot "scripts\smoke_ops_real_readiness.ps1")
+    }
     Invoke-ValidationStep "run_ops_fixture" {
         & (Join-Path $ProjectRoot "scripts\run_ops_fixture.ps1")
     }
