@@ -215,6 +215,14 @@ class OperationsRepository:
         with connect_database(self.db_path) as connection:
             run_count = connection.execute("SELECT COUNT(*) FROM search_runs").fetchone()[0]
             report_count = connection.execute("SELECT COUNT(*) FROM reports").fetchone()[0]
+            real_report_count = connection.execute(
+                """
+                SELECT COUNT(*)
+                FROM reports
+                LEFT JOIN search_runs ON reports.run_id = search_runs.run_id
+                WHERE search_runs.mode = 'real'
+                """
+            ).fetchone()[0]
             recommendation_row = connection.execute(
                 """
                 SELECT
@@ -277,6 +285,7 @@ class OperationsRepository:
         return {
             "total_runs": int(run_count or 0),
             "total_reports": int(report_count or 0),
+            "real_report_count": int(real_report_count or 0),
             "total_recommendations": total_recommendations,
             "strong_recommend_count": int(recommendation_row["strong_recommend_count"] or 0),
             "recommend_count": int(recommendation_row["recommend_count"] or 0),

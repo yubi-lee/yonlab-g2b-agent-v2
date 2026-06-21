@@ -142,6 +142,7 @@ def test_ops_quality_summary_returns_expected_fields_without_secrets(
     expected_fields = {
         "total_runs",
         "total_reports",
+        "real_report_count",
         "total_recommendations",
         "strong_recommend_count",
         "recommend_count",
@@ -166,6 +167,7 @@ def test_ops_quality_summary_returns_expected_fields_without_secrets(
     assert expected_fields.issubset(payload)
     assert payload["total_runs"] == 1
     assert payload["total_reports"] >= 1
+    assert payload["real_report_count"] == 0
     assert payload["total_recommendations"] >= 1
     assert payload["summary_status"] == "success"
     assert payload["latest_run_id"] == run_response.json()["run_id"]

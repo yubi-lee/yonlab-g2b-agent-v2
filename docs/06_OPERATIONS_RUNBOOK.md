@@ -113,6 +113,21 @@ Controlled real operations checklist:
 - `YONLAB_AUTO_RUN_REAL_API=true` only for the controlled validation window
 - the operator explicitly confirms the controlled real command
 
+MVP release candidate controlled real result:
+
+- run_id: `run_20260621_133936_840140`
+- status: `success`
+- real report metadata count: 3
+- `/ops/report-index`: reflected
+- `/ops/quality-summary`: reflected
+- summary status: `success_with_warnings`
+
+After any controlled real validation, remove the session runtime gate:
+
+```powershell
+Remove-Item Env:\YONLAB_AUTO_RUN_REAL_API -ErrorAction SilentlyContinue
+```
+
 Keep these modes distinct:
 
 - `validate_local.ps1`: fixture-safe local validation; no confirmed real call.
@@ -135,6 +150,7 @@ key values are never printed by the controlled scripts.
 
 ```powershell
 python -m pytest -q
+.\scripts\check_deploy_readiness.ps1
 .\scripts\validate_local.ps1
 .\scripts\validate_ops_package.ps1
 .\scripts\validate_g2b_real_ops_readiness.ps1

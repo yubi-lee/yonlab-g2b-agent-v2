@@ -38,6 +38,7 @@ async function loadQualitySummary() {
   text("quality-total-runs", summary.total_runs);
   text("quality-summary-status", summary.summary_status || "unknown");
   text("quality-total-reports", summary.total_reports ?? 0);
+  text("quality-real-reports", summary.real_report_count ?? 0);
   text("quality-total-recommendations", summary.total_recommendations);
   text("quality-average-score", summary.average_score);
   text("quality-strong", summary.strong_recommend_count);
@@ -45,6 +46,7 @@ async function loadQualitySummary() {
   text("quality-consider", summary.consider_count);
   text("quality-not-recommended", summary.not_recommended_count);
   text("quality-latest-run", summary.latest_run_id || "none");
+  text("quality-latest-status", summary.latest_run?.status || "none");
   text("quality-latest-at", summary.latest_run_created_at || "none");
   text("quality-latest-error", summary.latest_run?.error_code || "none");
   text("quality-real-runs", `${summary.real_run_count ?? 0} (${summary.real_mode_status || "empty"})`);

@@ -34,6 +34,7 @@ def test_local_ops_package_info_is_safe_without_db_write(tmp_path: Path, monkeyp
     assert "/ui" in payload["routes"]
     assert "/ops/run-recommendations" in payload["routes"]
     assert "scripts/start_local_ops.ps1" in payload["scripts"]
+    assert "scripts/check_deploy_readiness.ps1" in payload["scripts"]
     assert "scripts/check_real_ops_readiness.ps1" in payload["scripts"]
     assert "SECRET-KEY" not in str(payload)
     assert db_path.exists() is False

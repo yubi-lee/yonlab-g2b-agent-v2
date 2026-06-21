@@ -729,6 +729,7 @@ def _empty_quality_summary() -> dict[str, Any]:
     return {
         "total_runs": 0,
         "total_reports": 0,
+        "real_report_count": 0,
         "total_recommendations": 0,
         "strong_recommend_count": 0,
         "recommend_count": 0,

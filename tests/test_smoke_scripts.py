@@ -28,6 +28,7 @@ SMOKE_SCRIPT_NAMES = (
 )
 OPS_SCRIPT_NAMES = (
     "start_local_ops.ps1",
+    "check_deploy_readiness.ps1",
     "validate_ops_package.ps1",
     "validate_g2b_real_ops_readiness.ps1",
     "validate_real_ops_controlled.ps1",
@@ -162,6 +163,21 @@ def test_check_real_ops_readiness_script_is_offline_and_secret_safe() -> None:
     assert "Invoke-WebRequest" not in content
     assert "run_ops_real_controlled.ps1" not in content
     assert "-ConfirmRealApiCall" not in content
+    assert "SECRET-KEY" not in content
+
+
+def test_check_deploy_readiness_script_is_offline_and_secret_safe() -> None:
+    content = (PROJECT_ROOT / "scripts" / "check_deploy_readiness.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "System.Text.UTF8Encoding($false)" in content
+    assert "working_tree_clean" in content
+    assert "required_scripts_present" in content
+    assert "real_api_settings_presence_as_boolean_only" in content
+    assert "Invoke-WebRequest" not in content
+    assert "validate_real_ops_controlled.ps1 -ConfirmRealApiCall" not in content
+    assert "YONLAB_AUTO_RUN_REAL_API = \"true\"" not in content
     assert "SECRET-KEY" not in content
 
 

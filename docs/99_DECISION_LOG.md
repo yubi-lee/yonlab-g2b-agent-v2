@@ -218,3 +218,19 @@ Reason:
   confirmation.
 - The diagnostic must not call the real API, print `.env` values, write reports, or become
   part of `validate_local.ps1`.
+
+## 2026-06-22 YOnLab G2B Agent v2 Task 28B
+
+Decision: Finalize the MVP release candidate after preserving the successful controlled real
+operations result from Task 28.
+
+Reason:
+
+- The controlled real call was already executed exactly once and succeeded as
+  `run_20260621_133936_840140`.
+- The run created 3 real report metadata records and was reflected in `/ops/report-index`
+  and `/ops/quality-summary` with `summary_status=success_with_warnings`.
+- The release candidate needs a safe deploy readiness script and documentation, but no
+  additional real G2B API calls.
+- Runtime artifacts, raw responses, SQLite databases, generated reports, `.env`, and secrets
+  must remain out of commits.

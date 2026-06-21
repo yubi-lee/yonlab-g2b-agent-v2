@@ -29,6 +29,8 @@ This repository is independent from the previous v1 project:
 - Local SQLite operations storage and a lightweight browser UI are available.
 - Local operations v1.0 packaging adds safe package metadata plus launcher and validation scripts.
 - Controlled real operations readiness can be inspected without calling the real API.
+- MVP release candidate validation includes one successful controlled real operations run:
+  `run_20260621_133936_840140`.
 - No frontend build tooling, external database server, or LLM is required.
 
 ## Run Tests
@@ -336,6 +338,42 @@ requires all of these conditions before the confirmed command is useful:
 
 `scripts/check_real_ops_readiness.ps1` prints boolean/status fields only. It does not call
 the real API, connect to the server, print service key values, or write reports.
+
+Controlled real operations result for the MVP release candidate:
+
+- run_id: `run_20260621_133936_840140`
+- status: `success`
+- real report metadata: 3 records
+- `/ops/report-index`: reflected
+- `/ops/quality-summary`: reflected
+- summary status: `success_with_warnings`
+
+Do not repeat confirmed real validation during routine local checks. Use `validate_local.ps1`
+for offline validation, and open `YONLAB_AUTO_RUN_REAL_API=true` only in the current
+operator-controlled PowerShell session for an intentional real validation window.
+
+## MVP Release Candidate Checklist
+
+Before packaging or handoff:
+
+- Run `ruff check app tests`.
+- Run `python -m pytest -q`.
+- Run `scripts\check_real_ops_readiness.ps1`.
+- Run `scripts\validate_real_ops_controlled.ps1` without `-ConfirmRealApiCall`.
+- Run `scripts\check_deploy_readiness.ps1`.
+- Run `scripts\validate_local.ps1`.
+- Confirm `.env`, service keys, captured raw responses, SQLite DBs, and generated reports are not staged.
+- Keep `YONLAB_AUTO_RUN_REAL_API` unset except during one controlled real validation window.
+
+Required deployment environment variable names:
+
+- `G2B_ENABLE_REAL_API`
+- `G2B_API_BASE_URL`
+- `G2B_API_SERVICE_KEY`
+- `G2B_LIST_ENDPOINT_PATH` or `G2B_ENDPOINT_PRESET`
+- `YONLAB_STORAGE_DB_PATH`
+- `YONLAB_REPORT_DIR`
+- `YONLAB_AUTO_RUN_REAL_API`
 
 For one intentional controlled operations run, use:
 
