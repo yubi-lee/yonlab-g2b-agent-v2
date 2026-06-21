@@ -20,9 +20,12 @@ SMOKE_SCRIPT_NAMES = (
     "show_ops_runs.ps1",
     "show_ops_recommendations.ps1",
     "smoke_ui_health.ps1",
+    "smoke_ops_package_info.ps1",
     "smoke_ops_ui_flow.ps1",
 )
 OPS_SCRIPT_NAMES = (
+    "start_local_ops.ps1",
+    "validate_ops_package.ps1",
     "open_latest_report_dir.ps1",
     "run_daily_fixture.ps1",
     "register_daily_task_template.ps1",

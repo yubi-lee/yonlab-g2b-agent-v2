@@ -118,6 +118,7 @@ Recommended `/g2b/pdf-analysis-candidates` body:
 - `tests/test_smoke_scripts.py`: smoke script and line-ending policy presence.
 - `tests/test_operations_storage.py`: local SQLite operations storage, fixture run persistence, report artifact writing, and real operations guard behavior.
 - `tests/test_operations_ui.py`: `/ui`, static assets, report-content safety, recommendation `run_id` filtering, UI smoke scripts, and duplicated Korean fixture artifact regression.
+- `tests/test_local_ops_package.py`: local operations v1.0 package metadata, dashboard surfacing, script presence, and no-DB-write safety.
 
 ## Real API Test Rule
 
@@ -142,6 +143,7 @@ Tests must never call the real G2B/Public Data Portal API. Real API behavior is 
 
 - Tests must not require `.env`, secrets, an external database server, frontend build tooling, or an LLM.
 - SQLite tests must use isolated temporary storage paths and never call the real API.
+- Package metadata tests must not create SQLite files or expose service key values.
 - Tests must not download real attachments or require HWP/HWPX parsing.
 - Add fixture cases before expanding real API behavior.
 - `python -m pytest -q` must remain the standard validation command.

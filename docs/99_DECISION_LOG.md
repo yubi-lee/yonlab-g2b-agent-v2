@@ -148,3 +148,15 @@ Reason:
 - The UI calls only safe API endpoints by default and keeps fixture mode as the default run mode.
 - Report content is read through stored metadata only and is constrained to the configured report directory.
 - Generated local operations data can be reset with `scripts/reset_local_ops_data.ps1` without touching `.env` or source fixtures.
+
+## 2026-06-21 Local Operations v1.0 Package
+
+Decision: Package the v2 app as a local operations v1.0 application with safe package
+metadata, a local launcher, and package validation script.
+
+Reason:
+
+- Operators need a clear entrypoint beyond the development server script.
+- `/ops/package-info` lets the UI and smoke scripts verify version, routes, scripts,
+  capabilities, and safety flags without touching SQLite or real APIs.
+- The package remains fixture-first by default and never returns service key values.

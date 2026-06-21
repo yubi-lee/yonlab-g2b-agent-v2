@@ -226,6 +226,26 @@ th {
   color: #374151;
 }
 
+.package-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.package-grid h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.package-grid ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.package-grid li {
+  margin: 4px 0;
+}
+
 .report-list {
   display: flex;
   gap: 8px;

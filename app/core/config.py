@@ -8,6 +8,7 @@ class Settings(BaseSettings):
 
     app_env: str = "local"
     app_name: str = "YOnLab G2B Agent v2"
+    app_version: str = "1.0.0-local"
 
     g2b_enable_real_api: bool = False
     g2b_api_base_url: str = "https://apis.data.go.kr"
@@ -32,6 +33,8 @@ class Settings(BaseSettings):
     yonlab_default_keyword: str = "AI"
     yonlab_default_num_rows: int = 10
     yonlab_auto_run_real_api: bool = False
+    yonlab_local_ops_package_name: str = "YOnLab G2B Agent v2 Local Operations"
+    yonlab_local_ops_package_version: str = "1.0"
 
     log_level: str = "INFO"
 

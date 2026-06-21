@@ -1,0 +1,77 @@
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+import app.api.routes as routes
+from app.core.config import Settings
+from app.main import app
+from app.services.local_ops_package import build_local_ops_package_info
+
+client = TestClient(app)
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_local_ops_package_info_is_safe_without_db_write(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    db_path = tmp_path / "ops" / "should_not_exist.sqlite3"
+    report_dir = tmp_path / "reports"
+    settings = Settings(
+        g2b_api_service_key="SECRET-KEY",
+        yonlab_storage_db_path=str(db_path),
+        yonlab_report_dir=str(report_dir),
+    )
+    monkeypatch.setattr(routes, "get_settings", lambda: settings)
+
+    response = client.get("/ops/package-info")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["package_version"] == "1.0"
+    assert payload["app_version"] == "1.0.0-local"
+    assert payload["runtime_mode"] == "local_operations"
+    assert payload["service_key_configured"] is True
+    assert payload["service_key_exposed"] is False
+    assert payload["safety"]["secrets_returned"] is False
+    assert "/ui" in payload["routes"]
+    assert "/ops/run-recommendations" in payload["routes"]
+    assert "scripts/start_local_ops.ps1" in payload["scripts"]
+    assert "SECRET-KEY" not in str(payload)
+    assert db_path.exists() is False
+    assert report_dir.exists() is False
+
+
+def test_local_ops_package_builder_sanitizes_non_default_paths(tmp_path: Path) -> None:
+    settings = Settings(
+        yonlab_storage_db_path=str(tmp_path / "private" / "ops.sqlite3"),
+        yonlab_report_dir=str(tmp_path / "private" / "reports"),
+    )
+
+    payload = build_local_ops_package_info(settings)
+
+    assert payload["storage"]["db_path"] == "configured"
+    assert payload["storage"]["report_dir"] == "configured"
+
+
+def test_dashboard_surfaces_local_ops_package_card() -> None:
+    response = client.get("/ui")
+
+    assert response.status_code == 200
+    assert "Local Operations v1.0 Package" in response.text
+    assert "package-summary" in response.text
+    assert "SECRET-KEY" not in response.text
+
+
+def test_local_ops_package_scripts_and_docs_exist() -> None:
+    expected_files = [
+        "scripts/start_local_ops.ps1",
+        "scripts/validate_ops_package.ps1",
+        "scripts/smoke_ops_package_info.ps1",
+        "docs/07_LOCAL_OPERATIONS_V1.md",
+    ]
+    for relative_path in expected_files:
+        assert (PROJECT_ROOT / relative_path).is_file()
+
+
+def test_validate_local_references_package_smoke() -> None:
+    content = (PROJECT_ROOT / "scripts" / "validate_local.ps1").read_text(encoding="utf-8")
+
+    assert "smoke_ops_package_info.ps1" in content

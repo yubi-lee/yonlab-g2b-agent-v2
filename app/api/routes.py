@@ -58,6 +58,7 @@ from app.services.attachment_analysis_planner import (
 )
 from app.services.attachment_downloader import build_attachment_download_plan_items
 from app.services.document_risk_analyzer import analyze_document_risks
+from app.services.local_ops_package import build_local_ops_package_info
 from app.services.operations_runner import run_recommendation_job
 from app.services.pdf_text_extractor import extract_pdf_text_from_file
 from app.storage.models import OperationsRunSummary, OpsRunRequest
@@ -286,6 +287,11 @@ def get_g2b_endpoint_presets() -> G2BEndpointPresetListResponse:
 @router.get("/g2b/real-readiness", response_model=G2BRealReadinessResponse)
 def get_g2b_real_readiness() -> G2BRealReadinessResponse:
     return G2BRealReadinessResponse(**build_real_readiness(get_settings()))
+
+
+@router.get("/ops/package-info")
+def get_ops_package_info() -> dict[str, object]:
+    return build_local_ops_package_info(get_settings())
 
 
 @router.post("/g2b/document-risk-analysis", response_model=DocumentRiskAnalysisResult)

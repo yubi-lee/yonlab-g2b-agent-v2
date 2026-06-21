@@ -38,6 +38,7 @@ FastAPI routes
 - `app/services/pdf_text_extractor.py`: controlled local PDF text extraction with dependency fallback.
 - `app/services/attachment_downloader.py`: blocked-by-default attachment download planning.
 - `app/services/attachment_analysis_planner.py`: PDF/HWP/HWPX analysis planning from attachment metadata.
+- `app/services/local_ops_package.py`: safe local operations v1.0 package metadata builder.
 - `app/services/operations_runner.py`: fixture-first operations job runner that persists saved runs, recommendations, and report files.
 - `app/services/report_persistence.py`: UTF-8 markdown and compact JSON artifact writer under the configured report directory.
 - `app/storage/database.py`: local SQLite schema initializer for operations storage.
@@ -81,6 +82,7 @@ fixture or guarded real search
 browser
 -> static dashboard files
 -> safe status endpoints
+-> /ops/package-info metadata
 -> operations endpoints
 -> saved report markdown viewer
 ```

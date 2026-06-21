@@ -16,6 +16,18 @@ http://127.0.0.1:8000/ui
 
 `GET /` redirects to `/ui`.
 
+For the packaged v1.0 local operations launcher:
+
+```powershell
+.\scripts\start_local_ops.ps1
+```
+
+Inspect safe package metadata:
+
+```text
+GET /ops/package-info
+```
+
 ## Run a Fixture Recommendation Job
 
 The dashboard defaults to fixture mode with keyword `AI`, page `1`, and `num_rows=5`.
@@ -75,6 +87,7 @@ or operations endpoints.
 ```powershell
 python -m pytest -q
 .\scripts\validate_local.ps1
+.\scripts\validate_ops_package.ps1
 ```
 
 `validate_local.ps1` runs fixture-safe UI and operations smoke checks. It does not call the

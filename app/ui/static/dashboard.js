@@ -17,17 +17,20 @@ const apiJson = async (url, options = {}) => {
 const yesNo = (value) => (value ? "yes" : "no");
 
 async function loadStatus() {
-  const [health, config, readiness] = await Promise.all([
+  const [health, config, readiness, packageInfo] = await Promise.all([
     apiJson("/health"),
     apiJson("/g2b/config"),
     apiJson("/g2b/real-readiness"),
+    apiJson("/ops/package-info"),
   ]);
   text("status-health", health.status);
+  text("status-package", packageInfo.package_version);
   text("status-real-api", yesNo(config.real_api_enabled));
   text("status-service-key", yesNo(config.service_key_configured));
   text("status-endpoint", yesNo(config.endpoint_path_configured));
   text("status-fixture", yesNo(config.fixture_mode));
   text("status-readiness", readiness.ready ? "ready" : "not ready");
+  renderPackageInfo(packageInfo);
 }
 
 function requestFromForm(form) {
@@ -177,6 +180,23 @@ async function loadReportContent(runId, noticeId) {
     `/ops/report-content/${encodeURIComponent(runId)}/${encodeURIComponent(noticeId)}`,
   );
   document.getElementById("report-viewer").textContent = payload.markdown || "";
+}
+
+function renderPackageInfo(packageInfo) {
+  document.getElementById("package-summary").textContent =
+    `${packageInfo.package_name} ${packageInfo.package_version} / default ${packageInfo.default_run_mode} / reports ${packageInfo.storage.report_dir}`;
+  renderList("package-capabilities", packageInfo.capabilities || []);
+  renderList("package-scripts", packageInfo.scripts || []);
+}
+
+function renderList(elementId, values) {
+  const list = document.getElementById(elementId);
+  list.innerHTML = "";
+  for (const value of values) {
+    const item = document.createElement("li");
+    item.textContent = value;
+    list.appendChild(item);
+  }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {

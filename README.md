@@ -27,6 +27,7 @@ This repository is independent from the previous v1 project:
 - Tests do not call any real G2B/Public Data Portal API.
 - Korean UTF-8 regression tests cover fixture data, API responses, and report output.
 - Local SQLite operations storage and a lightweight browser UI are available.
+- Local operations v1.0 packaging adds safe package metadata plus launcher and validation scripts.
 - No frontend build tooling, external database server, or LLM is required.
 
 ## Run Tests
@@ -56,6 +57,12 @@ Set-Location D:\Views\yonlab-g2b-agent-v2
 .\scripts\dev_start.ps1
 ```
 
+Packaged local operations launcher:
+
+```powershell
+.\scripts\start_local_ops.ps1
+```
+
 Open:
 
 ```text
@@ -71,6 +78,7 @@ http://127.0.0.1:8000/health
 - `GET /`
 - `GET /ui`
 - `GET /health`
+- `GET /ops/package-info`
 - `GET /profile/yonlab`
 - `GET /fixtures/g2b/notices`
 - `POST /notices/normalize`
@@ -116,12 +124,15 @@ To reset generated local operations data without touching `.env` or source fixtu
 
 Operations endpoints:
 
+- `GET /ops/package-info`
 - `POST /ops/run-recommendations`
 - `GET /ops/runs`
 - `GET /ops/runs/{run_id}`
 - `GET /ops/recommendations`
 - `GET /ops/reports/{run_id}`
 - `GET /ops/report-content/{run_id}/{notice_id}`
+
+For the packaged local operations workflow, see `docs/07_LOCAL_OPERATIONS_V1.md`.
 
 ## G2B Endpoints
 

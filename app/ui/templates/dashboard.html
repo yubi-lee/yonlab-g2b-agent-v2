@@ -26,6 +26,7 @@
         </div>
         <dl class="status-grid">
           <div><dt>Health</dt><dd id="status-health">Loading</dd></div>
+          <div><dt>Package</dt><dd id="status-package">Loading</dd></div>
           <div><dt>Real API</dt><dd id="status-real-api">Loading</dd></div>
           <div><dt>Service Key</dt><dd id="status-service-key">Loading</dd></div>
           <div><dt>Endpoint Path</dt><dd id="status-endpoint">Loading</dd></div>
@@ -92,6 +93,23 @@
           </div>
         </form>
         <pre id="run-result" class="result-box">No run yet.</pre>
+      </section>
+
+      <section class="panel package-panel" aria-labelledby="package-title">
+        <div class="panel-heading">
+          <h2 id="package-title">Local Operations v1.0 Package</h2>
+        </div>
+        <div id="package-summary" class="detail-summary">Loading package metadata.</div>
+        <div class="package-grid">
+          <div>
+            <h3>Capabilities</h3>
+            <ul id="package-capabilities"></ul>
+          </div>
+          <div>
+            <h3>Operator Scripts</h3>
+            <ul id="package-scripts"></ul>
+          </div>
+        </div>
       </section>
 
       <section class="panel table-panel" aria-labelledby="runs-title">

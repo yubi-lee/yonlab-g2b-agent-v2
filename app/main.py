@@ -14,7 +14,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title=settings.app_name,
-        version="0.1.0",
+        version=settings.app_version,
     )
     app.mount("/ui/static", StaticFiles(directory=UI_STATIC_DIR), name="ui-static")
     app.router.routes.extend(router.routes)

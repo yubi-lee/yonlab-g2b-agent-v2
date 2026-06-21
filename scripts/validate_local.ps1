@@ -134,6 +134,9 @@ try {
     Invoke-ValidationStep "smoke_ui_health" {
         & (Join-Path $ProjectRoot "scripts\smoke_ui_health.ps1")
     }
+    Invoke-ValidationStep "smoke_ops_package_info" {
+        & (Join-Path $ProjectRoot "scripts\smoke_ops_package_info.ps1")
+    }
     Invoke-ValidationStep "run_ops_fixture" {
         & (Join-Path $ProjectRoot "scripts\run_ops_fixture.ps1")
     }
