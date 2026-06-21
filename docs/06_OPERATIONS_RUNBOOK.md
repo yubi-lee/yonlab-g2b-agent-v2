@@ -159,3 +159,7 @@ python -m pytest -q
 
 `validate_local.ps1` runs fixture-safe UI and operations smoke checks. It does not call the
 real G2B/Public Data Portal API.
+
+For release deployment handoff, including setup, offline validation, controlled real-run
+procedure, smoke tests, rollback criteria, and troubleshooting, see
+`docs/07_DEPLOYMENT_HANDOFF.md`.

@@ -68,9 +68,23 @@ def test_local_ops_package_scripts_and_docs_exist() -> None:
         "scripts/validate_ops_package.ps1",
         "scripts/smoke_ops_package_info.ps1",
         "docs/07_LOCAL_OPERATIONS_V1.md",
+        "docs/07_DEPLOYMENT_HANDOFF.md",
     ]
     for relative_path in expected_files:
         assert (PROJECT_ROOT / relative_path).is_file()
+
+
+def test_deployment_handoff_doc_is_safe_and_operator_ready() -> None:
+    content = (PROJECT_ROOT / "docs" / "07_DEPLOYMENT_HANDOFF.md").read_text(encoding="utf-8")
+
+    assert "Deployment Handoff" in content
+    assert "validate_local.ps1" in content
+    assert "check_deploy_readiness.ps1" in content
+    assert "YONLAB_AUTO_RUN_REAL_API" in content
+    assert "-ConfirmRealApiCall" in content
+    assert "service keys" in content.lower()
+    assert "SECRET-KEY" not in content
+    assert "G2B_API_SERVICE_KEY=" not in content
 
 
 def test_validate_local_references_package_smoke() -> None:

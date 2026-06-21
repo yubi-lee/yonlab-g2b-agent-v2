@@ -13,6 +13,7 @@ htmlcov/
 data/raw/
 data/private/
 data/captured/
+data/downloaded/
 data/extracted/
 data/ops/
 data/reports/

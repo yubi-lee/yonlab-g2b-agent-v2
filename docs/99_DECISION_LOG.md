@@ -234,3 +234,18 @@ Reason:
   additional real G2B API calls.
 - Runtime artifacts, raw responses, SQLite databases, generated reports, `.env`, and secrets
   must remain out of commits.
+
+## 2026-06-22 YOnLab G2B Agent v2 Task 29
+
+Decision: Prepare release packaging, deployment handoff, GitHub push, and release candidate
+tagging without making another real G2B API call.
+
+Reason:
+
+- Operators need a single Windows PowerShell handoff covering setup, offline validation,
+  local UI startup, controlled real-run procedure, smoke tests, rollback criteria, and
+  troubleshooting.
+- `scripts/check_deploy_readiness.ps1` should treat the deployment handoff document as a
+  required release artifact.
+- The release candidate should be pushed to GitHub and tagged as `v0.1.0-rc1` only after
+  fixture-safe validation passes and the working tree is clean.

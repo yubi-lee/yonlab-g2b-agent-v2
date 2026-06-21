@@ -63,7 +63,12 @@ if ($GitAvailable) {
     $WorkingTreeStatus = @(git status --porcelain)
 }
 
-$RequiredDocs = @("README.md", "docs\06_OPERATIONS_RUNBOOK.md", "docs\99_DECISION_LOG.md")
+$RequiredDocs = @(
+    "README.md",
+    "docs\06_OPERATIONS_RUNBOOK.md",
+    "docs\07_DEPLOYMENT_HANDOFF.md",
+    "docs\99_DECISION_LOG.md"
+)
 $RequiredScripts = @(
     "scripts\validate_local.ps1",
     "scripts\check_no_secrets.ps1",

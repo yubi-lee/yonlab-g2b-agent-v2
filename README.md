@@ -144,6 +144,7 @@ Operations endpoints:
 - `GET /ops/report-content/{run_id}/{notice_id}`
 
 For the packaged local operations workflow, see `docs/07_LOCAL_OPERATIONS_V1.md`.
+For release deployment handoff, see `docs/07_DEPLOYMENT_HANDOFF.md`.
 
 ## G2B Endpoints
 
