@@ -2,7 +2,8 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, HTTPException
+from fastapi.responses import FileResponse, RedirectResponse
 
 from app.core.config import get_settings
 from app.domain.bid_notice import BidNotice
@@ -63,6 +64,7 @@ from app.storage.models import OperationsRunSummary, OpsRunRequest
 from app.storage.repository import OperationsRepository
 
 router = APIRouter()
+UI_TEMPLATE_PATH = Path(__file__).resolve().parents[1] / "ui" / "templates" / "dashboard.html"
 NOTICE_REQUEST_BODY = Body(
     openapi_examples={
         "yonlab_ai_notice": {
@@ -226,6 +228,16 @@ def health_check() -> dict[str, str]:
         "status": "ok",
         "app": settings.app_name,
     }
+
+
+@router.get("/", include_in_schema=False)
+def root() -> RedirectResponse:
+    return RedirectResponse(url="/ui")
+
+
+@router.get("/ui", include_in_schema=False)
+def operations_dashboard() -> FileResponse:
+    return FileResponse(UI_TEMPLATE_PATH, media_type="text/html; charset=utf-8")
 
 
 @router.get("/profile/yonlab", response_model=YOnLabProfile)
@@ -562,6 +574,7 @@ def ops_list_recommendations(
     min_score: int | None = None,
     label: str | None = None,
     keyword: str | None = None,
+    run_id: str | None = None,
 ) -> dict[str, Any]:
     repository = OperationsRepository(get_settings().yonlab_storage_db_path)
     return {
@@ -570,6 +583,7 @@ def ops_list_recommendations(
             min_score=min_score,
             label=label,
             keyword=keyword,
+            run_id=run_id,
         )
     }
 
@@ -578,6 +592,26 @@ def ops_list_recommendations(
 def ops_list_reports(run_id: str) -> dict[str, Any]:
     repository = OperationsRepository(get_settings().yonlab_storage_db_path)
     return {"reports": repository.list_reports(run_id)}
+
+
+@router.get("/ops/report-content/{run_id}/{notice_id}")
+def ops_report_content(run_id: str, notice_id: str) -> dict[str, str]:
+    settings = get_settings()
+    repository = OperationsRepository(settings.yonlab_storage_db_path)
+    report = repository.get_report(run_id, notice_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail="Report not found.")
+
+    report_path = _safe_report_path(report["report_path"], settings.yonlab_report_dir)
+    if report_path is None or not report_path.is_file():
+        raise HTTPException(status_code=404, detail="Report not found.")
+
+    return {
+        "run_id": run_id,
+        "notice_id": notice_id,
+        "title": str(report["title"]),
+        "markdown": report_path.read_text(encoding="utf-8"),
+    }
 
 
 def _notice_input(payload: NoticeRequest) -> dict[str, Any] | BidNotice:
@@ -601,6 +635,19 @@ def _detail_queue_from_response(search_response: G2BSearchResponse) -> list[Any]
     if search_response.detail_analysis_queue:
         return search_response.detail_analysis_queue
     return build_detail_analysis_queue(search_response.notices)
+
+
+def _safe_report_path(report_path: str, report_dir: str) -> Path | None:
+    base_dir = Path(report_dir).resolve()
+    candidate = Path(report_path)
+    if not candidate.is_absolute():
+        candidate = Path.cwd() / candidate
+    resolved = candidate.resolve()
+    try:
+        resolved.relative_to(base_dir)
+    except ValueError:
+        return None
+    return resolved
 
 
 def _is_fixture_document_path(file_path: str) -> bool:

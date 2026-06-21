@@ -1,5 +1,5 @@
-from pathlib import Path
 import sqlite3
+from pathlib import Path
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS search_runs (
@@ -62,4 +62,3 @@ def connect_database(db_path: str | Path) -> sqlite3.Connection:
 def initialize_database(db_path: str | Path) -> None:
     with connect_database(db_path) as connection:
         connection.executescript(SCHEMA_SQL)
-

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.core.config import Settings
 from app.domain.bid_notice import BidNotice
@@ -204,8 +204,8 @@ def _score_notice(notice: BidNotice) -> tuple[BidNotice, RecommendationScore, Re
 
 
 def _new_run_id() -> str:
-    return datetime.now(timezone.utc).strftime("run_%Y%m%d_%H%M%S_%f")
+    return datetime.now(UTC).strftime("run_%Y%m%d_%H%M%S_%f")
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()

@@ -13,6 +13,7 @@ Do not paste, commit, print, or ask for the service key.
 - Captured real responses must not contain the service key and stay under `data/captured/`.
 - Attachment download is disabled by default with `G2B_ENABLE_ATTACHMENT_DOWNLOAD=false`.
 - PDF text extraction is disabled by default with `G2B_ENABLE_PDF_TEXT_EXTRACTION=false`.
+- The operations dashboard at `/ui` defaults to fixture mode and never displays service key values.
 - Local validation does not download real attachments or parse HWP/HWPX contents.
 
 ## Approved Endpoint
@@ -111,6 +112,10 @@ The first controlled real smoke has succeeded. For recommendation calibration, u
 ```
 
 Real responses now include safe endpoint metadata and can use `active_only=true` to exclude already-closed notices. Service keys remain local-only and are not printed.
+
+Do not use the `/ui` real mode for repeated testing. If you use it for a controlled smoke,
+confirm that `.env` is configured locally, keep `num_rows` small, and check
+`confirm_real_api_call=true` only for the intentional run.
 
 ## Attachment and PDF Follow-up
 

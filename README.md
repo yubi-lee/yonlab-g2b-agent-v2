@@ -26,7 +26,8 @@ This repository is independent from the previous v1 project:
 - PDF text extraction is disabled by default and only reads local PDF files when explicitly confirmed and enabled.
 - Tests do not call any real G2B/Public Data Portal API.
 - Korean UTF-8 regression tests cover fixture data, API responses, and report output.
-- No database, frontend, or LLM is required.
+- Local SQLite operations storage and a lightweight browser UI are available.
+- No frontend build tooling, external database server, or LLM is required.
 
 ## Run Tests
 
@@ -58,12 +59,17 @@ Set-Location D:\Views\yonlab-g2b-agent-v2
 Open:
 
 ```text
+http://127.0.0.1:8000/ui
 http://127.0.0.1:8000/docs
 http://127.0.0.1:8000/health
 ```
 
+`GET /` redirects to `/ui`.
+
 ## Existing Endpoints
 
+- `GET /`
+- `GET /ui`
 - `GET /health`
 - `GET /profile/yonlab`
 - `GET /fixtures/g2b/notices`
@@ -71,6 +77,51 @@ http://127.0.0.1:8000/health
 - `POST /recommendations/score`
 - `POST /recommendations/report`
 - `POST /demo/recommendations`
+
+## Operations UI and Storage
+
+The lightweight operations dashboard is served by FastAPI with static HTML, CSS, and
+vanilla JavaScript. It does not use React, Vue, Node, Streamlit, or a separate frontend app.
+
+Open:
+
+```text
+http://127.0.0.1:8000/ui
+```
+
+From the dashboard you can:
+
+- inspect safe system status from `/health`, `/g2b/config`, and `/g2b/real-readiness`.
+- run a fixture recommendation job through `/ops/run-recommendations`.
+- view recent saved runs from `/ops/runs`.
+- view saved recommendations from `/ops/recommendations`.
+- open saved markdown reports through `/ops/report-content/{run_id}/{notice_id}`.
+
+Default operations mode is fixture. Real API mode still requires `.env` configuration,
+`confirm_real_api_call=true`, and the existing real API safety gates. Service key values are
+never shown in the UI or operations responses.
+
+Generated local operations data is ignored by Git:
+
+```text
+data/ops/
+data/reports/
+```
+
+To reset generated local operations data without touching `.env` or source fixtures:
+
+```powershell
+.\scripts\reset_local_ops_data.ps1
+```
+
+Operations endpoints:
+
+- `POST /ops/run-recommendations`
+- `GET /ops/runs`
+- `GET /ops/runs/{run_id}`
+- `GET /ops/recommendations`
+- `GET /ops/reports/{run_id}`
+- `GET /ops/report-content/{run_id}/{notice_id}`
 
 ## G2B Endpoints
 
@@ -291,6 +342,8 @@ Set-Location D:\Views\yonlab-g2b-agent-v2
 .\scripts\smoke_g2b_real_readiness.ps1
 .\scripts\smoke_g2b_search_fixture.ps1
 .\scripts\smoke_g2b_recommend_fixture.ps1
+.\scripts\smoke_ui_health.ps1
+.\scripts\smoke_ops_ui_flow.ps1
 .\scripts\smoke_g2b_real_guard_blocked.ps1
 .\scripts\smoke_demo.ps1
 .\scripts\smoke_report.ps1

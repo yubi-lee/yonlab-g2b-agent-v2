@@ -5,7 +5,9 @@ __pycache__/
 .env.*
 !.env.example
 .pytest_cache/
+.pytest_tmp/
 .ruff_cache/
+.local_validation_data/
 .coverage
 htmlcov/
 data/raw/

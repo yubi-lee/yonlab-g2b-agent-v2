@@ -16,7 +16,7 @@ Use one command for local end-to-end validation:
 .\scripts\validate_local.ps1
 ```
 
-The script runs `python -m pytest -q`, starts a temporary FastAPI server on `127.0.0.1:8000`, waits for `/health`, runs fixture smoke scripts, verifies the real API guard-blocked smoke path, runs the Korean markdown report smoke check, and stops the server in a `finally` block.
+The script runs `python -m pytest -q`, starts a temporary FastAPI server on `127.0.0.1:8000`, waits for `/health`, runs fixture smoke scripts, verifies the UI and operations fixture flow, verifies the real API guard-blocked smoke path, runs the Korean markdown report smoke check, and stops the server in a `finally` block.
 
 ## Real API Readiness Validation
 
@@ -116,6 +116,8 @@ Recommended `/g2b/pdf-analysis-candidates` body:
 - `tests/test_recommendation_api.py`: API contract for MVP endpoints.
 - `tests/test_demo_recommendations.py`: ranked fixture demo recommendations.
 - `tests/test_smoke_scripts.py`: smoke script and line-ending policy presence.
+- `tests/test_operations_storage.py`: local SQLite operations storage, fixture run persistence, report artifact writing, and real operations guard behavior.
+- `tests/test_operations_ui.py`: `/ui`, static assets, report-content safety, recommendation `run_id` filtering, UI smoke scripts, and duplicated Korean fixture artifact regression.
 
 ## Real API Test Rule
 
@@ -138,7 +140,8 @@ Tests must never call the real G2B/Public Data Portal API. Real API behavior is 
 
 ## Rules
 
-- Tests must not require `.env`, secrets, a database, frontend UI, or an LLM.
+- Tests must not require `.env`, secrets, an external database server, frontend build tooling, or an LLM.
+- SQLite tests must use isolated temporary storage paths and never call the real API.
 - Tests must not download real attachments or require HWP/HWPX parsing.
 - Add fixture cases before expanding real API behavior.
 - `python -m pytest -q` must remain the standard validation command.
@@ -156,3 +159,4 @@ The regression suite checks:
 - `/g2b/search` and `/g2b/recommendations` preserve Korean response fields.
 - `/recommendations/report` preserves Korean markdown headings.
 - common mojibake fragments do not appear in Korean content fields.
+- duplicated fixture fragments such as `서서울울`, `부부산산`, `지지역역`, `시시스스템템`, and `부부합합합니니다다` do not appear in fresh fixture operations output.

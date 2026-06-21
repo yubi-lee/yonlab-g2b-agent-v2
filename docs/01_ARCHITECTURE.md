@@ -12,6 +12,8 @@ FastAPI routes
   -> optional document/PDF text risk analysis
   -> 100-point score engine
   -> deterministic markdown report
+  -> optional SQLite operations persistence
+  -> lightweight static operations UI
 ```
 
 ## Modules
@@ -36,8 +38,15 @@ FastAPI routes
 - `app/services/pdf_text_extractor.py`: controlled local PDF text extraction with dependency fallback.
 - `app/services/attachment_downloader.py`: blocked-by-default attachment download planning.
 - `app/services/attachment_analysis_planner.py`: PDF/HWP/HWPX analysis planning from attachment metadata.
+- `app/services/operations_runner.py`: fixture-first operations job runner that persists saved runs, recommendations, and report files.
+- `app/services/report_persistence.py`: UTF-8 markdown and compact JSON artifact writer under the configured report directory.
+- `app/storage/database.py`: local SQLite schema initializer for operations storage.
+- `app/storage/repository.py`: local SQLite read/write repository for operation runs, recommendations, and reports.
 - `app/reports/markdown_report.py`: Korean markdown report generator.
 - `app/api/routes.py`: API endpoints for MVP and G2B dual pipeline.
+- `app/ui/templates/dashboard.html`: no-framework operations dashboard HTML.
+- `app/ui/static/dashboard.css`: dashboard styling.
+- `app/ui/static/dashboard.js`: dashboard API client and report viewer behavior.
 - `data/fixtures/g2b/real_servc_search_sample.json`: sanitized observed real service-search response sample for offline tests.
 
 ## Data Flow
@@ -67,6 +76,13 @@ provided text
 fixture or guarded real search
 -> detail_analysis_queue attachment metadata
 -> PDF-only candidate list
+
+/ui
+browser
+-> static dashboard files
+-> safe status endpoints
+-> operations endpoints
+-> saved report markdown viewer
 ```
 
 ## Safety Constraints
@@ -81,5 +97,7 @@ fixture or guarded real search
 - HWP/HWPX content extraction is not implemented; those files remain manual review.
 - `scripts/validate_g2b_real_readiness.ps1` checks readiness without calling the real API.
 - The service key is never returned in API responses.
+- The operations UI only calls safe JSON endpoints and never displays service key values.
+- `GET /ops/report-content/{run_id}/{notice_id}` reads only report metadata recorded in SQLite and rejects paths outside the configured report directory.
 - Tests and smoke fixture scripts do not call the real API.
-- No database, frontend UI, or LLM is required.
+- No external database server, frontend build toolchain, or LLM is required.

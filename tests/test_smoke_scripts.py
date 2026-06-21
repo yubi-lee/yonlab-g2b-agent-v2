@@ -19,11 +19,14 @@ SMOKE_SCRIPT_NAMES = (
     "run_ops_real_template.ps1",
     "show_ops_runs.ps1",
     "show_ops_recommendations.ps1",
+    "smoke_ui_health.ps1",
+    "smoke_ops_ui_flow.ps1",
 )
 OPS_SCRIPT_NAMES = (
     "open_latest_report_dir.ps1",
     "run_daily_fixture.ps1",
     "register_daily_task_template.ps1",
+    "reset_local_ops_data.ps1",
 )
 VALIDATION_SCRIPT_NAME = "validate_local.ps1"
 REAL_READINESS_SCRIPT_NAME = "validate_g2b_real_readiness.ps1"
@@ -83,7 +86,9 @@ def test_validate_local_script_runs_expected_validation_steps() -> None:
     assert "smoke_g2b_real_readiness.ps1" in content
     assert "smoke_g2b_search_fixture.ps1" in content
     assert "smoke_g2b_recommend_fixture.ps1" in content
+    assert "smoke_ui_health.ps1" in content
     assert "run_ops_fixture.ps1" in content
+    assert "smoke_ops_ui_flow.ps1" in content
     assert "show_ops_runs.ps1" in content
     assert "show_ops_recommendations.ps1" in content
     assert "smoke_g2b_document_risk_analysis.ps1" in content

@@ -136,3 +136,15 @@ Reason:
 - PDF text extraction must be local-file only, size-limited, explicitly confirmed, and disabled by default.
 - HWP/HWPX parsing remains manual review until a controlled parser is selected.
 - Local validation must remain fixture-only and must not call real G2B APIs or download attachments.
+
+## 2026-06-21 Lightweight Operations UI
+
+Decision: Add a no-framework browser dashboard served directly by FastAPI at `/ui`.
+
+Reason:
+
+- Operators need a simple local browser surface for fixture recommendation runs, saved run review, saved recommendation filtering, and markdown report viewing.
+- A static HTML/CSS/vanilla JavaScript UI keeps the MVP compact and avoids frontend build tooling.
+- The UI calls only safe API endpoints by default and keeps fixture mode as the default run mode.
+- Report content is read through stored metadata only and is constrained to the configured report directory.
+- Generated local operations data can be reset with `scripts/reset_local_ops_data.ps1` without touching `.env` or source fixtures.

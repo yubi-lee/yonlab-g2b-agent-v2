@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>YOnLab G2B Agent Operations</title>
+    <link rel="stylesheet" href="/ui/static/dashboard.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Operations</p>
+        <h1>YOnLab G2B Agent</h1>
+      </div>
+      <nav aria-label="Primary links">
+        <a href="/docs">Docs</a>
+        <a href="/health">Health</a>
+      </nav>
+    </header>
+
+    <main class="layout">
+      <section class="panel status-panel" aria-labelledby="system-status-title">
+        <div class="panel-heading">
+          <h2 id="system-status-title">System Status</h2>
+          <button id="refresh-status" type="button">Refresh</button>
+        </div>
+        <dl class="status-grid">
+          <div><dt>Health</dt><dd id="status-health">Loading</dd></div>
+          <div><dt>Real API</dt><dd id="status-real-api">Loading</dd></div>
+          <div><dt>Service Key</dt><dd id="status-service-key">Loading</dd></div>
+          <div><dt>Endpoint Path</dt><dd id="status-endpoint">Loading</dd></div>
+          <div><dt>Fixture Mode</dt><dd id="status-fixture">Loading</dd></div>
+          <div><dt>Readiness</dt><dd id="status-readiness">Loading</dd></div>
+        </dl>
+      </section>
+
+      <section class="panel" aria-labelledby="run-title">
+        <div class="panel-heading">
+          <h2 id="run-title">Run recommendation</h2>
+        </div>
+        <p class="warning">
+          Real API mode requires .env configuration and confirm_real_api_call=true.
+          Do not use real mode for repeated testing.
+        </p>
+        <form id="run-form" class="form-grid">
+          <label>
+            Mode
+            <select name="mode">
+              <option value="fixture" selected>fixture</option>
+              <option value="real">real</option>
+            </select>
+          </label>
+          <label>
+            Keyword
+            <input name="keyword" value="AI" />
+          </label>
+          <label>
+            Page
+            <input name="page_no" type="number" min="1" value="1" />
+          </label>
+          <label>
+            Rows
+            <input name="num_rows" type="number" min="1" max="100" value="5" />
+          </label>
+          <label>
+            Start Date
+            <input name="start_date" type="date" />
+          </label>
+          <label>
+            End Date
+            <input name="end_date" type="date" />
+          </label>
+          <label class="checkbox-row">
+            <input name="include_reports" type="checkbox" checked />
+            Include reports
+          </label>
+          <label class="checkbox-row">
+            <input name="include_document_analysis" type="checkbox" />
+            Include document analysis
+          </label>
+          <label class="checkbox-row">
+            <input name="confirm_real_api_call" type="checkbox" />
+            Confirm real API call
+          </label>
+          <label class="wide">
+            Document Text
+            <textarea name="document_text" rows="4"></textarea>
+          </label>
+          <div class="actions wide">
+            <button type="submit">Run fixture-safe job</button>
+            <span id="run-state" role="status"></span>
+          </div>
+        </form>
+        <pre id="run-result" class="result-box">No run yet.</pre>
+      </section>
+
+      <section class="panel table-panel" aria-labelledby="runs-title">
+        <div class="panel-heading">
+          <h2 id="runs-title">Saved Runs</h2>
+          <button id="refresh-runs" type="button">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>created_at</th>
+                <th>run_id</th>
+                <th>mode</th>
+                <th>keyword</th>
+                <th>source_count</th>
+                <th>status</th>
+                <th>error_code</th>
+                <th>action</th>
+              </tr>
+            </thead>
+            <tbody id="runs-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel table-panel" aria-labelledby="recommendations-title">
+        <div class="panel-heading">
+          <h2 id="recommendations-title">Saved Recommendations</h2>
+          <div class="filters">
+            <input id="filter-min-score" type="number" min="0" max="100" placeholder="min_score" />
+            <input id="filter-label" placeholder="label" />
+            <button id="apply-rec-filters" type="button">Apply</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>rank</th>
+                <th>title</th>
+                <th>agency</th>
+                <th>budget</th>
+                <th>deadline</th>
+                <th>score</th>
+                <th>label</th>
+                <th>risks</th>
+                <th>report</th>
+              </tr>
+            </thead>
+            <tbody id="recommendations-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel detail-panel" aria-labelledby="detail-title">
+        <div class="panel-heading">
+          <h2 id="detail-title">Run Details and Report Viewer</h2>
+        </div>
+        <div id="run-detail" class="detail-summary">Select a run to view details.</div>
+        <div id="report-list" class="report-list"></div>
+        <pre id="report-viewer" class="markdown-viewer">No report selected.</pre>
+      </section>
+    </main>
+
+    <script src="/ui/static/dashboard.js" defer></script>
+  </body>
+</html>

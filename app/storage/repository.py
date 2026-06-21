@@ -1,5 +1,5 @@
-from pathlib import Path
 import json
+from pathlib import Path
 from typing import Any
 
 from app.storage.database import connect_database, initialize_database
@@ -154,6 +154,19 @@ class OperationsRepository:
                 (run_id,),
             ).fetchall()
         return [_row_to_dict(row) for row in rows]
+
+    def get_report(self, run_id: str, notice_id: str) -> dict[str, Any] | None:
+        with connect_database(self.db_path) as connection:
+            row = connection.execute(
+                """
+                SELECT * FROM reports
+                WHERE run_id = ? AND notice_id = ?
+                ORDER BY created_at DESC, id DESC
+                LIMIT 1
+                """,
+                (run_id, notice_id),
+            ).fetchone()
+        return _row_to_dict(row) if row else None
 
     def get_run_detail(self, run_id: str) -> dict[str, Any]:
         return {

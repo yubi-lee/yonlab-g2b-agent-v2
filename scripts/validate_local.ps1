@@ -20,6 +20,23 @@ if (-not (Test-Path -LiteralPath $Python)) {
 
 $ServerJob = $null
 
+function Test-WritableDirectory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path
+    )
+
+    try {
+        New-Item -ItemType Directory -Force -Path $Path | Out-Null
+        $ProbePath = Join-Path $Path ".write_probe"
+        "ok" | Out-File -LiteralPath $ProbePath -Encoding utf8
+        Remove-Item -LiteralPath $ProbePath -Force
+        return $true
+    } catch {
+        return $false
+    }
+}
+
 function Invoke-ValidationStep {
     param(
         [Parameter(Mandatory = $true)]
@@ -56,6 +73,22 @@ function Wait-ForHealth {
 
     throw "Timed out waiting for $Uri"
 }
+
+$ValidationDataRoot = Join-Path $ProjectRoot ".local_validation_data"
+if (-not (Test-WritableDirectory -Path $ValidationDataRoot)) {
+    $DocumentsRoot = [Environment]::GetFolderPath("MyDocuments")
+    $ValidationDataRoot = Join-Path $DocumentsRoot "YOnLab G2B Agent v2\.local_validation_data"
+    if (-not (Test-WritableDirectory -Path $ValidationDataRoot)) {
+        $HangulDocuments = -join ([char] 0xBB38, [char] 0xC11C)
+        $ValidationDataRoot = Join-Path $env:USERPROFILE "OneDrive\$HangulDocuments\YOnLab G2B Agent v2\.local_validation_data"
+    }
+    if (-not (Test-WritableDirectory -Path $ValidationDataRoot)) {
+        throw "No writable validation data directory is available."
+    }
+}
+
+$env:YONLAB_STORAGE_DB_PATH = Join-Path $ValidationDataRoot "ops\yonlab_g2b_agent.sqlite3"
+$env:YONLAB_REPORT_DIR = Join-Path $ValidationDataRoot "reports\g2b"
 
 try {
     Invoke-ValidationStep "check_no_secrets" {
@@ -98,8 +131,14 @@ try {
     Invoke-ValidationStep "smoke_g2b_recommend_fixture" {
         & (Join-Path $ProjectRoot "scripts\smoke_g2b_recommend_fixture.ps1")
     }
+    Invoke-ValidationStep "smoke_ui_health" {
+        & (Join-Path $ProjectRoot "scripts\smoke_ui_health.ps1")
+    }
     Invoke-ValidationStep "run_ops_fixture" {
         & (Join-Path $ProjectRoot "scripts\run_ops_fixture.ps1")
+    }
+    Invoke-ValidationStep "smoke_ops_ui_flow" {
+        & (Join-Path $ProjectRoot "scripts\smoke_ops_ui_flow.ps1")
     }
     Invoke-ValidationStep "show_ops_runs" {
         & (Join-Path $ProjectRoot "scripts\show_ops_runs.ps1")

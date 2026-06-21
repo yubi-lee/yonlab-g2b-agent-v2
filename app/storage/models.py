@@ -13,6 +13,8 @@ class OpsRunRequest(BaseModel):
     page_no: int | None = Field(default=None, ge=1)
     num_rows: int | None = Field(default=None, ge=1, le=100)
     include_reports: bool = True
+    include_document_analysis: bool = False
+    document_text: str | None = None
     active_only: bool | None = None
     confirm_real_api_call: bool = False
 
@@ -76,4 +78,3 @@ class OperationsRunDetail(BaseModel):
     run: dict[str, Any] | None
     recommendations: list[dict[str, Any]] = Field(default_factory=list)
     reports: list[dict[str, Any]] = Field(default_factory=list)
-
