@@ -1,5 +1,5 @@
 param(
-    [string] $ReleaseTag = "v0.1.0-rc3",
+    [string] $ReleaseTag = "v0.1.0-rc4",
     [string] $DeployRoot = "D:\Deploy",
     [string] $DeployFolderName = "",
     [switch] $RunControlledRealCall,
@@ -31,7 +31,9 @@ $Summary = [ordered]@{
     fresh_deployment_path = ""
     project_path_ok = $false
     env_file_present = $false
+    base_real_config_ready = $false
     ready_for_controlled_real_call = $false
+    runtime_gate_persistently_enabled = $false
     deploy_ready = $false
     pytest_result = "not_run"
     validate_local_result = "not_run"
@@ -39,6 +41,14 @@ $Summary = [ordered]@{
     korean_artifact_result = "not_run"
     ui_api_smoke_result = "not_run"
     controlled_real_run_executed = $false
+    execution_count = 0
+    real_call_executed = $false
+    run_id = $null
+    real_operation_status = $null
+    real_operation_error_code = $null
+    real_report_metadata_count = 0
+    summary_status = $null
+    yonlab_auto_run_real_api_cleanup_ok = $false
     additional_real_api_call_count = 0
     deployment_status = "blocked"
     remaining_blocking_issues = @()
@@ -89,12 +99,19 @@ function Get-PythonPath {
 }
 
 function Get-ReadinessPayload {
-    param([string] $Root)
+    param(
+        [string] $Root,
+        [bool] $ConfirmIntent = $false
+    )
 
     $Python = Get-PythonPath -Root $Root
     Push-Location $Root
     try {
-        $Text = & $Python -m app.services.real_ops_runtime_readiness
+        $Arguments = @("-m", "app.services.real_ops_runtime_readiness")
+        if ($ConfirmIntent) {
+            $Arguments += "--confirm-controlled-real-call-intent"
+        }
+        $Text = & $Python @Arguments
         if ($LASTEXITCODE -ne 0) {
             throw "real ops readiness exited with code $LASTEXITCODE."
         }
@@ -154,6 +171,10 @@ function Invoke-UiApiSmoke {
             quality_summary = $Quality.summary_status
             report_index = $ReportIndex.status
             ui_status = $Ui.StatusCode
+            latest_run_id = $Quality.latest_run_id
+            real_mode_executed = [bool] $Quality.real_mode_executed
+            real_report_count = [int] $Quality.real_report_count
+            report_count = [int] $ReportIndex.report_count
         }
     } finally {
         Stop-Job $Job -ErrorAction SilentlyContinue
@@ -239,7 +260,7 @@ try {
                 throw "$ReleaseTag already exists on a different commit."
             }
         } else {
-            git tag -a $ReleaseTag -m "YOnLab G2B Agent v2 MVP release candidate 3"
+            git tag -a $ReleaseTag -m "YOnLab G2B Agent v2 MVP release candidate $($ReleaseTag.Replace('v0.1.0-rc', ''))"
             if ($LASTEXITCODE -ne 0) {
                 throw "git tag failed."
             }
@@ -262,22 +283,39 @@ try {
         New-Item -ItemType Directory -Force $DeployRoot | Out-Null
         $DeployPath = Join-Path $DeployRoot $DeployFolderName
         if (Test-Path -LiteralPath $DeployPath) {
-            $DeployPath = Join-Path $DeployRoot "$DeployFolderName-$(Get-Date -Format yyyyMMddHHmmss)"
-        }
-        $Summary.fresh_deployment_path = $DeployPath
-        $RemoteUrl = (git remote get-url origin)
-        git clone $RemoteUrl $DeployPath
-        if ($LASTEXITCODE -ne 0) {
-            throw "git clone failed."
-        }
-        Push-Location $DeployPath
-        try {
-            git checkout $ReleaseTag
-            if ($LASTEXITCODE -ne 0) {
-                throw "git checkout $ReleaseTag failed."
+            if (-not (Test-Path -LiteralPath (Join-Path $DeployPath ".git"))) {
+                throw "Deployment path already exists but is not a git repository: $DeployPath"
             }
-        } finally {
-            Pop-Location
+            $Summary.fresh_deployment_path = $DeployPath
+            Push-Location $DeployPath
+            try {
+                git fetch --tags origin
+                if ($LASTEXITCODE -ne 0) {
+                    throw "git fetch failed."
+                }
+                git checkout -f $ReleaseTag
+                if ($LASTEXITCODE -ne 0) {
+                    throw "git checkout $ReleaseTag failed."
+                }
+            } finally {
+                Pop-Location
+            }
+        } else {
+            $Summary.fresh_deployment_path = $DeployPath
+            $RemoteUrl = (git remote get-url origin)
+            git clone $RemoteUrl $DeployPath
+            if ($LASTEXITCODE -ne 0) {
+                throw "git clone failed."
+            }
+            Push-Location $DeployPath
+            try {
+                git checkout $ReleaseTag
+                if ($LASTEXITCODE -ne 0) {
+                    throw "git checkout $ReleaseTag failed."
+                }
+            } finally {
+                Pop-Location
+            }
         }
     }
 
@@ -310,7 +348,9 @@ try {
         $Readiness = Get-ReadinessPayload -Root $Summary.fresh_deployment_path
         $Summary.project_path_ok = [bool] $Readiness.project_path_ok
         $Summary.env_file_present = [bool] $Readiness.env_file_present
+        $Summary.base_real_config_ready = [bool] $Readiness.base_real_config_ready
         $Summary.ready_for_controlled_real_call = [bool] $Readiness.ready_for_controlled_real_call
+        $Summary.runtime_gate_persistently_enabled = [bool] $Readiness.ops_runtime_gate_configured
         if (-not $Readiness.project_path_ok) {
             throw "Fresh deployment project_path_ok was false."
         }
@@ -334,22 +374,44 @@ try {
 
     if ($RunControlledRealCall -and $ConfirmRealApiCall) {
         Invoke-Checked "optional controlled real call" {
-            $Readiness = Get-ReadinessPayload -Root $Summary.fresh_deployment_path
-            if ($Readiness.ready_for_controlled_real_call -ne $true) {
-                $Summary.remaining_blocking_issues += "controlled real call skipped: readiness false"
+            $BaseReadiness = Get-ReadinessPayload -Root $Summary.fresh_deployment_path
+            $Summary.base_real_config_ready = [bool] $BaseReadiness.base_real_config_ready
+            if ($BaseReadiness.base_real_config_ready -ne $true) {
+                $Summary.remaining_blocking_issues += "controlled real call skipped: base real config readiness false"
             } else {
                 Push-Location $Summary.fresh_deployment_path
                 try {
                     $env:YONLAB_AUTO_RUN_REAL_API = "true"
+                    $ReadyReadiness = Get-ReadinessPayload -Root $Summary.fresh_deployment_path -ConfirmIntent $true
+                    $Summary.ready_for_controlled_real_call = [bool] $ReadyReadiness.ready_for_controlled_real_call
+                    if ($ReadyReadiness.ready_for_controlled_real_call -ne $true) {
+                        $Summary.remaining_blocking_issues += "controlled real call skipped: controlled execution readiness false"
+                        return
+                    }
                     .\scripts\validate_real_ops_controlled.ps1 -ConfirmRealApiCall
                     if ($LASTEXITCODE -ne 0) {
                         throw "controlled real validation failed."
                     }
                     $Summary.controlled_real_run_executed = $true
+                    $Summary.execution_count = 1
                     $Summary.additional_real_api_call_count = 1
                 } finally {
                     Remove-Item Env:\YONLAB_AUTO_RUN_REAL_API -ErrorAction SilentlyContinue
+                    $Summary.yonlab_auto_run_real_api_cleanup_ok = [string]::IsNullOrWhiteSpace(
+                        [Environment]::GetEnvironmentVariable("YONLAB_AUTO_RUN_REAL_API", "Process")
+                    )
                     Pop-Location
+                }
+                $PostRunSmoke = Invoke-UiApiSmoke -Root $Summary.fresh_deployment_path -Port 8010
+                $Summary.real_call_executed = [bool] $PostRunSmoke.real_mode_executed
+                $Summary.run_id = $PostRunSmoke.latest_run_id
+                $Summary.real_report_metadata_count = [int] $PostRunSmoke.report_count
+                $Summary.summary_status = $PostRunSmoke.quality_summary
+                if ($Summary.real_call_executed) {
+                    $Summary.real_operation_status = "reflected"
+                } else {
+                    $Summary.real_operation_status = "not_reflected"
+                    $Summary.real_operation_error_code = "real_run_not_reflected"
                 }
             }
         }
@@ -360,10 +422,12 @@ try {
         )
     }
 
-    if ($Summary.controlled_real_run_executed) {
+    if ($Summary.controlled_real_run_executed -and $Summary.real_call_executed) {
         $Summary.deployment_status = "ready"
-    } elseif (-not $Summary.env_file_present -or -not $Summary.ready_for_controlled_real_call) {
+    } elseif (-not $Summary.env_file_present -or -not $Summary.base_real_config_ready) {
         $Summary.deployment_status = "ready_after_env_fix"
+    } elseif ($RunControlledRealCall -and $ConfirmRealApiCall -and -not $Summary.real_call_executed) {
+        $Summary.deployment_status = "blocked"
     } else {
         $Summary.deployment_status = "ready_after_env_fix"
     }

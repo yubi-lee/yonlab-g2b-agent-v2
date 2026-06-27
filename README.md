@@ -405,16 +405,19 @@ offline validation, and verifies `/ui`, `/ops/quality-summary`, and `/ops/report
 By default it does not call the real G2B API:
 
 ```powershell
-.\scripts\run_release_closeout_harness.ps1 -ReleaseTag v0.1.0-rc3
+.\scripts\run_release_closeout_harness.ps1 -ReleaseTag v0.1.0-rc4
 ```
 
 If the fresh deployment has no `.env`, the expected final status is
-`ready_after_env_fix`. A controlled real operation is allowed only when both flags are
-present and readiness is true:
+`ready_after_env_fix`. The readiness output separates base real configuration from
+controlled execution readiness. Keep `YONLAB_AUTO_RUN_REAL_API=true` out of persistent
+`.env`; the harness sets it only as a process variable during the confirmed controlled
+window and removes it immediately afterward. A controlled real operation is allowed only
+when both flags are present and base real configuration is ready:
 
 ```powershell
 .\scripts\run_release_closeout_harness.ps1 `
-  -ReleaseTag v0.1.0-rc3 `
+  -ReleaseTag v0.1.0-rc4 `
   -RunControlledRealCall `
   -ConfirmRealApiCall
 ```

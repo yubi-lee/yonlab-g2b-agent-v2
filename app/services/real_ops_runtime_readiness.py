@@ -39,11 +39,15 @@ def build_real_ops_runtime_readiness(
         "confirm_required": True,
         "confirm_flag_present": confirm_controlled_real_call_intent,
     }
+    base_real_config_ready = _base_real_config_ready(checks)
+    runtime_gate_required = True
+    confirm_intent_required = True
     blocking_reasons = _blocking_reasons(checks)
     return {
         "project_path": str(root),
         "project_path_ok": checks["project_path_ok"],
         "env_file_present": checks["env_file_present"],
+        "base_real_config_ready": base_real_config_ready,
         "real_api_master_flag_configured": checks["real_api_master_flag_configured"],
         "ops_runtime_gate_configured": checks["ops_runtime_gate_configured"],
         "service_key_present": checks["service_key_present"],
@@ -56,6 +60,8 @@ def build_real_ops_runtime_readiness(
         "report_dir_configured": checks["report_dir_configured"],
         "confirm_required": checks["confirm_required"],
         "confirm_flag_present": checks["confirm_flag_present"],
+        "runtime_gate_required": runtime_gate_required,
+        "confirm_intent_required": confirm_intent_required,
         "ready_for_controlled_real_call": not blocking_reasons,
         "blocking_reasons": blocking_reasons,
         "real_network_call_attempted": False,
@@ -63,6 +69,22 @@ def build_real_ops_runtime_readiness(
         "service_key_exposed": False,
         "safe_next_action": _safe_next_action(blocking_reasons),
     }
+
+
+def _base_real_config_ready(checks: dict[str, bool]) -> bool:
+    base_required_fields = (
+        "project_path_ok",
+        "env_file_present",
+        "real_api_master_flag_configured",
+        "service_key_present",
+        "api_base_url_configured",
+        "endpoint_path_configured",
+        "request_timeout_configured",
+        "default_rows_limited",
+        "storage_db_path_configured",
+        "report_dir_configured",
+    )
+    return all(checks[key] for key in base_required_fields)
 
 
 def _blocking_reasons(checks: dict[str, bool]) -> list[str]:

@@ -101,13 +101,16 @@ Do not run this command during offline release validation:
 For one-command release closeout, run this from the development repo:
 
 ```powershell
-.\scripts\run_release_closeout_harness.ps1 -ReleaseTag v0.1.0-rc3
+.\scripts\run_release_closeout_harness.ps1 -ReleaseTag v0.1.0-rc4
 ```
 
 The harness defaults to no real API call. It should end as `ready_after_env_fix` when the
 fresh deployment has no `.env`, or `ready` when a prepared `.env` exists and an explicitly
 confirmed controlled real run succeeds. The real run path requires both
-`-RunControlledRealCall` and `-ConfirmRealApiCall`.
+`-RunControlledRealCall` and `-ConfirmRealApiCall`. Do not persist
+`YONLAB_AUTO_RUN_REAL_API=true` in `.env`: the harness opens that runtime gate in process
+scope only after base real configuration readiness is true, then closes it after the
+controlled validation command.
 
 ## Run the UI
 

@@ -21,6 +21,7 @@ def test_real_ops_runtime_readiness_blocks_when_everything_missing(tmp_path: Pat
     readiness = build_real_ops_runtime_readiness(settings, project_root=tmp_path)
 
     assert readiness["ready_for_controlled_real_call"] is False
+    assert readiness["base_real_config_ready"] is False
     assert readiness["project_path_ok"] is False
     assert readiness["env_file_present"] is False
     assert readiness["real_api_master_flag_configured"] is False
@@ -48,6 +49,7 @@ def test_real_ops_runtime_readiness_blocks_when_only_service_key_is_present(
     readiness = build_real_ops_runtime_readiness(settings, project_root=project_root)
 
     assert readiness["ready_for_controlled_real_call"] is False
+    assert readiness["base_real_config_ready"] is False
     assert readiness["service_key_present"] is True
     assert readiness["real_api_master_flag_configured"] is False
     assert readiness["ops_runtime_gate_configured"] is False
@@ -72,6 +74,7 @@ def test_real_ops_runtime_readiness_blocks_when_only_confirm_intent_is_present(
     )
 
     assert readiness["ready_for_controlled_real_call"] is False
+    assert readiness["base_real_config_ready"] is False
     assert readiness["project_path_ok"] is True
     assert readiness["env_file_present"] is False
     assert readiness["confirm_required"] is True
@@ -94,6 +97,7 @@ def test_real_ops_runtime_readiness_accepts_deployment_style_repo_root(
     readiness = build_real_ops_runtime_readiness(settings, project_root=project_root)
 
     assert readiness["ready_for_controlled_real_call"] is False
+    assert readiness["base_real_config_ready"] is False
     assert readiness["project_path_ok"] is True
     assert readiness["env_file_present"] is False
     assert "Run from" not in " ".join(readiness["blocking_reasons"])
@@ -112,10 +116,34 @@ def test_real_ops_runtime_readiness_identifies_missing_runtime_gate(tmp_path: Pa
     )
 
     assert readiness["ready_for_controlled_real_call"] is False
+    assert readiness["base_real_config_ready"] is True
     assert readiness["real_api_master_flag_configured"] is True
     assert readiness["ops_runtime_gate_configured"] is False
     assert any("YONLAB_AUTO_RUN_REAL_API" in item for item in readiness["blocking_reasons"])
     assert readiness["safe_next_action"].startswith("Enable the operations runtime gate")
+    assert readiness["runtime_gate_required"] is True
+    assert readiness["confirm_intent_required"] is True
+
+
+def test_real_ops_runtime_readiness_identifies_missing_confirm_intent_only(
+    tmp_path: Path,
+) -> None:
+    project_root = _project_root(tmp_path, env_file=True)
+    settings = _ready_settings(tmp_path, yonlab_auto_run_real_api=True)
+
+    readiness = build_real_ops_runtime_readiness(
+        settings,
+        project_root=project_root,
+        confirm_controlled_real_call_intent=False,
+    )
+
+    assert readiness["base_real_config_ready"] is True
+    assert readiness["ready_for_controlled_real_call"] is False
+    assert readiness["ops_runtime_gate_configured"] is True
+    assert readiness["confirm_flag_present"] is False
+    assert readiness["blocking_reasons"] == [
+        "Pass an explicit controlled-call intent flag before the real call step."
+    ]
 
 
 def test_real_ops_runtime_readiness_can_be_ready_without_calling_network(
@@ -131,6 +159,7 @@ def test_real_ops_runtime_readiness_can_be_ready_without_calling_network(
     )
 
     assert readiness["ready_for_controlled_real_call"] is True
+    assert readiness["base_real_config_ready"] is True
     assert readiness["blocking_reasons"] == []
     assert readiness["project_path_ok"] is True
     assert readiness["env_file_present"] is True
@@ -140,6 +169,8 @@ def test_real_ops_runtime_readiness_can_be_ready_without_calling_network(
     assert readiness["api_base_url_configured"] is True
     assert readiness["endpoint_path_configured"] is True
     assert readiness["confirm_flag_present"] is True
+    assert readiness["runtime_gate_required"] is True
+    assert readiness["confirm_intent_required"] is True
     assert readiness["real_network_call_attempted"] is False
     assert readiness["db_write_attempted"] is False
     assert readiness["service_key_exposed"] is False

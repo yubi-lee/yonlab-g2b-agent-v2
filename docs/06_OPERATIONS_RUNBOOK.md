@@ -169,10 +169,15 @@ procedure, smoke tests, rollback criteria, and troubleshooting, see
 For release-candidate closeout from the development repo:
 
 ```powershell
-.\scripts\run_release_closeout_harness.ps1 -ReleaseTag v0.1.0-rc3
+.\scripts\run_release_closeout_harness.ps1 -ReleaseTag v0.1.0-rc4
 ```
 
 The default harness path performs no real API call. It creates a fresh deployment clone,
 runs offline validation, checks UI/API smoke, and returns `ready_after_env_fix` when the
 deployment `.env` is absent. Add both `-RunControlledRealCall` and `-ConfirmRealApiCall`
-only for one operator-approved real validation window.
+only for one operator-approved real validation window. Base real configuration readiness
+means `.env`, real API enablement, service key presence, base URL, endpoint, timeout, row
+limit, and storage/report paths are present. Controlled execution readiness additionally
+requires the temporary runtime gate and explicit confirmation; the harness sets
+`YONLAB_AUTO_RUN_REAL_API=true` only in process scope for the confirmed call and removes it
+immediately afterward.

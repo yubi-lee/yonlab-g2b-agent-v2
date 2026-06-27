@@ -189,12 +189,18 @@ def test_release_closeout_harness_is_guarded_and_secret_safe() -> None:
         encoding="utf-8"
     )
 
-    assert "ReleaseTag = \"v0.1.0-rc3\"" in content
+    assert "ReleaseTag = \"v0.1.0-rc4\"" in content
     assert "RunControlledRealCall" in content
     assert "ConfirmRealApiCall" in content
     assert "SkipPush" in content
     assert "validate_real_ops_controlled.ps1 -ConfirmRealApiCall" in content
     assert "if ($RunControlledRealCall -and $ConfirmRealApiCall)" in content
+    assert "base_real_config_ready" in content
+    assert "controlled real call skipped: base real config readiness false" in content
+    assert "YONLAB_AUTO_RUN_REAL_API = \"true\"" in content
+    assert "Remove-Item Env:\\YONLAB_AUTO_RUN_REAL_API" in content
+    assert "yonlab_auto_run_real_api_cleanup_ok" in content
+    assert "execution_count = 0" in content
     assert "additional_real_api_call_count = 0" in content
     assert "service_key_exposed" in content
     assert "SECRET-KEY" not in content

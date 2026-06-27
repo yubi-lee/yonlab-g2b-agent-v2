@@ -264,3 +264,18 @@ Reason:
 - The closeout harness should default to no real API call, publish the release candidate,
   validate a fresh deployment, and report `ready_after_env_fix` until an operator-provided
   `.env` is ready for one confirmed real run.
+
+## 2026-06-28 YOnLab G2B Agent v2 Task 34H
+
+Decision: Separate base real API configuration readiness from controlled execution readiness
+and publish a new release candidate for the first production real run attempt.
+
+Reason:
+
+- `.env` can correctly contain the base real API settings while `YONLAB_AUTO_RUN_REAL_API`
+  remains absent because it is a temporary runtime gate, not persistent configuration.
+- The release harness should proceed to exactly one controlled real validation only when
+  both `-RunControlledRealCall` and `-ConfirmRealApiCall` are present and base real
+  configuration is ready.
+- The harness must set `YONLAB_AUTO_RUN_REAL_API=true` only in process scope immediately
+  before the confirmed call and remove it immediately afterward.
