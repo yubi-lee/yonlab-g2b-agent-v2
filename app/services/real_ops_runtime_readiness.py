@@ -6,7 +6,14 @@ from typing import Any
 from app.core.config import Settings, get_settings
 from app.integrations.g2b.presets import resolve_endpoint_path
 
-EXPECTED_PROJECT_NAME = "yonlab-g2b-agent-v2"
+REQUIRED_PROJECT_ROOT_INDICATORS = (
+    "README.md",
+    "app",
+    "scripts",
+    "scripts/check_real_ops_readiness.ps1",
+    "scripts/check_deploy_readiness.ps1",
+    "scripts/validate_local.ps1",
+)
 
 
 def build_real_ops_runtime_readiness(
@@ -18,7 +25,7 @@ def build_real_ops_runtime_readiness(
     root = Path(project_root or Path.cwd()).resolve()
     endpoint_path, endpoint_path_source = resolve_endpoint_path(settings)
     checks = {
-        "project_path_ok": root.name == EXPECTED_PROJECT_NAME,
+        "project_path_ok": _looks_like_project_root(root),
         "env_file_present": (root / ".env").is_file(),
         "real_api_master_flag_configured": settings.g2b_enable_real_api,
         "ops_runtime_gate_configured": settings.yonlab_auto_run_real_api,
@@ -60,7 +67,7 @@ def build_real_ops_runtime_readiness(
 
 def _blocking_reasons(checks: dict[str, bool]) -> list[str]:
     required_fields = {
-        "project_path_ok": "Run from D:\\Views\\yonlab-g2b-agent-v2.",
+        "project_path_ok": "Run from a YOnLab G2B Agent v2 repository root.",
         "env_file_present": "Create local .env from .env.example without committing it.",
         "real_api_master_flag_configured": (
             "Set G2B_ENABLE_REAL_API=true for controlled real calls."
@@ -82,6 +89,10 @@ def _blocking_reasons(checks: dict[str, bool]) -> list[str]:
         ),
     }
     return [message for key, message in required_fields.items() if not checks[key]]
+
+
+def _looks_like_project_root(root: Path) -> bool:
+    return all((root / indicator).exists() for indicator in REQUIRED_PROJECT_ROOT_INDICATORS)
 
 
 def _safe_next_action(blocking_reasons: list[str]) -> str:

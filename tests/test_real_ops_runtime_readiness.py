@@ -57,6 +57,7 @@ def test_real_ops_runtime_readiness_blocks_when_only_service_key_is_present(
 def test_real_ops_runtime_readiness_blocks_when_only_confirm_intent_is_present(
     tmp_path: Path,
 ) -> None:
+    project_root = _project_root(tmp_path, env_file=False)
     settings = Settings(
         g2b_enable_real_api=False,
         g2b_api_service_key="",
@@ -66,15 +67,38 @@ def test_real_ops_runtime_readiness_blocks_when_only_confirm_intent_is_present(
 
     readiness = build_real_ops_runtime_readiness(
         settings,
-        project_root=tmp_path,
+        project_root=project_root,
         confirm_controlled_real_call_intent=True,
     )
 
     assert readiness["ready_for_controlled_real_call"] is False
+    assert readiness["project_path_ok"] is True
+    assert readiness["env_file_present"] is False
     assert readiness["confirm_required"] is True
     assert readiness["confirm_flag_present"] is True
     assert readiness["service_key_present"] is False
     assert readiness["real_network_call_attempted"] is False
+
+
+def test_real_ops_runtime_readiness_accepts_deployment_style_repo_root(
+    tmp_path: Path,
+) -> None:
+    project_root = _project_root(tmp_path, env_file=False, name="yonlab-g2b-agent-v2-rc3")
+    settings = Settings(
+        g2b_enable_real_api=False,
+        g2b_api_service_key="",
+        g2b_list_endpoint_path="",
+        yonlab_auto_run_real_api=False,
+    )
+
+    readiness = build_real_ops_runtime_readiness(settings, project_root=project_root)
+
+    assert readiness["ready_for_controlled_real_call"] is False
+    assert readiness["project_path_ok"] is True
+    assert readiness["env_file_present"] is False
+    assert "Run from" not in " ".join(readiness["blocking_reasons"])
+    assert readiness["real_network_call_attempted"] is False
+    assert readiness["service_key_exposed"] is False
 
 
 def test_real_ops_runtime_readiness_identifies_missing_runtime_gate(tmp_path: Path) -> None:
@@ -122,9 +146,24 @@ def test_real_ops_runtime_readiness_can_be_ready_without_calling_network(
     assert "SECRET-KEY" not in str(readiness)
 
 
-def _project_root(tmp_path: Path, *, env_file: bool) -> Path:
-    project_root = tmp_path / "yonlab-g2b-agent-v2"
+def _project_root(
+    tmp_path: Path,
+    *,
+    env_file: bool,
+    name: str = "yonlab-g2b-agent-v2",
+) -> Path:
+    project_root = tmp_path / name
     project_root.mkdir()
+    (project_root / "README.md").write_text("# Test project\n", encoding="utf-8")
+    (project_root / "app").mkdir()
+    scripts_dir = project_root / "scripts"
+    scripts_dir.mkdir()
+    for script_name in (
+        "check_real_ops_readiness.ps1",
+        "check_deploy_readiness.ps1",
+        "validate_local.ps1",
+    ):
+        (scripts_dir / script_name).write_text("", encoding="utf-8")
     if env_file:
         (project_root / ".env").write_text("", encoding="utf-8")
     return project_root

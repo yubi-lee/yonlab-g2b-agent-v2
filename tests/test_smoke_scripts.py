@@ -38,6 +38,7 @@ OPS_SCRIPT_NAMES = (
     "run_daily_fixture.ps1",
     "register_daily_task_template.ps1",
     "reset_local_ops_data.ps1",
+    "run_release_closeout_harness.ps1",
 )
 VALIDATION_SCRIPT_NAME = "validate_local.ps1"
 REAL_READINESS_SCRIPT_NAME = "validate_g2b_real_readiness.ps1"
@@ -179,6 +180,23 @@ def test_check_deploy_readiness_script_is_offline_and_secret_safe() -> None:
     assert "validate_real_ops_controlled.ps1 -ConfirmRealApiCall" not in content
     assert "YONLAB_AUTO_RUN_REAL_API = \"true\"" not in content
     assert "SECRET-KEY" not in content
+
+
+def test_release_closeout_harness_is_guarded_and_secret_safe() -> None:
+    content = (PROJECT_ROOT / "scripts" / "run_release_closeout_harness.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "ReleaseTag = \"v0.1.0-rc3\"" in content
+    assert "RunControlledRealCall" in content
+    assert "ConfirmRealApiCall" in content
+    assert "SkipPush" in content
+    assert "validate_real_ops_controlled.ps1 -ConfirmRealApiCall" in content
+    assert "if ($RunControlledRealCall -and $ConfirmRealApiCall)" in content
+    assert "additional_real_api_call_count = 0" in content
+    assert "service_key_exposed" in content
+    assert "SECRET-KEY" not in content
+    assert "G2B_API_SERVICE_KEY=<your local key>" not in content
 
 
 def test_reset_local_ops_data_script_only_targets_generated_data() -> None:

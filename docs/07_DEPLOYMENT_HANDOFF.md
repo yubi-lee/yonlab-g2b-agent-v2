@@ -98,6 +98,17 @@ Do not run this command during offline release validation:
 .\scripts\validate_real_ops_controlled.ps1 -ConfirmRealApiCall
 ```
 
+For one-command release closeout, run this from the development repo:
+
+```powershell
+.\scripts\run_release_closeout_harness.ps1 -ReleaseTag v0.1.0-rc3
+```
+
+The harness defaults to no real API call. It should end as `ready_after_env_fix` when the
+fresh deployment has no `.env`, or `ready` when a prepared `.env` exists and an explicitly
+confirmed controlled real run succeeds. The real run path requires both
+`-RunControlledRealCall` and `-ConfirmRealApiCall`.
+
 ## Run the UI
 
 Start the packaged local operations app:

@@ -397,6 +397,28 @@ Endpoint preset guidance:
 
 For full setup steps, see `docs/05_REAL_G2B_SMOKE_CHECKLIST.md`.
 
+## Release Closeout Harness
+
+The release closeout harness packages the validated commit into a new release candidate,
+pushes `main` and the tag, creates a fresh deployment clone, installs dependencies, runs
+offline validation, and verifies `/ui`, `/ops/quality-summary`, and `/ops/report-index`.
+By default it does not call the real G2B API:
+
+```powershell
+.\scripts\run_release_closeout_harness.ps1 -ReleaseTag v0.1.0-rc3
+```
+
+If the fresh deployment has no `.env`, the expected final status is
+`ready_after_env_fix`. A controlled real operation is allowed only when both flags are
+present and readiness is true:
+
+```powershell
+.\scripts\run_release_closeout_harness.ps1 `
+  -ReleaseTag v0.1.0-rc3 `
+  -RunControlledRealCall `
+  -ConfirmRealApiCall
+```
+
 ## `.env.example` Guidance
 
 Copy values from `.env.example` only when you are ready to configure a local environment. Do not commit `.env`.

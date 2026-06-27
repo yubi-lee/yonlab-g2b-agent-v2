@@ -249,3 +249,18 @@ Reason:
   required release artifact.
 - The release candidate should be pushed to GitHub and tagged as `v0.1.0-rc1` only after
   fixture-safe validation passes and the working tree is clean.
+
+## 2026-06-28 YOnLab G2B Agent v2 Task 32H
+
+Decision: Add a release closeout harness and make real-ops readiness accept fresh deployment
+repository paths based on project structure instead of folder name.
+
+Reason:
+
+- Fresh deployment folders such as `yonlab-g2b-agent-v2-rc2` are valid repository roots and
+  should not fail `project_path_ok` merely because the folder name includes a release suffix.
+- `.env` absence should block only controlled real readiness and should not be classified as
+  a project path failure.
+- The closeout harness should default to no real API call, publish the release candidate,
+  validate a fresh deployment, and report `ready_after_env_fix` until an operator-provided
+  `.env` is ready for one confirmed real run.

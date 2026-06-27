@@ -163,3 +163,16 @@ real G2B/Public Data Portal API.
 For release deployment handoff, including setup, offline validation, controlled real-run
 procedure, smoke tests, rollback criteria, and troubleshooting, see
 `docs/07_DEPLOYMENT_HANDOFF.md`.
+
+## Release Closeout Harness
+
+For release-candidate closeout from the development repo:
+
+```powershell
+.\scripts\run_release_closeout_harness.ps1 -ReleaseTag v0.1.0-rc3
+```
+
+The default harness path performs no real API call. It creates a fresh deployment clone,
+runs offline validation, checks UI/API smoke, and returns `ready_after_env_fix` when the
+deployment `.env` is absent. Add both `-RunControlledRealCall` and `-ConfirmRealApiCall`
+only for one operator-approved real validation window.

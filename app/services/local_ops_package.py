@@ -39,6 +39,7 @@ PACKAGE_SCRIPTS = [
     "scripts/show_ops_recommendations.ps1",
     "scripts/open_latest_report_dir.ps1",
     "scripts/reset_local_ops_data.ps1",
+    "scripts/run_release_closeout_harness.ps1",
 ]
 
 PACKAGE_CAPABILITIES = [
