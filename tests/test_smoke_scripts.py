@@ -176,6 +176,8 @@ def test_check_deploy_readiness_script_is_offline_and_secret_safe() -> None:
     assert "working_tree_clean" in content
     assert "required_scripts_present" in content
     assert "real_api_settings_presence_as_boolean_only" in content
+    assert "Test-ProjectRootLike" in content
+    assert 'Split-Path -Leaf $ProjectRoot) -eq "yonlab-g2b-agent-v2"' not in content
     assert "Invoke-WebRequest" not in content
     assert "validate_real_ops_controlled.ps1 -ConfirmRealApiCall" not in content
     assert "YONLAB_AUTO_RUN_REAL_API = \"true\"" not in content

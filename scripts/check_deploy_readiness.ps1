@@ -57,6 +57,24 @@ function Test-SettingTrue {
     return (-not [string]::IsNullOrWhiteSpace($Value)) -and ($Value.Trim().ToLowerInvariant() -eq "true")
 }
 
+function Test-ProjectRootLike {
+    $RequiredRootIndicators = @(
+        "README.md",
+        "app",
+        "scripts",
+        "scripts\check_real_ops_readiness.ps1",
+        "scripts\check_deploy_readiness.ps1",
+        "scripts\validate_local.ps1"
+    )
+
+    foreach ($Path in $RequiredRootIndicators) {
+        if (-not (Test-Path -LiteralPath (Join-Path $ProjectRoot $Path))) {
+            return $false
+        }
+    }
+    return $true
+}
+
 $GitAvailable = $null -ne (Get-Command git -ErrorAction SilentlyContinue)
 $WorkingTreeStatus = @()
 if ($GitAvailable) {
@@ -106,7 +124,7 @@ foreach ($Entry in $ScriptsPresent.GetEnumerator()) {
 
 @{
     project_path = $ProjectRoot
-    project_path_ok = ((Split-Path -Leaf $ProjectRoot) -eq "yonlab-g2b-agent-v2")
+    project_path_ok = Test-ProjectRootLike
     git_available = $GitAvailable
     working_tree_clean = ($WorkingTreeStatus.Count -eq 0)
     working_tree_status = @($WorkingTreeStatus | Select-Object -First 20)
