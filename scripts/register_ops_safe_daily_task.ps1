@@ -13,7 +13,7 @@ $OutputEncoding = $Utf8
 try { chcp.com 65001 | Out-Null } catch {}
 
 $ResolvedDeployPath = (Resolve-Path -LiteralPath $DeployPath).Path
-$SafeScriptPath = Join-Path $ResolvedDeployPath "scripts\run_ops_safe_daily.ps1"
+$SafeScriptPath = Join-Path $PSScriptRoot "run_ops_safe_daily.ps1"
 $SafeScriptExists = Test-Path -LiteralPath $SafeScriptPath -PathType Leaf
 if (-not $SafeScriptExists -and -not $WhatIfPreference) {
     throw "Safe daily script was not found at $SafeScriptPath"
