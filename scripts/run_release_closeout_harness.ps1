@@ -1,9 +1,10 @@
 param(
-    [string] $ReleaseTag = "v0.1.0-rc4",
+    [string] $ReleaseTag = "v0.1.0-rc5",
     [string] $DeployRoot = "D:\Deploy",
     [string] $DeployFolderName = "",
     [switch] $RunControlledRealCall,
     [switch] $ConfirmRealApiCall,
+    [switch] $RunSyntheticPersistenceCheck,
     [switch] $SkipPush
 )
 
@@ -34,6 +35,9 @@ $Summary = [ordered]@{
     base_real_config_ready = $false
     ready_for_controlled_real_call = $false
     runtime_gate_persistently_enabled = $false
+    storage_path_consistent = $false
+    report_path_consistent = $false
+    path_blocking_reasons = @()
     deploy_ready = $false
     pytest_result = "not_run"
     validate_local_result = "not_run"
@@ -50,6 +54,11 @@ $Summary = [ordered]@{
     summary_status = $null
     yonlab_auto_run_real_api_cleanup_ok = $false
     additional_real_api_call_count = 0
+    synthetic_persistence_check_executed = $false
+    synthetic_persistence_run_id = $null
+    synthetic_report_index_consistent = $false
+    synthetic_quality_summary_consistent = $false
+    synthetic_real_api_call_count = 0
     deployment_status = "blocked"
     remaining_blocking_issues = @()
 }
@@ -121,6 +130,49 @@ function Get-ReadinessPayload {
     }
 }
 
+function Set-DeploymentRuntimeEnvironment {
+    param(
+        [string] $Root,
+        [int] $Port = 8010
+    )
+
+    $env:YONLAB_STORAGE_DB_PATH = Join-Path $Root "data\ops\yonlab_g2b_agent.sqlite3"
+    $env:YONLAB_REPORT_DIR = Join-Path $Root "data\reports\g2b"
+    $env:YONLAB_G2B_BASE_URL = "http://127.0.0.1:$Port"
+    Remove-Item Env:\YONLAB_AUTO_RUN_REAL_API -ErrorAction SilentlyContinue
+}
+
+function Clear-DeploymentRuntimeEnvironment {
+    Remove-Item Env:\YONLAB_STORAGE_DB_PATH -ErrorAction SilentlyContinue
+    Remove-Item Env:\YONLAB_REPORT_DIR -ErrorAction SilentlyContinue
+    Remove-Item Env:\YONLAB_G2B_BASE_URL -ErrorAction SilentlyContinue
+    Remove-Item Env:\YONLAB_AUTO_RUN_REAL_API -ErrorAction SilentlyContinue
+}
+
+function Get-PathConsistencyPayload {
+    param([string] $Root)
+
+    $Python = Get-PythonPath -Root $Root
+    Push-Location $Root
+    try {
+        $Text = & $Python -m app.services.runtime_path_consistency --project-root $Root
+        if ($LASTEXITCODE -ne 0) {
+            throw "runtime path consistency exited with code $LASTEXITCODE."
+        }
+        return ($Text | ConvertFrom-Json)
+    } finally {
+        Pop-Location
+    }
+}
+
+function Update-PathConsistencySummary {
+    param([object] $PathConsistency)
+
+    $Summary.storage_path_consistent = [bool] $PathConsistency.storage_path_consistent
+    $Summary.report_path_consistent = [bool] $PathConsistency.report_path_consistent
+    $Summary.path_blocking_reasons = @($PathConsistency.path_blocking_reasons)
+}
+
 function Wait-ForEndpoint {
     param(
         [string] $Url,
@@ -145,11 +197,16 @@ function Invoke-UiApiSmoke {
     )
 
     $Python = Get-PythonPath -Root $Root
+    $StoragePath = Join-Path $Root "data\ops\yonlab_g2b_agent.sqlite3"
+    $ReportDir = Join-Path $Root "data\reports\g2b"
     $Job = Start-Job -ScriptBlock {
-        param($JobRoot, $JobPython, $JobPort)
+        param($JobRoot, $JobPython, $JobPort, $JobStoragePath, $JobReportDir)
         Set-Location $JobRoot
+        $env:YONLAB_STORAGE_DB_PATH = $JobStoragePath
+        $env:YONLAB_REPORT_DIR = $JobReportDir
+        Remove-Item Env:\YONLAB_AUTO_RUN_REAL_API -ErrorAction SilentlyContinue
         & $JobPython -m uvicorn app.main:app --host 127.0.0.1 --port $JobPort
-    } -ArgumentList $Root, $Python, $Port
+    } -ArgumentList $Root, $Python, $Port, $StoragePath, $ReportDir
 
     $BaseUrl = "http://127.0.0.1:$Port"
     try {
@@ -174,6 +231,59 @@ function Invoke-UiApiSmoke {
             latest_run_id = $Quality.latest_run_id
             real_mode_executed = [bool] $Quality.real_mode_executed
             real_report_count = [int] $Quality.real_report_count
+            report_count = [int] $ReportIndex.report_count
+        }
+    } finally {
+        Stop-Job $Job -ErrorAction SilentlyContinue
+        Remove-Job $Job -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Invoke-SyntheticPersistenceCheck {
+    param(
+        [string] $Root,
+        [int] $Port = 8012
+    )
+
+    $Python = Get-PythonPath -Root $Root
+    $StoragePath = Join-Path $Root "data\ops\yonlab_g2b_agent.sqlite3"
+    $ReportDir = Join-Path $Root "data\reports\g2b"
+    $Job = Start-Job -ScriptBlock {
+        param($JobRoot, $JobPython, $JobPort, $JobStoragePath, $JobReportDir)
+        Set-Location $JobRoot
+        $env:YONLAB_STORAGE_DB_PATH = $JobStoragePath
+        $env:YONLAB_REPORT_DIR = $JobReportDir
+        Remove-Item Env:\YONLAB_AUTO_RUN_REAL_API -ErrorAction SilentlyContinue
+        & $JobPython -m uvicorn app.main:app --host 127.0.0.1 --port $JobPort
+    } -ArgumentList $Root, $Python, $Port, $StoragePath, $ReportDir
+
+    $BaseUrl = "http://127.0.0.1:$Port"
+    try {
+        Wait-ForEndpoint -Url "$BaseUrl/health"
+        $Body = @{
+            mode = "fixture"
+            keyword = "AI"
+            num_rows = 1
+            include_reports = $true
+            confirm_real_api_call = $false
+        } | ConvertTo-Json -Depth 5
+        $Bytes = [System.Text.Encoding]::UTF8.GetBytes($Body)
+        $Run = Invoke-RestMethod "$BaseUrl/ops/run-recommendations" `
+            -Method Post `
+            -ContentType "application/json; charset=utf-8" `
+            -Body $Bytes
+        $Quality = Invoke-RestMethod "$BaseUrl/ops/quality-summary"
+        $ReportIndex = Invoke-RestMethod "$BaseUrl/ops/report-index"
+        if ($Run.mode -ne "fixture") {
+            throw "Synthetic persistence check must use fixture mode."
+        }
+        if ($Quality.service_key_exposed -ne $false -or $ReportIndex.service_key_exposed -ne $false) {
+            throw "Synthetic persistence check exposed service key flag."
+        }
+        return @{
+            run_id = $Run.run_id
+            quality_summary_consistent = ($Quality.latest_run_id -eq $Run.run_id)
+            report_index_consistent = ($ReportIndex.latest_run_id -eq $Run.run_id)
             report_count = [int] $ReportIndex.report_count
         }
     } finally {
@@ -345,6 +455,12 @@ try {
     }
 
     Invoke-Checked "fresh deployment readiness" {
+        Set-DeploymentRuntimeEnvironment -Root $Summary.fresh_deployment_path -Port 8011
+        $PathConsistency = Get-PathConsistencyPayload -Root $Summary.fresh_deployment_path
+        Update-PathConsistencySummary -PathConsistency $PathConsistency
+        if (-not $Summary.storage_path_consistent -or -not $Summary.report_path_consistent) {
+            throw "Fresh deployment runtime path consistency failed."
+        }
         $Readiness = Get-ReadinessPayload -Root $Summary.fresh_deployment_path
         $Summary.project_path_ok = [bool] $Readiness.project_path_ok
         $Summary.env_file_present = [bool] $Readiness.env_file_present
@@ -354,6 +470,7 @@ try {
         if (-not $Readiness.project_path_ok) {
             throw "Fresh deployment project_path_ok was false."
         }
+        $env:YONLAB_G2B_BASE_URL = "http://127.0.0.1:8011"
         Invoke-Native ".\scripts\validate_real_ops_controlled.ps1" @() $Summary.fresh_deployment_path
         $DeployReadinessText = & (Join-Path $Summary.fresh_deployment_path "scripts\check_deploy_readiness.ps1")
         $FreshDeployReadiness = $DeployReadinessText | ConvertFrom-Json
@@ -364,7 +481,9 @@ try {
     }
 
     Invoke-Checked "fresh deployment validate_local" {
+        Set-DeploymentRuntimeEnvironment -Root $Summary.fresh_deployment_path -Port 8011
         Invoke-Native ".\scripts\validate_local.ps1" @() $Summary.fresh_deployment_path
+        Set-DeploymentRuntimeEnvironment -Root $Summary.fresh_deployment_path -Port 8011
     }
 
     Invoke-Checked "fresh deployment UI/API smoke" {
@@ -372,8 +491,24 @@ try {
         $Summary.ui_api_smoke_result = "pass:$($UiSmoke.port)"
     }
 
+    if ($RunSyntheticPersistenceCheck) {
+        Invoke-Checked "synthetic persistence consistency" {
+            Set-DeploymentRuntimeEnvironment -Root $Summary.fresh_deployment_path -Port 8012
+            $Synthetic = Invoke-SyntheticPersistenceCheck -Root $Summary.fresh_deployment_path -Port 8012
+            $Summary.synthetic_persistence_check_executed = $true
+            $Summary.synthetic_persistence_run_id = $Synthetic.run_id
+            $Summary.synthetic_report_index_consistent = [bool] $Synthetic.report_index_consistent
+            $Summary.synthetic_quality_summary_consistent = [bool] $Synthetic.quality_summary_consistent
+            $Summary.synthetic_real_api_call_count = 0
+            if (-not $Summary.synthetic_report_index_consistent -or -not $Summary.synthetic_quality_summary_consistent) {
+                throw "Synthetic persistence consistency failed."
+            }
+        }
+    }
+
     if ($RunControlledRealCall -and $ConfirmRealApiCall) {
         Invoke-Checked "optional controlled real call" {
+            Set-DeploymentRuntimeEnvironment -Root $Summary.fresh_deployment_path -Port 8011
             $BaseReadiness = Get-ReadinessPayload -Root $Summary.fresh_deployment_path
             $Summary.base_real_config_ready = [bool] $BaseReadiness.base_real_config_ready
             if ($BaseReadiness.base_real_config_ready -ne $true) {
@@ -382,6 +517,7 @@ try {
                 Push-Location $Summary.fresh_deployment_path
                 try {
                     $env:YONLAB_AUTO_RUN_REAL_API = "true"
+                    $env:YONLAB_G2B_BASE_URL = "http://127.0.0.1:8011"
                     $ReadyReadiness = Get-ReadinessPayload -Root $Summary.fresh_deployment_path -ConfirmIntent $true
                     $Summary.ready_for_controlled_real_call = [bool] $ReadyReadiness.ready_for_controlled_real_call
                     if ($ReadyReadiness.ready_for_controlled_real_call -ne $true) {
@@ -424,6 +560,14 @@ try {
 
     if ($Summary.controlled_real_run_executed -and $Summary.real_call_executed) {
         $Summary.deployment_status = "ready"
+    } elseif (
+        $RunSyntheticPersistenceCheck `
+        -and $Summary.synthetic_report_index_consistent `
+        -and $Summary.synthetic_quality_summary_consistent `
+        -and $Summary.storage_path_consistent `
+        -and $Summary.report_path_consistent
+    ) {
+        $Summary.deployment_status = "ready_for_final_controlled_real_run"
     } elseif (-not $Summary.env_file_present -or -not $Summary.base_real_config_ready) {
         $Summary.deployment_status = "ready_after_env_fix"
     } elseif ($RunControlledRealCall -and $ConfirmRealApiCall -and -not $Summary.real_call_executed) {
@@ -436,7 +580,7 @@ try {
     $Summary.remaining_blocking_issues += $_.Exception.Message
     throw
 } finally {
-    Remove-Item Env:\YONLAB_AUTO_RUN_REAL_API -ErrorAction SilentlyContinue
+    Clear-DeploymentRuntimeEnvironment
     Write-Step "release closeout summary"
     $Summary | ConvertTo-Json -Depth 20
 }

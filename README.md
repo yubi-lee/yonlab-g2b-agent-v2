@@ -405,7 +405,7 @@ offline validation, and verifies `/ui`, `/ops/quality-summary`, and `/ops/report
 By default it does not call the real G2B API:
 
 ```powershell
-.\scripts\run_release_closeout_harness.ps1 -ReleaseTag v0.1.0-rc4
+.\scripts\run_release_closeout_harness.ps1 -ReleaseTag v0.1.0-rc5
 ```
 
 If the fresh deployment has no `.env`, the expected final status is
@@ -417,9 +417,22 @@ when both flags are present and base real configuration is ready:
 
 ```powershell
 .\scripts\run_release_closeout_harness.ps1 `
-  -ReleaseTag v0.1.0-rc4 `
+  -ReleaseTag v0.1.0-rc5 `
   -RunControlledRealCall `
   -ConfirmRealApiCall
+```
+
+When copying `.env` between deployment folders, check storage/report path consistency before
+any real call. Stale absolute `YONLAB_STORAGE_DB_PATH` or `YONLAB_REPORT_DIR` values can make
+the real run and later smoke checks read different stores. Use the synthetic check first; it
+does not call the real G2B API:
+
+```powershell
+.\scripts\run_release_closeout_harness.ps1 `
+  -ReleaseTag v0.1.0-rc5 `
+  -DeployFolderName yonlab-g2b-agent-v2-rc5 `
+  -RunSyntheticPersistenceCheck `
+  -SkipPush
 ```
 
 ## `.env.example` Guidance

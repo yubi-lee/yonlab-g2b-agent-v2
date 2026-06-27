@@ -1,4 +1,4 @@
-# 06 Operations Runbook
+﻿# 06 Operations Runbook
 
 ## Start the App
 
@@ -169,7 +169,7 @@ procedure, smoke tests, rollback criteria, and troubleshooting, see
 For release-candidate closeout from the development repo:
 
 ```powershell
-.\scripts\run_release_closeout_harness.ps1 -ReleaseTag v0.1.0-rc4
+.\scripts\run_release_closeout_harness.ps1 -ReleaseTag v0.1.0-rc5
 ```
 
 The default harness path performs no real API call. It creates a fresh deployment clone,
@@ -181,3 +181,9 @@ limit, and storage/report paths are present. Controlled execution readiness addi
 requires the temporary runtime gate and explicit confirmation; the harness sets
 `YONLAB_AUTO_RUN_REAL_API=true` only in process scope for the confirmed call and removes it
 immediately afterward.
+
+If a deployment `.env` is copied from another release folder, verify that storage and report
+paths resolve under the current deployment. A real run followed by empty independent smoke is
+classified as persistence targeting, not a G2B API failure. Run
+`-RunSyntheticPersistenceCheck -SkipPush` first; it uses fixture data only and should show
+quality-summary and report-index reading the same store.

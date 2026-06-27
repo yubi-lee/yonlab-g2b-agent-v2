@@ -26,6 +26,9 @@ $BaseUrl = $env:YONLAB_G2B_BASE_URL
 if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
     $BaseUrl = "http://127.0.0.1:8000"
 }
+$BaseUri = [System.Uri] $BaseUrl
+$ServerHost = $BaseUri.Host
+$ServerPort = $BaseUri.Port
 
 $ServerJob = $null
 
@@ -151,12 +154,14 @@ try {
         $ServerJob = Start-Job -ScriptBlock {
             param(
                 [string] $Root,
-                [string] $PythonPath
+                [string] $PythonPath,
+                [string] $JobHost,
+                [int] $JobPort
             )
 
             Set-Location $Root
-            & $PythonPath -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-        } -ArgumentList $ProjectRoot, $Python
+            & $PythonPath -m uvicorn app.main:app --host $JobHost --port $JobPort
+        } -ArgumentList $ProjectRoot, $Python, $ServerHost, $ServerPort
         Wait-ForHealth
     }
 

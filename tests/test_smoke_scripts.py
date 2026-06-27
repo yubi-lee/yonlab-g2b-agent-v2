@@ -131,6 +131,8 @@ def test_controlled_real_ops_scripts_are_guarded_and_secret_safe() -> None:
     assert "exit 0" in run_script
     assert "/ops/run-recommendations" in run_script
     assert "-ConfirmRealApiCall" in validate_script
+    assert "$BaseUri = [System.Uri] $BaseUrl" in validate_script
+    assert "--port $JobPort" in validate_script
     assert "if ($ConfirmRealApiCall)" in validate_script
     assert "run_ops_real_controlled.ps1\") -ConfirmRealApiCall" in validate_script
     assert "/g2b/config" in validate_script
@@ -189,13 +191,20 @@ def test_release_closeout_harness_is_guarded_and_secret_safe() -> None:
         encoding="utf-8"
     )
 
-    assert "ReleaseTag = \"v0.1.0-rc4\"" in content
+    assert "ReleaseTag = \"v0.1.0-rc5\"" in content
     assert "RunControlledRealCall" in content
     assert "ConfirmRealApiCall" in content
+    assert "RunSyntheticPersistenceCheck" in content
     assert "SkipPush" in content
     assert "validate_real_ops_controlled.ps1 -ConfirmRealApiCall" in content
     assert "if ($RunControlledRealCall -and $ConfirmRealApiCall)" in content
     assert "base_real_config_ready" in content
+    assert "Set-DeploymentRuntimeEnvironment" in content
+    assert "app.services.runtime_path_consistency" in content
+    assert "storage_path_consistent" in content
+    assert "report_path_consistent" in content
+    assert "synthetic persistence consistency" in content
+    assert "ready_for_final_controlled_real_run" in content
     assert "controlled real call skipped: base real config readiness false" in content
     assert "YONLAB_AUTO_RUN_REAL_API = \"true\"" in content
     assert "Remove-Item Env:\\YONLAB_AUTO_RUN_REAL_API" in content

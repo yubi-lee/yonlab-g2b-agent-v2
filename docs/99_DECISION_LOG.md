@@ -279,3 +279,18 @@ Reason:
   configuration is ready.
 - The harness must set `YONLAB_AUTO_RUN_REAL_API=true` only in process scope immediately
   before the confirmed call and remove it immediately afterward.
+
+## 2026-06-28 YOnLab G2B Agent v2 Task 35H
+
+Decision: Add deployment-local path consistency checks and a no-real synthetic persistence
+check before retrying any controlled real operation.
+
+Reason:
+
+- Task 34H proved the real API call can succeed, but independent smoke returned empty
+  because runtime validation and smoke checks could read different storage/report roots.
+- `validate_local.ps1` intentionally sets process-level storage/report paths, so the release
+  harness must override those values for each deployment folder before readiness, smoke, and
+  persistence checks.
+- A copied `.env` may contain stale absolute paths from another deployment; this must be
+  detected or safely overridden before any additional real API call.

@@ -1,4 +1,4 @@
-# 07 Deployment Handoff
+﻿# 07 Deployment Handoff
 
 This handoff prepares YOnLab G2B Agent v2 MVP release candidate operations on a
 local Windows machine. It is written for a deployment operator and intentionally
@@ -101,7 +101,7 @@ Do not run this command during offline release validation:
 For one-command release closeout, run this from the development repo:
 
 ```powershell
-.\scripts\run_release_closeout_harness.ps1 -ReleaseTag v0.1.0-rc4
+.\scripts\run_release_closeout_harness.ps1 -ReleaseTag v0.1.0-rc5
 ```
 
 The harness defaults to no real API call. It should end as `ready_after_env_fix` when the
@@ -111,6 +111,11 @@ confirmed controlled real run succeeds. The real run path requires both
 `YONLAB_AUTO_RUN_REAL_API=true` in `.env`: the harness opens that runtime gate in process
 scope only after base real configuration readiness is true, then closes it after the
 controlled validation command.
+
+Before a final confirmed real run, run the synthetic persistence check. It detects stale
+absolute storage/report paths copied from an older deployment and verifies that
+`/ops/quality-summary`, `/ops/report-index`, and `/ui` read the same deployment-local store
+without making a real G2B API call.
 
 ## Run the UI
 
