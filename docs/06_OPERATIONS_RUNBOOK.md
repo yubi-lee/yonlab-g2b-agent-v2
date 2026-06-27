@@ -83,31 +83,34 @@ This deletes `data/ops` and `data/reports`. It does not touch `.env` or source f
 
 ## Safe Daily Operations
 
-The current production-ready local baseline is `v0.1.0-rc5.1` at commit `ad1f4a3`.
-The final controlled real validation run was `run_20260627_175740_008807`, and the deployment
-status is `ready`.
+The current production-ready local baseline is `v0.1.0-rc7`, created from the Task 40G
+operational targeting fix. The previous controlled real validation run remains
+`run_20260627_175740_008807`, and the deployment status is `ready`.
 
 Use the safe daily script for routine operations. It removes the real API runtime gate,
 checks readiness, reads `/ops/quality-summary` and `/ops/report-index`, and writes a dated
-log under `logs/ops/YYYYMMDD/` without printing `.env` values or service keys.
+log under `logs/ops/YYYYMMDD/` without printing `.env` values or service keys. If
+`-DeployPath` is omitted from a deployment checkout, the script resolves to that checkout's
+repo root.
 
 ```powershell
-.\scripts\run_ops_safe_daily.ps1 -DeployPath D:\Deploy\yonlab-g2b-agent-v2-rc5.1
+.\scripts\run_ops_safe_daily.ps1 -DeployPath D:\Deploy\yonlab-g2b-agent-v2-rc7
 ```
 
 Optional local validation can be added with `-RunLocalValidation`. That path is still
 fixture-safe and does not pass a confirmed real-call flag.
 
-For Windows Task Scheduler, preview registration first:
+For Windows Task Scheduler, preview registration first and pass the active deployment path:
 
 ```powershell
 .\scripts\register_ops_safe_daily_task.ps1 `
-  -DeployPath D:\Deploy\yonlab-g2b-agent-v2-rc5.1 `
+  -DeployPath D:\Deploy\yonlab-g2b-agent-v2-rc7 `
   -WhatIf
 ```
 
-The scheduler registration targets only `run_ops_safe_daily.ps1`; it does not target the
-controlled real wrapper. Remove the task with `scripts\unregister_ops_safe_daily_task.ps1`.
+The scheduler registration targets only the active deployment's `run_ops_safe_daily.ps1`; it
+does not target the controlled real wrapper. Remove the task with
+`scripts\unregister_ops_safe_daily_task.ps1`.
 
 ## Real API Safety
 

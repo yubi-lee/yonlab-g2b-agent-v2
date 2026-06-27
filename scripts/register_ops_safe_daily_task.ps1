@@ -2,7 +2,7 @@
 param(
     [string] $TaskName = "YOnLabG2BAgentV2SafeDaily",
     [string] $Time = "09:00",
-    [string] $DeployPath = "D:\Deploy\yonlab-g2b-agent-v2-rc5.1"
+    [string] $DeployPath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -12,8 +12,28 @@ $Utf8 = New-Object System.Text.UTF8Encoding($false)
 $OutputEncoding = $Utf8
 try { chcp.com 65001 | Out-Null } catch {}
 
-$ResolvedDeployPath = (Resolve-Path -LiteralPath $DeployPath).Path
-$SafeScriptPath = Join-Path $PSScriptRoot "run_ops_safe_daily.ps1"
+function Resolve-EffectiveDeployPath {
+    param([string] $RequestedDeployPath)
+
+    if (-not [string]::IsNullOrWhiteSpace($RequestedDeployPath)) {
+        return (Resolve-Path -LiteralPath $RequestedDeployPath).Path
+    }
+
+    $ScriptRepoRoot = Split-Path -Parent $PSScriptRoot
+    if (Test-Path -LiteralPath (Join-Path $ScriptRepoRoot "scripts") -PathType Container) {
+        return (Resolve-Path -LiteralPath $ScriptRepoRoot).Path
+    }
+
+    $CurrentPath = (Get-Location).Path
+    if (Test-Path -LiteralPath (Join-Path $CurrentPath "scripts") -PathType Container) {
+        return (Resolve-Path -LiteralPath $CurrentPath).Path
+    }
+
+    throw "Unable to resolve deployment path. Pass -DeployPath explicitly."
+}
+
+$ResolvedDeployPath = Resolve-EffectiveDeployPath -RequestedDeployPath $DeployPath
+$SafeScriptPath = Join-Path $ResolvedDeployPath "scripts\run_ops_safe_daily.ps1"
 $SafeScriptExists = Test-Path -LiteralPath $SafeScriptPath -PathType Leaf
 if (-not $SafeScriptExists -and -not $WhatIfPreference) {
     throw "Safe daily script was not found at $SafeScriptPath"

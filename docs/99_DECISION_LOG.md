@@ -301,9 +301,24 @@ any automatic real API execution path.
 
 Reason:
 
-- The production-ready baseline is `v0.1.0-rc5.1` / `ad1f4a3` with final real run
+- The previous production-ready baseline used the Task 37H release candidate with final real run
   `run_20260627_175740_008807` and deployment status `ready`.
 - Routine daily checks should verify readiness, quality summary, report index, and optional
   UI health while keeping `YONLAB_AUTO_RUN_REAL_API` removed.
 - Windows Task Scheduler registration must point only to the safe daily script. A real G2B
   call remains a manual, explicitly confirmed operation.
+
+## 2026-06-28 YOnLab G2B Agent v2 Task 40G
+
+Decision: Resolve operational script deployment paths dynamically and publish rc7 for safe
+scheduler registration.
+
+Reason:
+
+- A controlled real wrapper dry/default block in an rc6 deployment could still write under a
+  stale deployment path because some script defaults pinned a specific release folder.
+- Safe daily, controlled wrapper, and scheduler registration now resolve `-DeployPath` from
+  explicit input first, then the script checkout's repo root, then the current repo root.
+- Windows Task Scheduler must target only the active deployment's `run_ops_safe_daily.ps1`;
+  the controlled real wrapper remains manual-only and requires explicit confirmation.
+

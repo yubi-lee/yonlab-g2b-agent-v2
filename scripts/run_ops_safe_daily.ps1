@@ -1,5 +1,5 @@
 param(
-    [string] $DeployPath = "D:\Deploy\yonlab-g2b-agent-v2-rc5.1",
+    [string] $DeployPath = "",
     [int] $Port = 8010,
     [switch] $RunLocalValidation,
     [switch] $RunUiSmoke
@@ -12,7 +12,27 @@ $Utf8 = New-Object System.Text.UTF8Encoding($false)
 $OutputEncoding = $Utf8
 try { chcp.com 65001 | Out-Null } catch {}
 
-$ResolvedDeployPath = (Resolve-Path -LiteralPath $DeployPath).Path
+function Resolve-EffectiveDeployPath {
+    param([string] $RequestedDeployPath)
+
+    if (-not [string]::IsNullOrWhiteSpace($RequestedDeployPath)) {
+        return (Resolve-Path -LiteralPath $RequestedDeployPath).Path
+    }
+
+    $ScriptRepoRoot = Split-Path -Parent $PSScriptRoot
+    if (Test-Path -LiteralPath (Join-Path $ScriptRepoRoot "scripts") -PathType Container) {
+        return (Resolve-Path -LiteralPath $ScriptRepoRoot).Path
+    }
+
+    $CurrentPath = (Get-Location).Path
+    if (Test-Path -LiteralPath (Join-Path $CurrentPath "scripts") -PathType Container) {
+        return (Resolve-Path -LiteralPath $CurrentPath).Path
+    }
+
+    throw "Unable to resolve deployment path. Pass -DeployPath explicitly."
+}
+
+$ResolvedDeployPath = Resolve-EffectiveDeployPath -RequestedDeployPath $DeployPath
 Set-Location $ResolvedDeployPath
 
 $DateStamp = Get-Date -Format "yyyyMMdd"

@@ -150,28 +150,30 @@ For release deployment handoff, see `docs/07_DEPLOYMENT_HANDOFF.md`.
 
 Current production-ready local deployment baseline:
 
-- release candidate: `v0.1.0-rc5.1`
-- commit: `ad1f4a3`
-- final controlled real run: `run_20260627_175740_008807`
+- release candidate: `v0.1.0-rc7`
+- commit: created from the Task 40G operational targeting fix
+- previous controlled real run: `run_20260627_175740_008807`
 - deployment status: `ready`
 
-Routine operations should use the no-real safe daily script:
+Routine operations should use the no-real safe daily script. In a deployment checkout,
+omitting `-DeployPath` resolves to that checkout's repo root; scheduled registration should
+still pass the active deployment path explicitly:
 
 ```powershell
-.\scripts\run_ops_safe_daily.ps1 -DeployPath D:\Deploy\yonlab-g2b-agent-v2-rc5.1
+.\scripts\run_ops_safe_daily.ps1 -DeployPath D:\Deploy\yonlab-g2b-agent-v2-rc7
 ```
 
 Register the safe daily Windows scheduled task with a dry-run first:
 
 ```powershell
 .\scripts\register_ops_safe_daily_task.ps1 `
-  -DeployPath D:\Deploy\yonlab-g2b-agent-v2-rc5.1 `
+  -DeployPath D:\Deploy\yonlab-g2b-agent-v2-rc7 `
   -WhatIf
 ```
 
 The scheduled task targets `run_ops_safe_daily.ps1` only. It does not call the real G2B API.
-A real API operation requires an explicit manual `run_ops_controlled_real_once.ps1
--ConfirmRealApiCall` command and should not be registered as a daily task.
+The controlled real wrapper is manual-only and requires explicit operator confirmation; it
+must not be registered as a daily task.
 ## G2B Endpoints
 
 - `GET /g2b/config`

@@ -1,3 +1,6 @@
+import json
+import shutil
+import subprocess
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -276,6 +279,72 @@ def test_safe_daily_scheduler_scripts_target_safe_script_only() -> None:
     assert "YOnLabG2BAgentV2SafeDaily" in unregister_content
     assert "SECRET-KEY" not in register_content
     assert "SECRET-KEY" not in unregister_content
+
+
+def test_operational_scheduler_scripts_do_not_pin_release_deploy_paths() -> None:
+    script_names = (
+        "run_ops_safe_daily.ps1",
+        "run_ops_controlled_real_once.ps1",
+        "register_ops_safe_daily_task.ps1",
+        "run_release_closeout_harness.ps1",
+    )
+
+    for script_name in script_names:
+        content = (PROJECT_ROOT / "scripts" / script_name).read_text(encoding="utf-8")
+        assert "yonlab-g2b-agent-v2-rc5.1" not in content
+        assert r"D:\Deploy\yonlab-g2b-agent-v2-rc5.1" not in content
+
+
+def test_safe_daily_and_controlled_wrapper_default_to_script_repo_root() -> None:
+    safe_daily = (PROJECT_ROOT / "scripts" / "run_ops_safe_daily.ps1").read_text(
+        encoding="utf-8"
+    )
+    controlled = (
+        PROJECT_ROOT / "scripts" / "run_ops_controlled_real_once.ps1"
+    ).read_text(encoding="utf-8")
+
+    assert '[string] $DeployPath = ""' in safe_daily
+    assert '[string] $DeployPath = ""' in controlled
+    assert "Resolve-EffectiveDeployPath" in safe_daily
+    assert "Resolve-EffectiveDeployPath" in controlled
+    assert "Split-Path -Parent $PSScriptRoot" in safe_daily
+    assert "Split-Path -Parent $PSScriptRoot" in controlled
+
+
+def test_controlled_real_once_wrapper_default_block_logs_under_script_root(tmp_path: Path) -> None:
+    repo_copy = tmp_path / "yonlab-g2b-agent-v2"
+    scripts_copy = repo_copy / "scripts"
+    scripts_copy.mkdir(parents=True)
+    shutil.copy2(
+        PROJECT_ROOT / "scripts" / "run_ops_controlled_real_once.ps1",
+        scripts_copy / "run_ops_controlled_real_once.ps1",
+    )
+
+    result = subprocess.run(
+        [
+            "powershell",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(scripts_copy / "run_ops_controlled_real_once.ps1"),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    payload = json.loads(result.stdout[result.stdout.index("{") :])
+    log_path = Path(payload["log_path"])
+    assert payload["status"] == "blocked"
+    assert payload["real_call_executed"] is False
+    assert payload["execution_count"] == 0
+    assert payload["auto_run_gate_cleanup_ok"] is True
+    assert payload["service_key_exposed"] is False
+    assert repo_copy in log_path.parents
+    assert "yonlab-g2b-agent-v2-rc5.1" not in str(log_path)
+    assert log_path.is_file()
+    assert "ConfirmRealApiCall" not in log_path.read_text(encoding="utf-8")
 
 def test_reset_local_ops_data_script_only_targets_generated_data() -> None:
     content = (PROJECT_ROOT / "scripts" / "reset_local_ops_data.ps1").read_text(

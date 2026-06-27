@@ -1,8 +1,9 @@
 param(
     [switch] $ConfirmRealApiCall,
-    [string] $ProjectPath = "D:\Views\yonlab-g2b-agent-v2",
-    [string] $ReleaseTag = "v0.1.0-rc5.1",
-    [string] $DeployFolderName = "yonlab-g2b-agent-v2-rc5.1"
+    [string] $DeployPath = "",
+    [string] $ProjectPath = "",
+    [string] $ReleaseTag = "",
+    [string] $DeployFolderName = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -12,22 +13,77 @@ $Utf8 = New-Object System.Text.UTF8Encoding($false)
 $OutputEncoding = $Utf8
 try { chcp.com 65001 | Out-Null } catch {}
 
+function Resolve-EffectiveDeployPath {
+    param([string] $RequestedDeployPath)
+
+    if (-not [string]::IsNullOrWhiteSpace($RequestedDeployPath)) {
+        return (Resolve-Path -LiteralPath $RequestedDeployPath).Path
+    }
+
+    $ScriptRepoRoot = Split-Path -Parent $PSScriptRoot
+    if (Test-Path -LiteralPath (Join-Path $ScriptRepoRoot "scripts") -PathType Container) {
+        return (Resolve-Path -LiteralPath $ScriptRepoRoot).Path
+    }
+
+    $CurrentPath = (Get-Location).Path
+    if (Test-Path -LiteralPath (Join-Path $CurrentPath "scripts") -PathType Container) {
+        return (Resolve-Path -LiteralPath $CurrentPath).Path
+    }
+
+    throw "Unable to resolve deployment path. Pass -DeployPath explicitly."
+}
+
+function Resolve-EffectiveProjectPath {
+    param(
+        [string] $RequestedProjectPath,
+        [string] $ResolvedDeployPath
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($RequestedProjectPath)) {
+        return (Resolve-Path -LiteralPath $RequestedProjectPath).Path
+    }
+
+    return $ResolvedDeployPath
+}
+
+$ResolvedDeployPath = Resolve-EffectiveDeployPath -RequestedDeployPath $DeployPath
+$ResolvedProjectPath = Resolve-EffectiveProjectPath `
+    -RequestedProjectPath $ProjectPath `
+    -ResolvedDeployPath $ResolvedDeployPath
+if ([string]::IsNullOrWhiteSpace($DeployFolderName)) {
+    $DeployFolderName = Split-Path -Leaf $ResolvedDeployPath
+}
+if ([string]::IsNullOrWhiteSpace($ReleaseTag)) {
+    $ReleaseTag = "manual"
+}
+
+$DateStamp = Get-Date -Format "yyyyMMdd"
+$Timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+$LogDir = Join-Path $ResolvedDeployPath "logs\ops\$DateStamp"
+New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
+$OutLog = Join-Path $LogDir "controlled_real_once_$Timestamp.out.log"
+$ErrLog = Join-Path $LogDir "controlled_real_once_$Timestamp.err.log"
+Remove-Item Env:\YONLAB_AUTO_RUN_REAL_API -ErrorAction SilentlyContinue
+
 Write-Host "Controlled real operation wrapper."
 Write-Host "This command can use live G2B API quota. It is blocked by default."
 
 if (-not $ConfirmRealApiCall) {
-    Write-Host "Blocked: pass -ConfirmRealApiCall to run exactly one controlled real operation."
+    $Message = "Blocked: explicit manual confirmation is required for a controlled real operation."
+    $Message | Set-Content -LiteralPath $OutLog -Encoding utf8
+    [pscustomobject]@{
+        status = "blocked"
+        run_id = $null
+        real_call_executed = $false
+        execution_count = 0
+        real_report_metadata_count = 0
+        summary_status = "blocked"
+        auto_run_gate_cleanup_ok = (-not (Test-Path Env:\YONLAB_AUTO_RUN_REAL_API))
+        log_path = $OutLog
+        service_key_exposed = $false
+    } | ConvertTo-Json -Depth 8
     exit 0
 }
-
-$ResolvedProjectPath = (Resolve-Path -LiteralPath $ProjectPath).Path
-$DeployPath = Join-Path "D:\Deploy" $DeployFolderName
-$DateStamp = Get-Date -Format "yyyyMMdd"
-$Timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-$LogDir = Join-Path $DeployPath "logs\ops\$DateStamp"
-New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
-$OutLog = Join-Path $LogDir "controlled_real_once_$Timestamp.out.log"
-$ErrLog = Join-Path $LogDir "controlled_real_once_$Timestamp.err.log"
 
 $Arguments = @(
     "-NoProfile",
