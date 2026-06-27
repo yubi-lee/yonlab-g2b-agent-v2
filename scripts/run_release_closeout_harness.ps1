@@ -481,7 +481,8 @@ try {
     }
 
     Invoke-Checked "fresh deployment validate_local" {
-        Set-DeploymentRuntimeEnvironment -Root $Summary.fresh_deployment_path -Port 8011
+        Remove-Item Env:\YONLAB_G2B_BASE_URL -ErrorAction SilentlyContinue
+        Remove-Item Env:\YONLAB_AUTO_RUN_REAL_API -ErrorAction SilentlyContinue
         Invoke-Native ".\scripts\validate_local.ps1" @() $Summary.fresh_deployment_path
         Set-DeploymentRuntimeEnvironment -Root $Summary.fresh_deployment_path -Port 8011
     }

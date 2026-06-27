@@ -200,6 +200,7 @@ def test_release_closeout_harness_is_guarded_and_secret_safe() -> None:
     assert "if ($RunControlledRealCall -and $ConfirmRealApiCall)" in content
     assert "base_real_config_ready" in content
     assert "Set-DeploymentRuntimeEnvironment" in content
+    assert "Remove-Item Env:\\YONLAB_G2B_BASE_URL" in content
     assert "app.services.runtime_path_consistency" in content
     assert "storage_path_consistent" in content
     assert "report_path_consistent" in content
