@@ -1,4 +1,4 @@
-﻿# 07 Deployment Handoff
+# 07 Deployment Handoff
 
 This handoff prepares YOnLab G2B Agent v2 MVP release candidate operations on a
 local Windows machine. It is written for a deployment operator and intentionally
@@ -134,6 +134,30 @@ http://127.0.0.1:8000/docs
 
 The dashboard defaults to fixture operations. Keep real mode disabled unless the
 operator is intentionally performing a controlled real validation.
+
+## Safe Daily Scheduled Operations
+
+The production-ready local deployment is `D:\Deploy\yonlab-g2b-agent-v2-rc5.1`, based on
+`v0.1.0-rc5.1` / `ad1f4a3`. Task 36H completed the final controlled real run
+`run_20260627_175740_008807` and left the deployment status as `ready`.
+
+Routine scheduled operations must use the safe daily script only:
+
+```powershell
+.\scripts\run_ops_safe_daily.ps1 -DeployPath D:\Deploy\yonlab-g2b-agent-v2-rc5.1
+```
+
+Preview Windows Task Scheduler registration:
+
+```powershell
+.\scripts\register_ops_safe_daily_task.ps1 `
+  -DeployPath D:\Deploy\yonlab-g2b-agent-v2-rc5.1 `
+  -WhatIf
+```
+
+The safe daily task does not call the real G2B API. It writes logs under
+`logs/ops/YYYYMMDD/`. The controlled real wrapper is for manual operator use only and must
+not be registered as an automatic daily task.
 
 ## Controlled Real Run Procedure
 

@@ -146,6 +146,32 @@ Operations endpoints:
 For the packaged local operations workflow, see `docs/07_LOCAL_OPERATIONS_V1.md`.
 For release deployment handoff, see `docs/07_DEPLOYMENT_HANDOFF.md`.
 
+## Production-Ready Operations Baseline
+
+Current production-ready local deployment baseline:
+
+- release candidate: `v0.1.0-rc5.1`
+- commit: `ad1f4a3`
+- final controlled real run: `run_20260627_175740_008807`
+- deployment status: `ready`
+
+Routine operations should use the no-real safe daily script:
+
+```powershell
+.\scripts\run_ops_safe_daily.ps1 -DeployPath D:\Deploy\yonlab-g2b-agent-v2-rc5.1
+```
+
+Register the safe daily Windows scheduled task with a dry-run first:
+
+```powershell
+.\scripts\register_ops_safe_daily_task.ps1 `
+  -DeployPath D:\Deploy\yonlab-g2b-agent-v2-rc5.1 `
+  -WhatIf
+```
+
+The scheduled task targets `run_ops_safe_daily.ps1` only. It does not call the real G2B API.
+A real API operation requires an explicit manual `run_ops_controlled_real_once.ps1
+-ConfirmRealApiCall` command and should not be registered as a daily task.
 ## G2B Endpoints
 
 - `GET /g2b/config`

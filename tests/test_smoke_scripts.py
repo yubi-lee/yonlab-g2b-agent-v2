@@ -217,6 +217,66 @@ def test_release_closeout_harness_is_guarded_and_secret_safe() -> None:
     assert "G2B_API_SERVICE_KEY=<your local key>" not in content
 
 
+def test_ops_safe_daily_script_is_no_real_and_secret_safe() -> None:
+    content = (PROJECT_ROOT / "scripts" / "run_ops_safe_daily.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "logs\\ops" in content
+    assert "ops_safe_daily_" in content
+    assert "Remove-Item Env:\\YONLAB_AUTO_RUN_REAL_API" in content
+    assert "check_deploy_readiness.ps1" in content
+    assert "check_real_ops_readiness.ps1" in content
+    assert "smoke_ops_quality_summary.ps1" in content
+    assert "smoke_ops_report_index.ps1" in content
+    assert "RunLocalValidation" in content
+    assert "real_api_call_attempted = $false" in content
+    assert "service_key_exposed = $false" in content
+    assert "YONLAB_AUTO_RUN_REAL_API = \"true\"" not in content
+    assert "ConfirmRealApiCall" not in content
+    assert "run_ops_real_controlled.ps1" not in content
+    assert "validate_real_ops_controlled.ps1 -ConfirmRealApiCall" not in content
+    assert "SECRET-KEY" not in content
+
+
+def test_controlled_real_once_wrapper_requires_explicit_confirm() -> None:
+    content = (PROJECT_ROOT / "scripts" / "run_ops_controlled_real_once.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "ConfirmRealApiCall" in content
+    assert "if (-not $ConfirmRealApiCall)" in content
+    assert "exit 0" in content
+    assert "RunControlledRealCall" in content
+    assert "SkipPush" in content
+    assert "Remove-Item Env:\\YONLAB_AUTO_RUN_REAL_API" in content
+    assert "execution_count" in content
+    assert "real_report_metadata_count" in content
+    assert "service_key_exposed = $false" in content
+    assert "SECRET-KEY" not in content
+
+
+def test_safe_daily_scheduler_scripts_target_safe_script_only() -> None:
+    register_content = (
+        PROJECT_ROOT / "scripts" / "register_ops_safe_daily_task.ps1"
+    ).read_text(encoding="utf-8")
+    unregister_content = (
+        PROJECT_ROOT / "scripts" / "unregister_ops_safe_daily_task.ps1"
+    ).read_text(encoding="utf-8")
+
+    assert "YOnLabG2BAgentV2SafeDaily" in register_content
+    assert "run_ops_safe_daily.ps1" in register_content
+    assert "real_api_included = $false" in register_content
+    assert "Register-ScheduledTask" in register_content
+    assert "SupportsShouldProcess = $true" in register_content
+    assert "run_ops_controlled_real_once.ps1" not in register_content
+    assert "RunControlledRealCall" not in register_content
+    assert "ConfirmRealApiCall" not in register_content
+    assert "Unregister-ScheduledTask" in unregister_content
+    assert "YOnLabG2BAgentV2SafeDaily" in unregister_content
+    assert "SECRET-KEY" not in register_content
+    assert "SECRET-KEY" not in unregister_content
+
 def test_reset_local_ops_data_script_only_targets_generated_data() -> None:
     content = (PROJECT_ROOT / "scripts" / "reset_local_ops_data.ps1").read_text(
         encoding="utf-8"

@@ -294,3 +294,16 @@ Reason:
   persistence checks.
 - A copied `.env` may contain stale absolute paths from another deployment; this must be
   detected or safely overridden before any additional real API call.
+## 2026-06-28 YOnLab G2B Agent v2 Task 37H
+
+Decision: Add routine operations scripts and Windows Task Scheduler helpers without adding
+any automatic real API execution path.
+
+Reason:
+
+- The production-ready baseline is `v0.1.0-rc5.1` / `ad1f4a3` with final real run
+  `run_20260627_175740_008807` and deployment status `ready`.
+- Routine daily checks should verify readiness, quality summary, report index, and optional
+  UI health while keeping `YONLAB_AUTO_RUN_REAL_API` removed.
+- Windows Task Scheduler registration must point only to the safe daily script. A real G2B
+  call remains a manual, explicitly confirmed operation.
