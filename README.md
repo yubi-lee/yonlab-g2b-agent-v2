@@ -546,6 +546,17 @@ It summarizes saved operations recommendations, or shows clearly badged demo opp
 when no local run data exists. Operators can filter by keyword, grade, risk level, and
 source badge, then open a copy-ready YOnLab recommendation detail report in Markdown.
 
+Commercial decision fields are deterministic and metadata-only:
+
+- Decision Label: `strong_recommend`, `recommend`, `consider`, `hold`, `not_recommended`.
+- Bid Priority: `P1`, `P2`, `P3`, or `Hold` for daily review ordering.
+- Go/No-Go: `Go`, `Go after RFP review`, `Review with partner`, `Hold`, or `No-Go`.
+- Risk Categories: deadline, eligibility, scope, budget, evidence, and consortium risk.
+
+Use `P1` and `Go` items for immediate review, `P2/P3` items for RFP confirmation, and
+`Hold` or `No-Go` items for low-priority monitoring. These fields do not trigger real API
+calls and do not expose service keys.
+
 Safe metadata endpoints:
 
 - `GET /ops/opportunity-inbox`

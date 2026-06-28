@@ -8,6 +8,10 @@ from typing import Any
 from app.integrations.g2b.fixtures import search_sample_g2b_notices
 from app.integrations.g2b.normalizer import normalize_g2b_notice
 from app.scoring.score_engine import score_notice
+from app.services.opportunity_decision import (
+    build_commercial_decision_fields,
+    build_commercial_recommendation_report,
+)
 from app.storage.repository import OperationsRepository
 
 EMPTY_STATE_MESSAGE = (
@@ -110,6 +114,15 @@ def build_opportunity_report_response(
         "content_type": "text/markdown; charset=utf-8",
         "source_type": detail["source_type"],
         "source_run_id": detail["source_run_id"],
+        "decision_label": detail["decision_label"],
+        "decision_label_ko": detail["decision_label_ko"],
+        "bid_priority": detail["bid_priority"],
+        "decision_reasons": detail["decision_reasons"],
+        "action_plan": detail["action_plan"],
+        "required_documents": detail["required_documents"],
+        "risk_categories": detail["risk_categories"],
+        "go_no_go_recommendation": detail["go_no_go_recommendation"],
+        "go_no_go_recommendation_ko": detail["go_no_go_recommendation_ko"],
         "service_key_exposed": False,
         "real_api_call_attempted": False,
     }
@@ -142,35 +155,7 @@ def build_demo_opportunity_items(limit: int = 5) -> list[dict[str, Any]]:
 
 
 def build_yonlab_opportunity_report(item: dict[str, Any]) -> str:
-    reasons = _markdown_list(item.get("reasons") or [item.get("fit_summary", "검토 필요")])
-    risks = _markdown_list(item.get("risks") or ["확인된 주요 리스크 없음"])
-    documents = _markdown_list(item.get("required_documents") or YONLAB_REQUIRED_DOCUMENTS)
-    budget = _format_budget(item.get("budget"))
-    source_label = f"{item.get('source_type') or 'unknown'} / {item.get('source_run_id') or 'none'}"
-    bid_strategy = item.get("bid_strategy") or "요구사항을 검토하고 제출 범위를 확정하세요."
-    return "\n".join(
-        [
-            f"## YOnLab 맞춤 추천 공고: {item.get('title') or '제목 없음'}",
-            "",
-            f"- 매칭 점수: {item.get('score', 0)}점 / 100점",
-            "- 추천 사유:",
-            reasons,
-            "- 입찰 정보:",
-            f"  - 발주처: {item.get('agency') or '미확인'}",
-            f"  - 예산: {budget}",
-            f"  - 마감일: {item.get('deadline') or '미확인'}",
-            f"  - 출처: {source_label}",
-            f"- 적합도 요약: {item.get('fit_summary') or '검토 필요'}",
-            f"- 지금 봐야 하는 이유: {item.get('why_now') or '마감일과 적합도를 확인하세요.'}",
-            f"- 입찰 준비 전략: {bid_strategy}",
-            "- 제출 필요 서류:",
-            documents,
-            "- 리스크:",
-            risks,
-            f"- 권장 대응: {item.get('recommended_action') or '검토 후 진행 여부 결정'}",
-            "",
-        ]
-    )
+    return build_commercial_recommendation_report(item)
 
 
 def _saved_opportunity_items(repository: OperationsRepository, limit: int) -> list[dict[str, Any]]:
@@ -227,7 +212,7 @@ def _base_item(
     display_risks = risks or ["확인된 주요 리스크 없음"]
     risk_level = _risk_level(score=score, risk_count=len(risks), deadline=deadline)
     fit_summary = _fit_summary(title=title, reasons=reasons, score=score)
-    return {
+    item = {
         "notice_id": notice_id,
         "title": title,
         "agency": agency,
@@ -252,6 +237,8 @@ def _base_item(
         "recommended_action": _recommended_action(score=score, risk_level=risk_level),
         "service_key_exposed": False,
     }
+    item.update(build_commercial_decision_fields(item))
+    return item
 
 
 def _fit_summary(*, title: str, reasons: list[str], score: int) -> str:

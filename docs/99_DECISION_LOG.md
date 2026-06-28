@@ -348,3 +348,15 @@ Reason:
   when a single endpoint or field is missing.
 - Saved opportunity metadata can remain valid UTF-8 while Windows PowerShell displays
   mojibake, so operators need a no-secret encoding check before treating data as corrupted.
+
+## 2026-06-28 YOnLab G2B Agent v2 Task 43G
+
+Decision: Add deterministic commercial decision fields to Opportunity Inbox and Markdown
+reports without changing the real API safety model.
+
+Reason:
+
+- Operators need more than score and grade to decide whether to spend proposal-writing time.
+- Priority, Go/No-Go, action plan, required documents, and risk categories convert saved
+  recommendation metadata into a daily bid review checklist.
+- The rules must remain deterministic, fixture/saved-metadata based, and no-real by default.

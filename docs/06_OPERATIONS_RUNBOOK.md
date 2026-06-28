@@ -231,6 +231,17 @@ internal review notes and includes fit summary, why-now rationale, bid strategy,
 documents, risks, and recommended action. The dashboard and `/ops/opportunity-*` endpoints
 are read-only metadata views; they do not enable `YONLAB_AUTO_RUN_REAL_API` or call G2B.
 
+For daily bid review, sort the inbox by score and start with `P1` opportunities. The
+commercial decision fields mean:
+
+- Decision Label: final deterministic recommendation from score, risk, deadline, and fit.
+- Priority: `P1` is immediate review, `P2/P3` need RFP confirmation, `Hold` is monitoring.
+- Go/No-Go: operator-facing action such as `대응 권장`, `RFP 확인 후 대응`, or `보류`.
+- Risk Categories: deadline, eligibility, scope, budget, evidence, and consortium checks.
+
+The detail pane also lists today's action, document action, business action, required
+document checklist, and risk categories for the selected notice.
+
 If the dashboard stays on `Loading`, treat it as a frontend smoke issue first. Confirm
 `/ui/static/dashboard.js` has no syntax error, then check these read-only endpoints one by
 one: `/health`, `/ops/quality-summary`, `/ops/report-index`, and `/ops/opportunity-inbox`.

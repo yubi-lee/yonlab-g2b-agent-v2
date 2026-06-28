@@ -291,6 +291,12 @@ for internal bid review. This feature reads only stored report/recommendation me
 fixture-derived demo data. It must not be used as a background real API runner; real API
 execution remains manual-only and confirmation-gated.
 
+The Opportunity Inbox exposes deterministic commercial decision fields for operators:
+Decision Label, Priority, Risk Summary, Today Action, Required Documents, Risk Categories,
+and Go/No-Go. These are derived from stored metadata only. `P1` plus `대응 권장` should be
+reviewed first; `RFP 확인 후 대응` requires source document review; `보류` and `비추천`
+should not consume proposal-writing capacity unless a human overrides the rule-based result.
+
 If `/ui` returns HTTP 200 but dashboard panels remain on `Loading`, verify the static
 JavaScript first, then smoke `/ops/quality-summary`, `/ops/report-index`, and
 `/ops/opportunity-inbox`. Persistent `Loading` should be treated as a release blocker

@@ -60,6 +60,14 @@ def test_opportunity_inbox_uses_saved_fixture_recommendations_and_filters(
     scores = [item["score"] for item in payload["items"]]
     assert scores == sorted(scores, reverse=True)
     first = payload["items"][0]
+    assert first["decision_label"]
+    assert first["decision_label_ko"]
+    assert first["bid_priority"]
+    assert first["decision_reasons"]
+    assert first["action_plan"]
+    assert first["risk_categories"]
+    assert first["go_no_go_recommendation"]
+    assert first["go_no_go_recommendation_ko"]
     assert first["fit_summary"]
     assert first["why_now"]
     assert first["bid_strategy"]
@@ -90,7 +98,11 @@ def test_opportunity_detail_and_report_are_copy_ready_markdown(
     assert report["content_type"] == "text/markdown; charset=utf-8"
     assert "## YOnLab 맞춤 추천 공고:" in report["markdown"]
     assert "- 매칭 점수:" in report["markdown"]
+    assert "- Priority:" in report["markdown"]
+    assert "- Go/No-Go:" in report["markdown"]
     assert "- 추천 사유:" in report["markdown"]
+    assert "- 오늘 액션:" in report["markdown"]
+    assert "- 리스크 카테고리:" in report["markdown"]
     assert "- 권장 대응:" in report["markdown"]
     assert "serviceKey" not in report["markdown"]
 
@@ -130,8 +142,11 @@ def test_opportunity_report_builder_contains_commercial_decision_fields() -> Non
     assert item["required_documents"]
     assert item["risks"]
     assert item["recommended_action"]
-    assert "입찰 준비 전략" in markdown
+    assert "- Action Plan:" in markdown
+    assert "- Priority:" in markdown
+    assert "- Go/No-Go:" in markdown
     assert "제출 필요 서류" in markdown
+    assert "리스크 카테고리" in markdown
 
 
 def test_dashboard_contains_opportunity_inbox_ui_hooks() -> None:
@@ -152,6 +167,10 @@ def test_dashboard_contains_opportunity_inbox_ui_hooks() -> None:
     assert "renderOpportunityInbox" in js
     assert "downloadOpportunityMarkdown" in js
     assert "No opportunity data yet" in js
+    assert "decision_label_ko" in js
+    assert "bid_priority" in js
+    assert "go_no_go_recommendation_ko" in js
+    assert "renderOpportunityDetail" in js
 
 
 def _tmp_settings(tmp_path: Path, **overrides) -> Settings:  # noqa: ANN001

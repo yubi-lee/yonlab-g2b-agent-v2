@@ -171,7 +171,10 @@ function renderOpportunityInbox(payload) {
       formatBudget(item.budget),
       item.score,
       item.grade,
+      item.decision_label_ko,
+      item.bid_priority,
       item.risk_level,
+      item.action_plan?.today_action,
       (item.source_badges || [item.source_type]).filter(Boolean).join(", "),
     ];
     for (const value of values) {
@@ -191,7 +194,7 @@ function renderOpportunityInbox(payload) {
   if (!items.length) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
-    cell.colSpan = 9;
+    cell.colSpan = 12;
     cell.textContent = "No opportunity data yet. Run a fixture job or controlled real run to populate this view.";
     row.appendChild(cell);
     body.appendChild(row);
@@ -203,11 +206,51 @@ async function loadOpportunityDetail(noticeId) {
   const report = await apiJson(`/ops/opportunity-report/${encodeURIComponent(noticeId)}`);
   state.currentOpportunityMarkdown = report.markdown || "";
   state.currentOpportunityTitle = payload.title || noticeId;
+  renderOpportunityDetail(payload);
+  safeText("opportunity-markdown", state.currentOpportunityMarkdown || "No report content");
+}
+
+function renderOpportunityDetail(payload) {
   safeText(
     "opportunity-detail",
-    `${payload.title || "No title"} / ${payload.agency || "unknown agency"} / ${payload.source_type || "unknown"} / ${payload.score ?? 0}점 / ${payload.risk_level || "unknown"}`,
+    `${payload.title || "No title"} / ${payload.agency || "unknown agency"} / ${payload.source_type || "unknown"} / ${payload.score ?? 0}점 / ${payload.decision_label_ko || "확인 필요"} / ${payload.bid_priority || "Hold"} / ${payload.go_no_go_recommendation_ko || "확인 필요"}`,
   );
-  safeText("opportunity-markdown", state.currentOpportunityMarkdown || "No report content");
+  const detail = document.getElementById("opportunity-detail-fields");
+  if (!detail) return;
+  detail.innerHTML = "";
+  detail.appendChild(renderFieldGroup("Decision Reasons", payload.decision_reasons || []));
+  const actionPlan = payload.action_plan || {};
+  detail.appendChild(renderFieldGroup("Action Plan", [
+    actionPlan.today_action,
+    actionPlan.document_action,
+    actionPlan.business_action,
+    actionPlan.go_no_go_action,
+  ]));
+  detail.appendChild(renderFieldGroup(
+    "Required Documents",
+    (payload.required_documents || []).map((doc) => `${doc.status || "check"}: ${doc.name || "확인 필요"}`),
+  ));
+  detail.appendChild(renderFieldGroup(
+    "Risk Categories",
+    (payload.risk_categories || []).map((risk) => `${risk.category_ko || risk.category || "risk"}: ${risk.level || "unknown"}`),
+  ));
+}
+
+function renderFieldGroup(title, values) {
+  const section = document.createElement("div");
+  const heading = document.createElement("strong");
+  heading.textContent = title;
+  section.appendChild(heading);
+  const list = document.createElement("ul");
+  const safeValues = (Array.isArray(values) ? values : []).filter(Boolean);
+  if (!safeValues.length) safeValues.push("확인 필요");
+  for (const value of safeValues) {
+    const item = document.createElement("li");
+    item.textContent = value;
+    list.appendChild(item);
+  }
+  section.appendChild(list);
+  return section;
 }
 
 function downloadOpportunityMarkdown() {
