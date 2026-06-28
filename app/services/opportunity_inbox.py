@@ -8,6 +8,11 @@ from typing import Any
 from app.integrations.g2b.fixtures import search_sample_g2b_notices
 from app.integrations.g2b.normalizer import normalize_g2b_notice
 from app.scoring.score_engine import score_notice
+from app.services.daily_review_pack import (
+    EMPTY_STATE_NEXT_ACTIONS,
+    PRIORITY_LEGEND,
+    build_source_mode_message,
+)
 from app.services.opportunity_decision import (
     build_commercial_decision_fields,
     build_commercial_recommendation_report,
@@ -67,6 +72,12 @@ def build_opportunity_inbox(
     return {
         "status": "success" if saved_items else "demo",
         "source_mode": source_mode,
+        "source_mode_message": build_source_mode_message(
+            source_mode,
+            has_items=bool(ordered),
+        ),
+        "latest_run_id": _latest_run_id(ordered),
+        "latest_run_created_at": _latest_run_created_at(ordered),
         "total_items": len(ordered),
         "available_items": len(items),
         "sort": sort,
@@ -77,6 +88,8 @@ def build_opportunity_inbox(
             "source_type": source_type,
         },
         "empty_state_message": "" if saved_items else EMPTY_STATE_MESSAGE,
+        "empty_state_next_actions": [] if ordered else list(EMPTY_STATE_NEXT_ACTIONS),
+        "priority_legend": PRIORITY_LEGEND,
         "items": ordered,
         "service_key_exposed": False,
         "real_api_call_attempted": False,
@@ -120,6 +133,7 @@ def build_opportunity_report_response(
         "decision_reasons": detail["decision_reasons"],
         "action_plan": detail["action_plan"],
         "required_documents": detail["required_documents"],
+        "required_documents_grouped": detail.get("required_documents_grouped") or {},
         "risk_categories": detail["risk_categories"],
         "go_no_go_recommendation": detail["go_no_go_recommendation"],
         "go_no_go_recommendation_ko": detail["go_no_go_recommendation_ko"],
@@ -322,6 +336,26 @@ def _source_badges(source_type: str) -> list[str]:
     if source_type == "safe_daily":
         return ["safe daily", "no real API"]
     return ["fixture", "no real API"]
+
+
+def _latest_run_id(items: list[dict[str, Any]]) -> str | None:
+    for item in items:
+        run_id = str(item.get("source_run_id") or "")
+        if run_id:
+            return run_id
+    return None
+
+
+def _latest_run_created_at(items: list[dict[str, Any]]) -> str | None:
+    values = sorted(
+        (
+            str(item.get("created_at") or "")
+            for item in items
+            if str(item.get("created_at") or "")
+        ),
+        reverse=True,
+    )
+    return values[0] if values else None
 
 
 def _filter_items(

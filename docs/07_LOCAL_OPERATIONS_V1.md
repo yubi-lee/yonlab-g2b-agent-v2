@@ -42,6 +42,7 @@ It does not call the real G2B/Public Data Portal API.
 GET /ops/package-info
 GET /ops/real-readiness
 GET /ops/quality-summary
+GET /ops/safe-daily-status
 GET /ops/report-index
 ```
 
@@ -56,6 +57,16 @@ return service key values.
 `/ops/quality-summary` summarizes saved local recommendation runs and label counts.
 `/ops/report-index` lists recent saved report metadata constrained to the configured report
 directory. Neither endpoint returns service key values.
+`/ops/safe-daily-status` powers the dashboard safe daily card from latest local log metadata
+only. It avoids full path exposure and does not call the real API or query the Windows
+Scheduler from the server.
+
+## Operator Clarity Dashboard
+
+The `/ui` dashboard includes a source-mode banner, P1/P2/P3/Hold priority legend, safe daily
+status card, Korean Daily Review Pack labels, executive summary, and grouped document
+checklist. Demo and fixture data are labeled as non-real; controlled real runs remain
+script-only and require explicit operator confirmation.
 
 ## Fixture Operations Flow
 

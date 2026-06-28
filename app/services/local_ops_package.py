@@ -15,6 +15,7 @@ PACKAGE_ROUTES = [
     "/ops/package-info",
     "/ops/real-readiness",
     "/ops/quality-summary",
+    "/ops/safe-daily-status",
     "/ops/report-index",
     "/ops/run-recommendations",
     "/ops/runs",
@@ -56,6 +57,7 @@ PACKAGE_CAPABILITIES = [
     "Saved report content endpoint",
     "Daily Bid Review Pack Markdown and CSV exports",
     "Recommendation quality summary",
+    "Operator source-mode, priority legend, and safe daily status dashboard",
     "Controlled real operations validation scripts",
 ]
 

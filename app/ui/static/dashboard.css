@@ -226,6 +226,19 @@ th {
   color: #374151;
 }
 
+.source-mode-panel {
+  border-left: 4px solid #0e7490;
+}
+
+.compact-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.compact-list li {
+  margin: 4px 0;
+}
+
 .package-grid {
   display: grid;
   gap: 16px;

@@ -399,3 +399,18 @@ Reason:
   Korean business review labels before the next usability improvement.
 - The next task should improve operator clarity only; it should not run a confirmed real G2B
   API call or change the real API safety gates.
+
+## 2026-06-28 YOnLab G2B Agent v2 Task 48G
+
+Decision: Improve operator clarity in `/ui` and Daily Review Pack exports without adding
+any real API execution path.
+
+Reason:
+
+- Operators need clear source-mode messaging so demo, fixture, saved, and real data are not
+  confused during daily bid review.
+- P1/P2/P3/Hold priority meaning, safe daily status, Korean Daily Review Pack labels,
+  executive summary, and grouped documents reduce review friction without changing scoring.
+- Safe daily dashboard status must be based on latest local safe-log metadata only; it must
+  not expose service keys, full local paths, raw logs, or query Windows Scheduler from the
+  server.

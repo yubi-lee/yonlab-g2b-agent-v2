@@ -6,9 +6,31 @@ import re
 from datetime import UTC, date, datetime
 from typing import Any
 
+from app.services.opportunity_decision import group_required_documents
+
 EMPTY_STATE_MESSAGE = (
-    "No opportunity data available. Run a fixture-safe job or review Opportunity Inbox first."
+    "No opportunity data available. No searchable saved notices exist yet."
 )
+EMPTY_STATE_NEXT_ACTIONS = [
+    "Run a fixture-safe job to verify the local workflow.",
+    "Run a controlled real run only from the approved script with explicit confirmation.",
+    "Open Opportunity Inbox after a saved run exists.",
+]
+PRIORITY_LEGEND = {
+    "P1": "same-day priority review",
+    "P2": "next candidate review",
+    "P3": "spare capacity check",
+    "Hold": "monitor/exclude candidate",
+}
+SOURCE_MODE_MESSAGES = {
+    "real": "Source mode real: based on a controlled real 나라장터 query result.",
+    "saved": "Source mode saved: based on saved operations results.",
+    "synthetic": "Source mode synthetic: demo/sample data may not be real notices.",
+    "fixture": "Source mode fixture: local fixture data, not a real API call.",
+    "demo": "Source mode demo: saved runs are empty, but demo/saved fallback is displayed.",
+    "empty": "Source mode empty: no searchable saved notices yet.",
+    "mixed": "Source mode mixed: review item-level source badges before action.",
+}
 CSV_FIELDS = [
     "notice_id",
     "title",
@@ -47,6 +69,7 @@ def build_daily_review_pack(items: list[dict[str, Any]] | None) -> dict[str, Any
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "source_mode": _source_mode(safe_items),
         "latest_run_id": _latest_run_id(safe_items),
+        "latest_run_created_at": _latest_run_created_at(safe_items),
         "total_items": len(safe_items),
         "p1_count": len(groups["P1"]),
         "p2_count": len(groups["P2"]),
@@ -61,11 +84,66 @@ def build_daily_review_pack(items: list[dict[str, Any]] | None) -> dict[str, Any
         "document_actions": build_document_action_summary(safe_items),
         "risk_summary": build_risk_summary(safe_items),
         "empty_state_message": "" if safe_items else EMPTY_STATE_MESSAGE,
+        "empty_state_next_actions": [] if safe_items else list(EMPTY_STATE_NEXT_ACTIONS),
+        "priority_legend": PRIORITY_LEGEND,
         "service_key_exposed": False,
         "real_api_call_attempted": False,
     }
+    pack["source_mode_message"] = build_source_mode_message(
+        str(pack["source_mode"]),
+        has_items=bool(safe_items),
+    )
+    pack["executive_summary"] = build_executive_summary(pack)
     pack["markdown_report"] = build_daily_review_markdown(pack)
     return pack
+
+
+def build_source_mode_message(source_mode: str, *, has_items: bool = True) -> str:
+    mode = source_mode if source_mode in SOURCE_MODE_MESSAGES else "empty"
+    if not has_items:
+        mode = "empty"
+    return SOURCE_MODE_MESSAGES[mode]
+
+
+def build_executive_summary(pack: dict[str, Any]) -> dict[str, Any]:
+    total_items = int(pack.get("total_items") or 0)
+    p1_count = int(pack.get("p1_count") or 0)
+    p2_count = int(pack.get("p2_count") or 0)
+    hold_count = int(pack.get("hold_count") or 0)
+    risk_summary = pack.get("risk_summary") or {}
+    high_risk_count = int(risk_summary.get("high_risk_count") or 0)
+    top_risks = risk_summary.get("top_risks") or []
+    main_risk = (
+        f"High-risk notices: {high_risk_count}"
+        if high_risk_count
+        else "No major high-risk signal in the current pack"
+    )
+    recommended_response = (
+        "Review P1 notices today and confirm documents before proposal drafting."
+        if p1_count
+        else "Create a saved run first, then review priority candidates."
+    )
+    lines = [
+        f"총 {total_items}개 공고 중 오늘 우선 검토 대상은 {p1_count + p2_count}개입니다.",
+        f"P1 {p1_count}개, P2 {p2_count}개, Hold {hold_count}개로 분류되었습니다.",
+        f"주요 리스크: {main_risk}.",
+        f"오늘 권장 대응: {recommended_response}",
+    ]
+    if top_risks:
+        first = top_risks[0]
+        lines.append(
+            f"가장 먼저 확인할 리스크 공고: {first.get('notice_id') or 'unknown'}."
+        )
+    return {
+        "total_items": total_items,
+        "today_priority_count": p1_count + p2_count,
+        "p1_count": p1_count,
+        "p2_count": p2_count,
+        "hold_count": hold_count,
+        "main_risk": main_risk,
+        "today_recommended_response": recommended_response,
+        "lines": lines[:5],
+    }
 
 
 def group_opportunities_by_priority(
@@ -120,6 +198,7 @@ def build_document_action_summary(items: list[dict[str, Any]] | None) -> list[di
                     for doc in documents
                     if doc
                 ],
+                "required_documents_grouped": group_required_documents(documents),
             }
         )
     return actions
@@ -169,43 +248,63 @@ def build_daily_review_markdown(pack: dict[str, Any]) -> str:
     if int(pack.get("total_items") or 0) == 0:
         return "\n".join(
             [
-                "# YOnLab Daily Bid Review Pack",
+                "# 오늘의 입찰 검토 패키지",
                 "",
                 f"- Generated At: {pack.get('generated_at') or ''}",
                 "- Status: empty",
                 f"- Source Run: {pack.get('latest_run_id') or 'none'}",
+                f"- Source Mode: {pack.get('source_mode') or 'empty'}",
+                (
+                    "- Source Message: "
+                    f"{pack.get('source_mode_message') or SOURCE_MODE_MESSAGES['empty']}"
+                ),
                 "",
                 "No opportunity data available.",
+                "",
+                "## 다음 액션",
+                *[f"- {action}" for action in (pack.get("empty_state_next_actions") or [])],
             ]
         )
 
     lines = [
-        "# YOnLab Daily Bid Review Pack",
+        "# 오늘의 입찰 검토 패키지",
         "",
         f"- Generated At: {pack.get('generated_at') or ''}",
         f"- Source Mode: {pack.get('source_mode') or 'unknown'}",
+        f"- Source Message: {pack.get('source_mode_message') or ''}",
         f"- Source Run: {pack.get('latest_run_id') or 'none'}",
         f"- Total Items: {pack.get('total_items') or 0}",
         f"- P1/P2/P3/Hold/No-Go: {pack.get('p1_count') or 0}/"
         f"{pack.get('p2_count') or 0}/{pack.get('p3_count') or 0}/"
         f"{pack.get('hold_count') or 0}/{pack.get('no_go_count') or 0}",
         "",
-        "## 1. Today Top Opportunities",
+        "## 0. 한눈에 보는 요약",
     ]
+    executive = pack.get("executive_summary") or {}
+    for line in executive.get("lines") or []:
+        lines.append(f"- {line}")
+    lines.extend(["", "## Priority Legend"])
+    for priority, description in (pack.get("priority_legend") or PRIORITY_LEGEND).items():
+        lines.append(f"- {priority}: {description}")
+    lines.extend(["", "## 1. 오늘의 우선 검토 공고"])
     lines.extend(_markdown_item_lines(pack.get("top_items") or []))
-    lines.extend(["", "## 2. Decision Summary By Notice"])
+    lines.extend(["", "## 2. 공고별 판단 요약"])
     lines.extend(_markdown_item_lines(pack.get("review_items") or []))
-    lines.extend(["", "## 3. Today Actions"])
+    lines.extend(["", "## 3. 오늘 할 일"])
     for action in pack.get("today_actions") or []:
         lines.append(
             f"- {action.get('bid_priority')}: {action.get('notice_id')} - "
             f"{action.get('today_action')}"
         )
-    lines.extend(["", "## 4. Required Documents"])
+    lines.extend(["", "## 4. 서류 준비"])
     for action in pack.get("document_actions") or []:
         docs = ", ".join(action.get("required_documents") or ["Check source notice"])
         lines.append(f"- {action.get('notice_id')}: {action.get('document_action')} ({docs})")
-    lines.extend(["", "## 5. Risk Summary"])
+        grouped = action.get("required_documents_grouped") or {}
+        for group_name, documents in grouped.items():
+            if documents:
+                lines.append(f"  - {group_name}: {', '.join(documents)}")
+    lines.extend(["", "## 5. 리스크 요약"])
     risk_summary = pack.get("risk_summary") or {}
     lines.append(f"- High risk items: {risk_summary.get('high_risk_count') or 0}")
     lines.append(f"- Medium risk items: {risk_summary.get('medium_risk_count') or 0}")
@@ -217,7 +316,7 @@ def build_daily_review_markdown(pack: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
-            "## 6. Recommended Response",
+            "## 6. 권장 대응",
             "- Review P1 items first for same-day go/no-go.",
             "- Prepare required documents before detailed proposal drafting.",
             "- Keep Hold and No-Go items visible for monitoring, not immediate pursuit.",
@@ -284,6 +383,7 @@ def _safe_item(item: dict[str, Any]) -> dict[str, Any]:
         ),
         "risk_level": _sanitize_export_text(item.get("risk_level")),
         "source_run_id": _sanitize_export_text(item.get("source_run_id")),
+        "created_at": _sanitize_export_text(item.get("created_at")),
         "source_mode": _sanitize_export_text(item.get("source_mode") or item.get("source_type")),
         "detail_url": _safe_url(item.get("detail_url")),
         "recommended_action": _sanitize_export_text(item.get("recommended_action")),
@@ -295,6 +395,9 @@ def _safe_item(item: dict[str, Any]) -> dict[str, Any]:
             if key in {"today_action", "document_action", "business_action", "go_no_go_action"}
         },
         "required_documents": required_documents if isinstance(required_documents, list) else [],
+        "required_documents_grouped": group_required_documents(
+            required_documents if isinstance(required_documents, list) else []
+        ),
         "risk_categories": risk_categories if isinstance(risk_categories, list) else [],
         "risks": risks if isinstance(risks, list) else [],
     }
@@ -376,6 +479,18 @@ def _latest_run_id(items: list[dict[str, Any]]) -> str | None:
         if run_id:
             return run_id
     return None
+
+
+def _latest_run_created_at(items: list[dict[str, Any]]) -> str | None:
+    values = sorted(
+        (
+            str(item.get("created_at") or "")
+            for item in items
+            if str(item.get("created_at") or "")
+        ),
+        reverse=True,
+    )
+    return values[0] if values else None
 
 
 def _risk_text(item: dict[str, Any]) -> str:

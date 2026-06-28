@@ -113,6 +113,8 @@ From the dashboard you can:
   Markdown detail report for internal bid review.
 - use Daily Review Pack to summarize today's P1/P2/P3/Hold opportunities, actions,
   document checks, and risk counts, then download Markdown or CSV for bid review meetings.
+- see the current source mode banner, P1/P2/P3/Hold priority legend, safe daily status card,
+  Korean Daily Review Pack labels, executive summary, and grouped document checklist.
 
 The dashboard JavaScript is intentionally section-safe: if one metadata endpoint fails, the
 affected panel shows an explicit error or empty state instead of leaving every card stuck at
@@ -145,6 +147,7 @@ Operations endpoints:
 - `GET /ops/package-info`
 - `GET /ops/real-readiness`
 - `GET /ops/quality-summary`
+- `GET /ops/safe-daily-status`
 - `GET /ops/report-index`
 - `POST /ops/run-recommendations`
 - `GET /ops/runs`

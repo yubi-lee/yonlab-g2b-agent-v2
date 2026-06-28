@@ -40,6 +40,10 @@ def test_ui_dashboard_returns_html_without_service_key(monkeypatch) -> None:  # 
     assert "Real Runs" in response.text
     assert "Latest Status" in response.text
     assert "Latest Error" in response.text
+    assert "Source Mode" in response.text
+    assert "Safe Daily Status" in response.text
+    assert "Priority Legend" in response.text
+    assert "오늘의 입찰 검토 패키지" in response.text
     assert "Real mode uses live G2B API quota. Use only when necessary." in response.text
     assert "SECRET" not in response.text
 
@@ -339,6 +343,31 @@ def test_ui_javascript_blocks_unconfirmed_real_mode_and_sets_row_defaults() -> N
     assert "quality-real-reports" in js_text
     assert "quality-latest-status" in js_text
     assert "quality-latest-error" in js_text
+
+
+def test_dashboard_contains_operator_clarity_hooks() -> None:
+    html = (PROJECT_ROOT / "app" / "ui" / "templates" / "dashboard.html").read_text(
+        encoding="utf-8"
+    )
+    js_text = (PROJECT_ROOT / "app" / "ui" / "static" / "dashboard.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert "source-mode-banner" in html
+    assert "source-mode-message" in html
+    assert "priority-legend" in html
+    assert "safe-daily-status" in html
+    assert "safe-daily-latest-result" in html
+    assert "daily-review-executive-summary" in html
+    assert "오늘의 우선 검토 공고" in html
+    assert "오늘 할 일" in html
+    assert "서류 준비" in html
+    assert "리스크 요약" in html
+    assert 'apiJson("/ops/safe-daily-status")' in js_text
+    assert "renderSourceModeBanner" in js_text
+    assert "renderPriorityLegend" in js_text
+    assert "renderSafeDailyStatus" in js_text
+    assert "controlled real run" in js_text
 
 
 def test_duplicated_korean_fragments_absent_from_fixture_and_fresh_ops_output(

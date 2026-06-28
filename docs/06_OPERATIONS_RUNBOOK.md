@@ -28,12 +28,17 @@ Inspect safe package metadata:
 GET /ops/package-info
 GET /ops/real-readiness
 GET /ops/quality-summary
+GET /ops/safe-daily-status
 GET /ops/report-index
 ```
 
 `/ops/quality-summary` and `/ops/report-index` include operator-friendly run metadata:
 latest run time, run mode, recommendation counts, quality labels, warning/error counts, and
 safe report references. They do not expose service keys.
+
+`/ops/safe-daily-status` summarizes the latest safe daily log metadata for the dashboard.
+It reports only safe names/booleans, not full local paths, `.env` values, service keys, or
+raw log contents. It does not query Windows Task Scheduler from the server.
 
 ## Run a Fixture Recommendation Job
 
@@ -75,9 +80,10 @@ The endpoint only uses stored report metadata and rejects report paths outside t
 
 ## Daily Review Pack
 
-Use the dashboard `Daily Review Pack` section after saved recommendations exist. It reads the
+Use the dashboard `오늘의 입찰 검토 패키지` section after saved recommendations exist. It reads the
 same safe Opportunity Inbox data and groups notices into P1, P2, P3, Hold, and No-Go review
-queues. It also summarizes today's actions, document checks, and risk counts.
+queues. It also summarizes today's actions, grouped document checks, risk counts, and an
+executive summary for internal review.
 
 Exports are no-real and do not include `.env` values, service keys, raw responses, or local
 absolute paths:

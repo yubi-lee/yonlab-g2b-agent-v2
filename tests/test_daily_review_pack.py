@@ -9,6 +9,7 @@ import app.api.routes as routes
 from app.core.config import Settings
 from app.main import app
 from app.services.daily_review_pack import (
+    PRIORITY_LEGEND,
     build_daily_review_csv,
     build_daily_review_csv_rows,
     build_daily_review_markdown,
@@ -18,6 +19,7 @@ from app.services.daily_review_pack import (
     build_today_action_summary,
     group_opportunities_by_priority,
 )
+from app.services.safe_daily_status import build_safe_daily_status
 
 client = TestClient(app)
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -72,19 +74,46 @@ def test_daily_review_markdown_contains_required_sections() -> None:
     pack = build_daily_review_pack(_sample_items())
     markdown = build_daily_review_markdown(pack)
 
-    assert markdown.startswith("# YOnLab Daily Bid Review Pack")
+    assert markdown.startswith("# 오늘의 입찰 검토 패키지")
     assert "Generated At" in markdown
     assert "Source Run" in markdown
-    assert "## 1. Today Top Opportunities" in markdown
-    assert "## 2. Decision Summary By Notice" in markdown
-    assert "## 3. Today Actions" in markdown
-    assert "## 4. Required Documents" in markdown
-    assert "## 5. Risk Summary" in markdown
-    assert "## 6. Recommended Response" in markdown
+    assert "## 0. 한눈에 보는 요약" in markdown
+    assert "## 1. 오늘의 우선 검토 공고" in markdown
+    assert "## 2. 공고별 판단 요약" in markdown
+    assert "## 3. 오늘 할 일" in markdown
+    assert "## 4. 서류 준비" in markdown
+    assert "## 5. 리스크 요약" in markdown
+    assert "## 6. 권장 대응" in markdown
     assert "P1-HIGHER-SCORE" in markdown
     assert "LOCAL_ONLY_SECRET" not in markdown
     assert "D:\\Deploy" not in markdown
     assert "raw_source" not in markdown
+
+
+def test_daily_review_pack_includes_executive_summary_and_priority_legend() -> None:
+    pack = build_daily_review_pack(_sample_items())
+
+    assert pack["executive_summary"]["total_items"] == 5
+    assert pack["executive_summary"]["today_priority_count"] == 3
+    assert pack["executive_summary"]["p1_count"] == 2
+    assert pack["executive_summary"]["p2_count"] == 1
+    assert pack["executive_summary"]["hold_count"] == 1
+    assert len(pack["executive_summary"]["lines"]) >= 3
+    assert pack["priority_legend"] == PRIORITY_LEGEND
+    assert pack["priority_legend"]["P1"].startswith("same-day")
+    assert "saved" in pack["source_mode_message"]
+
+
+def test_daily_review_pack_groups_required_documents() -> None:
+    pack = build_daily_review_pack(_sample_items())
+    item = pack["review_items"][0]
+    action = pack["document_actions"][0]
+
+    assert "required_documents_grouped" in item
+    assert "required_documents_grouped" in action
+    assert "기본 회사 서류" in action["required_documents_grouped"]
+    assert "SW/직접생산 확인" in action["required_documents_grouped"]
+    assert action["required_documents_grouped"]["기본 회사 서류"]
 
 
 def test_daily_review_csv_contains_safe_fields_and_escapes_formulas() -> None:
@@ -125,7 +154,10 @@ def test_empty_daily_review_pack_has_explicit_empty_state() -> None:
     assert pack["total_items"] == 0
     assert pack["top_items"] == []
     assert pack["empty_state_message"]
+    assert pack["empty_state_next_actions"]
+    assert "controlled real run" in " ".join(pack["empty_state_next_actions"])
     assert "No opportunity data" in pack["markdown_report"]
+    assert "saved notices" in pack["source_mode_message"]
     assert pack["service_key_exposed"] is False
     assert pack["real_api_call_attempted"] is False
 
@@ -149,6 +181,9 @@ def test_daily_review_pack_api_is_safe_and_uses_existing_opportunity_data(
     assert payload["status"] in {"success", "demo"}
     assert payload["total_items"] >= 1
     assert payload["markdown_report"]
+    assert payload["executive_summary"]
+    assert payload["priority_legend"]["P1"].startswith("same-day")
+    assert payload["source_mode_message"]
     assert payload["service_key_exposed"] is False
     assert payload["real_api_call_attempted"] is False
     assert "LOCAL_ONLY_SECRET" not in json.dumps(payload, ensure_ascii=False)
@@ -168,7 +203,8 @@ def test_daily_review_pack_export_endpoints_return_markdown_and_csv(
 
     assert markdown_response.status_code == 200
     assert markdown_response.headers["content-type"].startswith("text/markdown")
-    assert "# YOnLab Daily Bid Review Pack" in markdown_response.text
+    assert "# 오늘의 입찰 검토 패키지" in markdown_response.text
+    assert "## 0. 한눈에 보는 요약" in markdown_response.text
     assert "serviceKey" not in markdown_response.text
     assert "D:\\Deploy" not in markdown_response.text
 
@@ -187,7 +223,11 @@ def test_dashboard_contains_daily_review_pack_ui_hooks() -> None:
         encoding="utf-8"
     )
 
-    assert "Daily Review Pack" in html
+    assert "오늘의 입찰 검토 패키지" in html
+    assert "source-mode-banner" in html
+    assert "priority-legend" in html
+    assert "safe-daily-status" in html
+    assert "daily-review-executive-summary" in html
     assert "daily-review-status" in html
     assert "daily-review-top-items" in html
     assert "daily-review-markdown" in html
@@ -198,7 +238,48 @@ def test_dashboard_contains_daily_review_pack_ui_hooks() -> None:
     assert "renderDailyReviewPack" in js
     assert "downloadDailyReviewMarkdown" in js
     assert "downloadDailyReviewCsv" in js
+    assert 'apiJson("/ops/safe-daily-status")' in js
+    assert "renderSourceModeBanner" in js
+    assert "renderSafeDailyStatus" in js
+    assert "renderPriorityLegend" in js
     assert "No opportunity data" in js
+
+
+def test_safe_daily_status_api_returns_safe_metadata_only(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    settings = _tmp_settings(tmp_path, g2b_api_service_key="LOCAL_ONLY_SECRET")
+    monkeypatch.setattr(routes, "get_settings", lambda: settings)
+
+    response = client.get("/ops/safe-daily-status")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] in {"empty", "success", "unknown"}
+    assert payload["real_api_call_attempted"] is False
+    assert payload["service_key_exposed"] is False
+    assert "latest_log_filename" in payload
+    assert "scheduler_target_expected" in payload
+    assert Path(payload["active_deployment_path"]).name != "data"
+    assert Path(payload["active_deployment_path"]).name == "yonlab-g2b-agent-v2"
+    assert "LOCAL_ONLY_SECRET" not in json.dumps(payload, ensure_ascii=False)
+
+
+def test_safe_daily_status_uses_explicit_dev_or_deploy_root(tmp_path: Path) -> None:
+    dev_root = tmp_path / "yonlab-g2b-agent-v2"
+    deploy_root = tmp_path / "yonlab-g2b-agent-v2-rc12"
+    dev_root.mkdir()
+    deploy_root.mkdir()
+
+    dev_payload = build_safe_daily_status(deploy_path=dev_root)
+    deploy_payload = build_safe_daily_status(deploy_path=deploy_root)
+
+    assert Path(dev_payload["active_deployment_path"]).name == "yonlab-g2b-agent-v2"
+    assert Path(deploy_payload["active_deployment_path"]).name == "yonlab-g2b-agent-v2-rc12"
+    assert Path(dev_payload["active_deployment_path"]).name != "data"
+    assert Path(deploy_payload["active_deployment_path"]).name != "data"
+    assert dev_payload["real_api_call_attempted"] is False
+    assert deploy_payload["real_api_call_attempted"] is False
+    assert dev_payload["service_key_exposed"] is False
+    assert deploy_payload["service_key_exposed"] is False
 
 
 def _sample_items() -> list[dict]:

@@ -37,6 +37,28 @@ BASE_REQUIRED_DOCUMENTS = [
     ("기술제안서", "required", "협상/기술평가 대응의 핵심 서류입니다."),
     ("보안서약서/청렴계약이행서약서", "required", "대부분 공공 입찰의 공통 제출 서류입니다."),
 ]
+DOCUMENT_GROUPS = {
+    "기본 회사 서류": (
+        "business",
+        "company",
+        "certificate",
+        "사업자",
+        "법인",
+        "small business",
+        "소상공인",
+        "중소기업",
+    ),
+    "세금/보험 서류": ("tax", "insurance", "세금", "국세", "지방세", "보험"),
+    "SW/직접생산 확인": (
+        "software",
+        "sw",
+        "direct production",
+        "직접생산",
+        "소프트웨어",
+    ),
+    "제안/가격 서류": ("proposal", "price", "technical", "제안", "가격", "기술"),
+    "서약/보안 서류": ("security", "pledge", "cloud", "보안", "서약", "청렴", "클라우드"),
+}
 
 
 def build_decision_label(item: dict[str, Any]) -> dict[str, str]:
@@ -155,6 +177,21 @@ def build_required_documents(item: dict[str, Any]) -> list[dict[str, str]]:
     return documents
 
 
+def group_required_documents(documents: list[Any] | None) -> dict[str, list[str]]:
+    grouped = {group_name: [] for group_name in DOCUMENT_GROUPS}
+    for document in documents or []:
+        name = (
+            str(document.get("name") or "")
+            if isinstance(document, dict)
+            else str(document or "")
+        )
+        if not name:
+            continue
+        group_name = _document_group_for_name(name)
+        grouped[group_name].append(name)
+    return grouped
+
+
 def build_risk_categories(item: dict[str, Any]) -> list[dict[str, str]]:
     text = _search_text(item)
     days_left = _deadline_days(item)
@@ -218,6 +255,9 @@ def build_commercial_decision_fields(item: dict[str, Any]) -> dict[str, Any]:
     fields["decision_reasons"] = build_decision_reasons(item)
     fields["action_plan"] = build_action_plan(item)
     fields["required_documents"] = build_required_documents(item)
+    fields["required_documents_grouped"] = group_required_documents(
+        fields["required_documents"]
+    )
     fields["risk_categories"] = build_risk_categories(item)
     fields.update(build_go_no_go_recommendation(item))
     return fields
@@ -333,6 +373,14 @@ def _search_text(item: dict[str, Any]) -> str:
 
 def _contains_any(text: str, needles: list[str]) -> bool:
     return any(needle.casefold() in text for needle in needles)
+
+
+def _document_group_for_name(name: str) -> str:
+    normalized = name.casefold()
+    for group_name, keywords in DOCUMENT_GROUPS.items():
+        if any(keyword.casefold() in normalized for keyword in keywords):
+            return group_name
+    return "기본 회사 서류"
 
 
 def _risk_message(category: str, level: str) -> str:

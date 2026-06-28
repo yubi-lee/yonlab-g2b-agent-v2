@@ -89,6 +89,13 @@ async function loadQualitySummary() {
 async function loadDailyReviewPack() {
   const pack = await apiJson("/ops/daily-review-pack");
   renderDailyReviewPack(pack || {});
+  renderSourceModeBanner(pack || {});
+  renderPriorityLegend(pack.priority_legend || {});
+}
+
+async function loadSafeDailyStatus() {
+  const payload = await apiJson("/ops/safe-daily-status");
+  renderSafeDailyStatus(payload || {});
 }
 
 function renderDailyReviewPack(pack) {
@@ -102,6 +109,7 @@ function renderDailyReviewPack(pack) {
   safeText("daily-review-p3", pack.p3_count, 0);
   safeText("daily-review-hold", pack.hold_count, 0);
   safeText("daily-review-no-go", pack.no_go_count, 0);
+  renderExecutiveSummary(pack.executive_summary || {});
   renderList(
     "daily-review-top-items",
     (pack.top_items || []).map((item) =>
@@ -119,7 +127,7 @@ function renderDailyReviewPack(pack) {
   renderList(
     "daily-review-document-actions",
     (pack.document_actions || []).map((item) =>
-      `${item.notice_id || ""}: ${item.document_action || "Check documents"}`,
+      `${item.notice_id || ""}: ${item.document_action || "Check documents"}${formatDocumentGroups(item.required_documents_grouped)}`,
     ),
     "No opportunity data",
   );
@@ -137,6 +145,48 @@ function renderDailyReviewPack(pack) {
     "daily-review-markdown",
     state.currentDailyReviewMarkdown || pack.empty_state_message || "No opportunity data",
   );
+}
+
+function renderExecutiveSummary(summary) {
+  const element = document.getElementById("daily-review-executive-summary");
+  if (!element) return;
+  const lines = Array.isArray(summary.lines) ? summary.lines : [];
+  element.textContent = lines.length
+    ? lines.join(" ")
+    : "No opportunity data yet. Run a fixture-safe job or approved controlled real run first.";
+}
+
+function renderSourceModeBanner(payload) {
+  safeText("source-mode-current", payload.source_mode || "empty");
+  safeText("source-mode-message", payload.source_mode_message || "Source mode empty: no searchable saved notices yet.");
+  safeText("source-mode-latest-run", payload.latest_run_id || "none");
+  safeText("source-mode-latest-at", payload.latest_run_created_at || "none");
+  safeText("source-mode-real-reports", payload.real_report_count, 0);
+  safeText("source-mode-total-items", payload.total_items, 0);
+  renderList(
+    "source-mode-next-actions",
+    payload.empty_state_next_actions || [],
+    "Saved runs are empty. Use the approved controlled real run script with explicit confirmation if real data is needed.",
+  );
+}
+
+function renderPriorityLegend(legend) {
+  const entries = Object.entries(legend || {});
+  renderList(
+    "priority-legend",
+    entries.map(([priority, description]) => `${priority}: ${description}`),
+    "P1: same-day priority review / P2: next candidate review / P3: spare capacity check / Hold: monitor/exclude candidate",
+  );
+}
+
+function renderSafeDailyStatus(payload) {
+  safeText("safe-daily-current-status", payload.status || "empty");
+  safeText("safe-daily-latest-result", payload.latest_result || "none");
+  safeText("safe-daily-latest-log", payload.latest_log_filename || "none");
+  safeText("safe-daily-real-api", yesNo(payload.real_api_call_attempted));
+  safeText("safe-daily-service-key", yesNo(payload.service_key_exposed));
+  safeText("safe-daily-target", payload.scheduler_target_expected || "scripts/run_ops_safe_daily.ps1");
+  safeText("safe-daily-note", payload.note || "Safe daily status is based on local log metadata only.");
 }
 
 function requestFromForm(form) {
@@ -220,8 +270,10 @@ function renderOpportunityInbox(payload) {
   if (empty) {
     empty.textContent = items.length
       ? `${items.length} opportunities loaded (${payload.source_mode || "unknown"}).`
-      : payload.empty_state_message || "No opportunity data yet.";
+      : `${payload.empty_state_message || "No opportunity data yet."} ${(payload.empty_state_next_actions || []).join(" ")}`;
   }
+  renderSourceModeBanner(payload || {});
+  renderPriorityLegend(payload.priority_legend || {});
   for (const item of items) {
     const row = document.createElement("tr");
     const values = [
@@ -255,7 +307,7 @@ function renderOpportunityInbox(payload) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 12;
-    cell.textContent = "No opportunity data yet. Run a fixture job or controlled real run to populate this view.";
+    cell.textContent = "No opportunity data yet. Run a fixture job or use the approved controlled real run script with explicit confirmation to populate this view.";
     row.appendChild(cell);
     body.appendChild(row);
   }
@@ -286,16 +338,12 @@ function renderOpportunityDetail(payload) {
     actionPlan.business_action,
     actionPlan.go_no_go_action,
   ]));
-  detail.appendChild(renderFieldGroup(
-    "Required Documents",
-    (payload.required_documents || []).map((doc) => `${doc.status || "check"}: ${doc.name || "확인 필요"}`),
-  ));
+  detail.appendChild(renderFieldGroup("Required Documents", requiredDocumentLines(payload)));
   detail.appendChild(renderFieldGroup(
     "Risk Categories",
     (payload.risk_categories || []).map((risk) => `${risk.category_ko || risk.category || "risk"}: ${risk.level || "unknown"}`),
   ));
 }
-
 function renderFieldGroup(title, values) {
   const section = document.createElement("div");
   const heading = document.createElement("strong");
@@ -327,7 +375,7 @@ function downloadOpportunityMarkdown() {
 }
 
 function downloadDailyReviewMarkdown() {
-  const markdown = state.currentDailyReviewMarkdown || "# YOnLab Daily Bid Review Pack\n\nNo opportunity data.";
+  const markdown = state.currentDailyReviewMarkdown || "# 오늘의 입찰 검토 패키지\n\nNo opportunity data.";
   const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -360,6 +408,21 @@ function formatBudget(value) {
   const number = Number(value);
   if (Number.isNaN(number)) return value;
   return `${number.toLocaleString()}원`;
+}
+
+function formatDocumentGroups(groups) {
+  const entries = Object.entries(groups || {}).filter(([, values]) => Array.isArray(values) && values.length);
+  if (!entries.length) return "";
+  return " / " + entries.map(([name, values]) => `${name}: ${values.join(", ")}`).join(" / ");
+}
+
+function requiredDocumentLines(payload) {
+  const grouped = payload.required_documents_grouped || {};
+  const groupedLines = Object.entries(grouped)
+    .filter(([, values]) => Array.isArray(values) && values.length)
+    .map(([group, values]) => `${group}: ${values.join(", ")}`);
+  if (groupedLines.length) return groupedLines;
+  return (payload.required_documents || []).map((doc) => `${doc.status || "check"}: ${doc.name || "확인 필요"}`);
 }
 
 async function loadRuns() {
@@ -522,6 +585,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("refresh-daily-review")?.addEventListener("click", () =>
     loadSection("daily review pack", loadDailyReviewPack, ["daily-review-status", "daily-review-markdown"]),
   );
+  document.getElementById("refresh-safe-daily")?.addEventListener("click", () =>
+    loadSection("safe daily", loadSafeDailyStatus, ["safe-daily-current-status", "safe-daily-latest-result"]),
+  );
   document.getElementById("refresh-runs")?.addEventListener("click", () =>
     loadSection("runs", loadRuns, ["run-detail"]),
   );
@@ -546,6 +612,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     loadSection("status", loadStatus, ["status-health", "status-package", "status-real-api", "status-service-key", "status-endpoint", "status-fixture", "status-readiness", "package-summary"]),
     loadSection("quality", loadQualitySummary, ["quality-summary-status", "opportunity-summary-status"]),
     loadSection("daily review pack", loadDailyReviewPack, ["daily-review-status", "daily-review-markdown"]),
+    loadSection("safe daily", loadSafeDailyStatus, ["safe-daily-current-status", "safe-daily-latest-result"]),
     loadSection("opportunities", loadOpportunityInbox, ["opportunity-empty"]),
     loadSection("runs", loadRuns, ["run-detail"]),
     loadSection("recommendations", loadRecommendations, ["run-detail"]),

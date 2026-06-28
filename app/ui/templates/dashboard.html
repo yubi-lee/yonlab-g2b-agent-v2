@@ -35,6 +35,49 @@
         </dl>
       </section>
 
+      <section id="source-mode-banner" class="panel source-mode-panel" aria-labelledby="source-mode-title">
+        <div class="panel-heading">
+          <h2 id="source-mode-title">Source Mode</h2>
+        </div>
+        <p id="source-mode-message" class="detail-summary">Loading source mode.</p>
+        <dl class="status-grid compact-status">
+          <div><dt>Mode</dt><dd id="source-mode-current">Loading</dd></div>
+          <div><dt>Latest Run</dt><dd id="source-mode-latest-run">Loading</dd></div>
+          <div><dt>Latest At</dt><dd id="source-mode-latest-at">Loading</dd></div>
+          <div><dt>Real Reports</dt><dd id="source-mode-real-reports">Loading</dd></div>
+          <div><dt>Total Items</dt><dd id="source-mode-total-items">Loading</dd></div>
+        </dl>
+        <ul id="source-mode-next-actions" class="compact-list"></ul>
+      </section>
+
+      <section class="panel" aria-labelledby="safe-daily-title">
+        <div class="panel-heading">
+          <h2 id="safe-daily-title">Safe Daily Status</h2>
+          <button id="refresh-safe-daily" type="button">Refresh</button>
+        </div>
+        <dl id="safe-daily-status" class="status-grid compact-status">
+          <div><dt>Status</dt><dd id="safe-daily-current-status">Loading</dd></div>
+          <div><dt>Latest Result</dt><dd id="safe-daily-latest-result">Loading</dd></div>
+          <div><dt>Latest Log</dt><dd id="safe-daily-latest-log">Loading</dd></div>
+          <div><dt>Real API Attempted</dt><dd id="safe-daily-real-api">Loading</dd></div>
+          <div><dt>Service Key Exposed</dt><dd id="safe-daily-service-key">Loading</dd></div>
+          <div><dt>Target</dt><dd id="safe-daily-target">Loading</dd></div>
+        </dl>
+        <p id="safe-daily-note" class="detail-summary">Loading safe daily note.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="priority-legend-title">
+        <div class="panel-heading">
+          <h2 id="priority-legend-title">Priority Legend</h2>
+        </div>
+        <ul id="priority-legend" class="compact-list">
+          <li>P1: same-day priority review</li>
+          <li>P2: next candidate review</li>
+          <li>P3: spare capacity check</li>
+          <li>Hold: monitor/exclude candidate</li>
+        </ul>
+      </section>
+
       <section class="panel" aria-labelledby="run-title">
         <div class="panel-heading">
           <h2 id="run-title">Run recommendation</h2>
@@ -124,7 +167,7 @@
 
       <section class="panel daily-review-panel" aria-labelledby="daily-review-title">
         <div class="panel-heading">
-          <h2 id="daily-review-title">Daily Review Pack</h2>
+          <h2 id="daily-review-title">오늘의 입찰 검토 패키지</h2>
           <div class="actions">
             <button id="refresh-daily-review" type="button">Refresh</button>
             <button id="download-daily-review-markdown" type="button">Download Markdown</button>
@@ -142,21 +185,22 @@
           <div><dt>Hold</dt><dd id="daily-review-hold">Loading</dd></div>
           <div><dt>No-Go</dt><dd id="daily-review-no-go">Loading</dd></div>
         </dl>
+        <div id="daily-review-executive-summary" class="detail-summary">Loading executive summary.</div>
         <div class="package-grid">
           <div>
-            <h3>Top Opportunities</h3>
+            <h3>오늘의 우선 검토 공고</h3>
             <ul id="daily-review-top-items"></ul>
           </div>
           <div>
-            <h3>Today Actions</h3>
+            <h3>오늘 할 일</h3>
             <ul id="daily-review-today-actions"></ul>
           </div>
           <div>
-            <h3>Documents</h3>
+            <h3>서류 준비</h3>
             <ul id="daily-review-document-actions"></ul>
           </div>
           <div>
-            <h3>Risk Summary</h3>
+            <h3>리스크 요약</h3>
             <ul id="daily-review-risk-summary"></ul>
           </div>
         </div>

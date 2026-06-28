@@ -191,6 +191,17 @@ Do not include:
 - Database schema changes unless strictly needed for display.
 - Large visual redesign.
 
+## Task 48G Follow-Up
+
+Task 48G implements the P1 operator clarity items from this review without changing real API
+behavior:
+
+- `/ui` now shows a source-mode banner, priority legend, and safe daily status card.
+- Daily Review Pack uses Korean business review labels and includes an executive summary.
+- Empty states include next operator actions and keep confirmed real calls script-only.
+- Required documents are grouped for the UI and Markdown exports while preserving the flat
+  `required_documents` field.
+
 ## No-Real And No-Secret Confirmation
 
 - Confirmed real API command was not executed.

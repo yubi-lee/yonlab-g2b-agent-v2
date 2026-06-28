@@ -59,7 +59,9 @@ from app.services.attachment_analysis_planner import (
 from app.services.attachment_downloader import build_attachment_download_plan_items
 from app.services.daily_review_pack import (
     build_daily_review_csv,
+    build_daily_review_markdown,
     build_daily_review_pack,
+    build_source_mode_message,
 )
 from app.services.document_risk_analyzer import analyze_document_risks
 from app.services.local_ops_package import build_local_ops_package_info
@@ -71,6 +73,7 @@ from app.services.opportunity_inbox import (
 )
 from app.services.pdf_text_extractor import extract_pdf_text_from_file
 from app.services.real_ops_readiness import build_real_ops_readiness
+from app.services.safe_daily_status import build_safe_daily_status
 from app.storage.models import OperationsRunSummary, OpsRunRequest
 from app.storage.repository import OperationsRepository
 
@@ -624,6 +627,11 @@ def ops_quality_summary() -> dict[str, Any]:
     return repository.build_quality_summary()
 
 
+@router.get("/ops/safe-daily-status")
+def ops_safe_daily_status() -> dict[str, Any]:
+    return build_safe_daily_status(deploy_path=Path.cwd())
+
+
 @router.get("/ops/report-index")
 def ops_report_index(limit: int = 20) -> dict[str, Any]:
     settings = get_settings()
@@ -731,6 +739,15 @@ def ops_daily_review_pack() -> dict[str, Any]:
     if pack["status"] == "success" and inbox.get("status") == "demo":
         pack["status"] = "demo"
     pack["source_mode"] = inbox.get("source_mode") or pack["source_mode"]
+    pack["source_mode_message"] = build_source_mode_message(
+        str(pack["source_mode"]),
+        has_items=bool(pack.get("total_items")),
+    )
+    pack["latest_run_id"] = inbox.get("latest_run_id") or pack.get("latest_run_id")
+    pack["latest_run_created_at"] = (
+        inbox.get("latest_run_created_at") or pack.get("latest_run_created_at")
+    )
+    pack["markdown_report"] = build_daily_review_markdown(pack)
     pack["service_key_exposed"] = False
     pack["real_api_call_attempted"] = False
     return pack
