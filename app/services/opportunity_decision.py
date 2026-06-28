@@ -241,7 +241,7 @@ def build_commercial_recommendation_report(item: dict[str, Any]) -> str:
             f"- Go/No-Go: {enriched['go_no_go_recommendation_ko']}",
             "- 추천 사유:",
             reasons,
-            "- 입찰 정보:",
+            "- 핵심 정보:",
             f"  - 발주처: {enriched.get('agency') or '확인 필요'}",
             f"  - 예산: {budget}",
             f"  - 마감일: {enriched.get('deadline') or '확인 필요'}",
@@ -249,6 +249,10 @@ def build_commercial_recommendation_report(item: dict[str, Any]) -> str:
                 f"  - 출처: {enriched.get('source_type') or 'unknown'} / "
                 f"{enriched.get('source_run_id') or 'none'}"
             ),
+            "- 입찰 준비 전략:",
+            f"  - 제안 방향: {action_plan['business_action']}",
+            f"  - 증빙 준비: {action_plan['document_action']}",
+            f"  - 판단 기준: {action_plan['go_no_go_action']}",
             f"- 오늘 액션: {action_plan['today_action']}",
             "- Action Plan:",
             f"  - 문서: {action_plan['document_action']}",

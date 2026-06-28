@@ -360,3 +360,15 @@ Reason:
 - Priority, Go/No-Go, action plan, required documents, and risk categories convert saved
   recommendation metadata into a daily bid review checklist.
 - The rules must remain deterministic, fixture/saved-metadata based, and no-real by default.
+
+## 2026-06-28 YOnLab G2B Agent v2 Task 44G
+
+Decision: Promote rc10 as the active production candidate and align the opportunity
+Markdown report labels with the business review checklist.
+
+Reason:
+
+- The safe daily scheduler must target the active rc10 safe daily script only.
+- Operators need visible `핵심 정보` and `입찰 준비 전략` sections when copying the
+  opportunity report into business review notes.
+- This remains a deterministic saved-metadata workflow and does not change real API gates.

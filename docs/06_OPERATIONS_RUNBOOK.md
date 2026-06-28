@@ -227,9 +227,10 @@ matching score, recommendation grade, risk level, source run, and source badge. 
 marked as demo/fixture-derived and must not be treated as real G2B results.
 
 Open a row to view the YOnLab recommendation detail. The Markdown pane is copy-ready for
-internal review notes and includes fit summary, why-now rationale, bid strategy, required
-documents, risks, and recommended action. The dashboard and `/ops/opportunity-*` endpoints
-are read-only metadata views; they do not enable `YONLAB_AUTO_RUN_REAL_API` or call G2B.
+internal review notes and includes core information, bid preparation strategy, required
+documents, risk categories, risks, and recommended action. The dashboard and
+`/ops/opportunity-*` endpoints are read-only metadata views; they do not enable
+`YONLAB_AUTO_RUN_REAL_API` or call G2B.
 
 For daily bid review, sort the inbox by score and start with `P1` opportunities. The
 commercial decision fields mean:

@@ -557,6 +557,10 @@ Use `P1` and `Go` items for immediate review, `P2/P3` items for RFP confirmation
 `Hold` or `No-Go` items for low-priority monitoring. These fields do not trigger real API
 calls and do not expose service keys.
 
+The opportunity Markdown report includes `핵심 정보`, `입찰 준비 전략`, required
+documents, risk categories, and recommended action so it can be used directly in business
+review notes.
+
 Safe metadata endpoints:
 
 - `GET /ops/opportunity-inbox`

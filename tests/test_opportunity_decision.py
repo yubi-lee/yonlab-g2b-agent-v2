@@ -147,6 +147,8 @@ def test_commercial_report_contains_required_decision_sections() -> None:
     assert "- 매칭 점수: 88점 / 100점" in markdown
     assert "- Priority: P1" in markdown
     assert "- Go/No-Go: 대응 권장" in markdown
+    assert "- 핵심 정보:" in markdown
+    assert "- 입찰 준비 전략:" in markdown
     assert "- 오늘 액션:" in markdown
     assert "- 제출 필요 서류:" in markdown
     assert "- 리스크 카테고리:" in markdown

@@ -291,6 +291,10 @@ for internal bid review. This feature reads only stored report/recommendation me
 fixture-derived demo data. It must not be used as a background real API runner; real API
 execution remains manual-only and confirmation-gated.
 
+For business review, the Markdown report should expose core information, bid preparation
+strategy, required documents, risk categories, risks, and recommended action in visible
+sections.
+
 The Opportunity Inbox exposes deterministic commercial decision fields for operators:
 Decision Label, Priority, Risk Summary, Today Action, Required Documents, Risk Categories,
 and Go/No-Go. These are derived from stored metadata only. `P1` plus `대응 권장` should be
