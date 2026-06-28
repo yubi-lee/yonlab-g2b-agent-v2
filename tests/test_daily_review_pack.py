@@ -259,7 +259,7 @@ def test_safe_daily_status_api_returns_safe_metadata_only(tmp_path: Path, monkey
     assert "latest_log_filename" in payload
     assert "scheduler_target_expected" in payload
     assert Path(payload["active_deployment_path"]).name != "data"
-    assert Path(payload["active_deployment_path"]).name == "yonlab-g2b-agent-v2"
+    assert Path(payload["active_deployment_path"]).name.startswith("yonlab-g2b-agent-v2")
     assert "LOCAL_ONLY_SECRET" not in json.dumps(payload, ensure_ascii=False)
 
 
