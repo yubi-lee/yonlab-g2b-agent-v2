@@ -273,3 +273,16 @@ th {
     padding: 12px;
   }
 }
+
+
+.compact-status {
+  margin-bottom: 12px;
+}
+
+.opportunity-filters {
+  margin-bottom: 12px;
+}
+
+.opportunity-detail-panel .markdown-viewer {
+  min-height: 260px;
+}

@@ -322,3 +322,16 @@ Reason:
 - Windows Task Scheduler must target only the active deployment's `run_ops_safe_daily.ps1`;
   the controlled real wrapper remains manual-only and requires explicit confirmation.
 
+## 2026-06-28 YOnLab G2B Agent v2 Task 41G
+
+Decision: Add a commercial Opportunity Inbox and YOnLab recommendation detail view to the
+local operations dashboard while keeping all real API execution manually gated.
+
+Reason:
+
+- Operators need a practical bid intelligence screen, not only raw operations status.
+- Safe metadata from saved runs can be transformed into deterministic commercial decision
+  fields: fit summary, why now, bid strategy, required documents, risks, and next action.
+- The dashboard must distinguish demo/fixture/synthetic/real/safe-daily source context and
+  must not expose service keys, raw API responses, or `.env` values.
+

@@ -60,6 +60,11 @@ from app.services.attachment_downloader import build_attachment_download_plan_it
 from app.services.document_risk_analyzer import analyze_document_risks
 from app.services.local_ops_package import build_local_ops_package_info
 from app.services.operations_runner import run_recommendation_job
+from app.services.opportunity_inbox import (
+    build_opportunity_inbox,
+    build_opportunity_report_response,
+    get_opportunity_detail,
+)
 from app.services.pdf_text_extractor import extract_pdf_text_from_file
 from app.services.real_ops_readiness import build_real_ops_readiness
 from app.storage.models import OperationsRunSummary, OpsRunRequest
@@ -687,6 +692,51 @@ def ops_report_content(run_id: str, notice_id: str) -> dict[str, str]:
         "title": str(report["title"]),
         "markdown": report_path.read_text(encoding="utf-8"),
     }
+
+
+@router.get("/ops/opportunity-inbox")
+def ops_opportunity_inbox(
+    limit: int = 20,
+    grade: str | None = None,
+    risk_level: str | None = None,
+    keyword: str | None = None,
+    source_type: str | None = None,
+    sort: str = "score_desc",
+) -> dict[str, Any]:
+    settings = get_settings()
+    return build_opportunity_inbox(
+        db_path=settings.yonlab_storage_db_path,
+        limit=limit,
+        grade=grade,
+        risk_level=risk_level,
+        keyword=keyword,
+        source_type=source_type,
+        sort=sort,
+    )
+
+
+@router.get("/ops/opportunity-inbox/{notice_id}")
+def ops_opportunity_detail(notice_id: str) -> dict[str, Any]:
+    settings = get_settings()
+    detail = get_opportunity_detail(
+        db_path=settings.yonlab_storage_db_path,
+        notice_id=notice_id,
+    )
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Opportunity not found.")
+    return detail
+
+
+@router.get("/ops/opportunity-report/{notice_id}")
+def ops_opportunity_report(notice_id: str) -> dict[str, Any]:
+    settings = get_settings()
+    report = build_opportunity_report_response(
+        db_path=settings.yonlab_storage_db_path,
+        notice_id=notice_id,
+    )
+    if report is None:
+        raise HTTPException(status_code=404, detail="Opportunity report not found.")
+    return report
 
 
 def _notice_input(payload: NoticeRequest) -> dict[str, Any] | BidNotice:

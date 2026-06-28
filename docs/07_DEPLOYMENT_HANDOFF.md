@@ -278,3 +278,16 @@ following occurs:
   flows.
 - Generated SQLite data and markdown reports are local runtime artifacts and are
   intentionally ignored by Git.
+
+## Commercial Bid Intelligence MVP
+
+The deployment dashboard exposes an Opportunity Inbox at `/ui`. It is intended for local
+operator review after fixture, synthetic, safe daily, or explicitly approved controlled real
+operations have produced safe metadata. Source badges distinguish demo, fixture, synthetic,
+real, and safe daily context so demo data is not mistaken for real G2B output.
+
+The detail pane provides a YOnLab-formatted Markdown report that can be copied or downloaded
+for internal bid review. This feature reads only stored report/recommendation metadata or
+fixture-derived demo data. It must not be used as a background real API runner; real API
+execution remains manual-only and confirmation-gated.
+

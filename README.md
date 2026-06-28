@@ -522,3 +522,20 @@ Do not add service keys to these scripts. Keep keys in local `.env` only.
 ## Korean UTF-8 Regression Coverage
 
 Korean UTF-8 regression tests are included because G2B/Narajangteo data contains Korean text in notice titles, agencies, qualification text, and descriptions.
+
+## Commercial Opportunity Inbox
+
+The local `/ui` dashboard now includes an Opportunity Inbox for commercial bid review.
+It summarizes saved operations recommendations, or shows clearly badged demo opportunities
+when no local run data exists. Operators can filter by keyword, grade, risk level, and
+source badge, then open a copy-ready YOnLab recommendation detail report in Markdown.
+
+Safe metadata endpoints:
+
+- `GET /ops/opportunity-inbox`
+- `GET /ops/opportunity-inbox/{notice_id}`
+- `GET /ops/opportunity-report/{notice_id}`
+
+These endpoints do not trigger real G2B API calls and never include `.env` values, service
+keys, raw API responses, or runtime DB contents beyond safe recommendation metadata.
+

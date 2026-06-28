@@ -1,5 +1,7 @@
 const state = {
   currentRunId: "",
+  currentOpportunityMarkdown: "",
+  currentOpportunityTitle: "yonlab-opportunity",
 };
 
 const text = (id, value) => {
@@ -52,6 +54,11 @@ async function loadQualitySummary() {
   text("quality-real-runs", `${summary.real_run_count ?? 0} (${summary.real_mode_status || "empty"})`);
   text("quality-warnings", summary.warning_count ?? 0);
   text("quality-errors", summary.error_count ?? 0);
+  text("opportunity-deployment-status", summary.summary_status === "failure" ? "review" : "ready");
+  text("opportunity-latest-run", summary.latest_run_id || "none");
+  text("opportunity-summary-status", summary.summary_status || "unknown");
+  text("opportunity-real-reports", summary.real_report_count ?? 0);
+  text("opportunity-service-key", yesNo(summary.service_key_exposed));
 }
 
 function requestFromForm(form) {
@@ -103,6 +110,107 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+
+function opportunityQueryParams() {
+  const params = new URLSearchParams({ limit: "20" });
+  const keyword = document.getElementById("opportunity-keyword").value;
+  const grade = document.getElementById("opportunity-grade").value;
+  const risk = document.getElementById("opportunity-risk").value;
+  const source = document.getElementById("opportunity-source").value;
+  const sort = document.getElementById("opportunity-sort").value;
+  if (keyword) params.set("keyword", keyword);
+  if (grade) params.set("grade", grade);
+  if (risk) params.set("risk_level", risk);
+  if (source) params.set("source_type", source);
+  if (sort) params.set("sort", sort);
+  return params;
+}
+
+async function loadOpportunityInbox() {
+  const payload = await apiJson("/ops/opportunity-inbox?" + opportunityQueryParams().toString());
+  renderOpportunityInbox(payload);
+}
+
+function renderOpportunityInbox(payload) {
+  const body = document.getElementById("opportunity-body");
+  const empty = document.getElementById("opportunity-empty");
+  body.innerHTML = "";
+  const items = payload.items || [];
+  empty.textContent = items.length
+    ? `${items.length} opportunities loaded (${payload.source_mode || "unknown"}).`
+    : payload.empty_state_message || "No opportunity data yet.";
+  for (const item of items) {
+    const row = document.createElement("tr");
+    const values = [
+      item.title,
+      item.agency,
+      item.deadline || "",
+      formatBudget(item.budget),
+      item.score,
+      item.grade,
+      item.risk_level,
+      (item.source_badges || [item.source_type]).join(", "),
+    ];
+    for (const value of values) {
+      const cell = document.createElement("td");
+      cell.textContent = value ?? "";
+      row.appendChild(cell);
+    }
+    const action = document.createElement("td");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Review";
+    button.addEventListener("click", () => loadOpportunityDetail(item.notice_id));
+    action.appendChild(button);
+    row.appendChild(action);
+    body.appendChild(row);
+  }
+  if (!items.length) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 9;
+    cell.textContent = "No opportunity data yet. Run a fixture job or controlled real run to populate this view.";
+    row.appendChild(cell);
+    body.appendChild(row);
+  }
+}
+
+async function loadOpportunityDetail(noticeId) {
+  const payload = await apiJson(`/ops/opportunity-inbox/${encodeURIComponent(noticeId)}`);
+  const report = await apiJson(`/ops/opportunity-report/${encodeURIComponent(noticeId)}`);
+  state.currentOpportunityMarkdown = report.markdown || "";
+  state.currentOpportunityTitle = payload.title || noticeId;
+  document.getElementById("opportunity-detail").textContent =
+    `${payload.title} / ${payload.agency || "unknown agency"} / ${payload.source_type} / ${payload.score}??/ ${payload.risk_level}`;
+  document.getElementById("opportunity-markdown").textContent = state.currentOpportunityMarkdown;
+}
+
+function downloadOpportunityMarkdown() {
+  if (!state.currentOpportunityMarkdown) return;
+  const blob = new Blob([state.currentOpportunityMarkdown], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${sanitizeFilename(state.currentOpportunityTitle)}.md`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function sanitizeFilename(value) {
+  return (value || "yonlab-opportunity")
+    .replace(/[^a-z0-9_-]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80) || "yonlab-opportunity";
+}
+function formatBudget(value) {
+  if (value === null || value === undefined || value === "") return "";
+  const number = Number(value);
+  if (Number.isNaN(number)) return value;
+  return `${number.toLocaleString()}??;
 }
 
 async function loadRuns() {
@@ -243,11 +351,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("refresh-status").addEventListener("click", loadStatus);
   document.getElementById("refresh-quality").addEventListener("click", loadQualitySummary);
   document.getElementById("refresh-runs").addEventListener("click", loadRuns);
+  document.getElementById("refresh-opportunities").addEventListener("click", loadOpportunityInbox);
+  document.getElementById("apply-opportunity-filters").addEventListener("click", loadOpportunityInbox);
+  document.getElementById("download-opportunity-markdown").addEventListener("click", downloadOpportunityMarkdown);
   document.getElementById("run-form").addEventListener("submit", runRecommendation);
   document.querySelector('[name="mode"]').addEventListener("change", updateRunModeDefaults);
   document
     .getElementById("apply-rec-filters")
     .addEventListener("click", applyRecommendationFilters);
   updateRunModeDefaults();
-  await Promise.all([loadStatus(), loadQualitySummary(), loadRuns(), loadRecommendations()]);
+  await Promise.all([loadStatus(), loadQualitySummary(), loadOpportunityInbox(), loadRuns(), loadRecommendations()]);
 });

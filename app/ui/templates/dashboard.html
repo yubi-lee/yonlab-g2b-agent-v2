@@ -139,6 +139,71 @@
         </div>
       </section>
 
+      <section class="panel table-panel opportunity-panel" aria-labelledby="opportunity-title">
+        <div class="panel-heading">
+          <h2 id="opportunity-title">Opportunity Inbox</h2>
+          <button id="refresh-opportunities" type="button">Refresh</button>
+        </div>
+        <dl class="status-grid compact-status">
+          <div><dt>Deployment Status</dt><dd id="opportunity-deployment-status">Loading</dd></div>
+          <div><dt>Latest Run</dt><dd id="opportunity-latest-run">Loading</dd></div>
+          <div><dt>Summary</dt><dd id="opportunity-summary-status">Loading</dd></div>
+          <div><dt>Real Reports</dt><dd id="opportunity-real-reports">Loading</dd></div>
+          <div><dt>Service Key Exposed</dt><dd id="opportunity-service-key">Loading</dd></div>
+        </dl>
+        <div class="filters opportunity-filters">
+          <input id="opportunity-keyword" placeholder="keyword" />
+          <input id="opportunity-grade" placeholder="grade" />
+          <select id="opportunity-risk">
+            <option value="">risk level</option>
+            <option value="low">low</option>
+            <option value="medium">medium</option>
+            <option value="high">high</option>
+          </select>
+          <select id="opportunity-source">
+            <option value="">source</option>
+            <option value="demo">demo</option>
+            <option value="fixture">fixture</option>
+            <option value="synthetic">synthetic</option>
+            <option value="real">real</option>
+            <option value="safe_daily">safe daily</option>
+          </select>
+          <select id="opportunity-sort">
+            <option value="score_desc">score desc</option>
+            <option value="deadline_asc">deadline asc</option>
+          </select>
+          <button id="apply-opportunity-filters" type="button">Apply</button>
+        </div>
+        <div id="opportunity-empty" class="detail-summary"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>title</th>
+                <th>agency</th>
+                <th>deadline</th>
+                <th>budget</th>
+                <th>score</th>
+                <th>grade</th>
+                <th>risk</th>
+                <th>source</th>
+                <th>action</th>
+              </tr>
+            </thead>
+            <tbody id="opportunity-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel detail-panel opportunity-detail-panel" aria-labelledby="opportunity-detail-title">
+        <div class="panel-heading">
+          <h2 id="opportunity-detail-title">Recommendation Detail</h2>
+          <button id="download-opportunity-markdown" type="button">Download Markdown</button>
+        </div>
+        <div id="opportunity-detail" class="detail-summary">Select an opportunity to view YOnLab bid intelligence.</div>
+        <pre id="opportunity-markdown" class="markdown-viewer">No opportunity selected.</pre>
+      </section>
+
       <section class="panel table-panel" aria-labelledby="runs-title">
         <div class="panel-heading">
           <h2 id="runs-title">Saved Runs</h2>

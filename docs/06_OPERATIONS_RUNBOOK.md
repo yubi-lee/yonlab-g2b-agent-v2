@@ -218,3 +218,16 @@ paths resolve under the current deployment. A real run followed by empty indepen
 classified as persistence targeting, not a G2B API failure. Run
 `-RunSyntheticPersistenceCheck -SkipPush` first; it uses fixture data only and should show
 quality-summary and report-index reading the same store.
+
+## Commercial Opportunity Inbox
+
+Use `/ui` after a fixture run, safe daily check, or approved controlled real run to review
+commercial bid candidates. The Opportunity Inbox lists title, agency, deadline, budget,
+matching score, recommendation grade, risk level, source run, and source badge. Demo rows are
+marked as demo/fixture-derived and must not be treated as real G2B results.
+
+Open a row to view the YOnLab recommendation detail. The Markdown pane is copy-ready for
+internal review notes and includes fit summary, why-now rationale, bid strategy, required
+documents, risks, and recommended action. The dashboard and `/ops/opportunity-*` endpoints
+are read-only metadata views; they do not enable `YONLAB_AUTO_RUN_REAL_API` or call G2B.
+
