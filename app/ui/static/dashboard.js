@@ -4,9 +4,18 @@ const state = {
   currentOpportunityTitle: "yonlab-opportunity",
 };
 
-const text = (id, value) => {
-  document.getElementById(id).textContent = value ?? "";
+const safeValue = (value, fallback = "No data") => {
+  if (value === null || value === undefined || value === "") return fallback;
+  return value;
 };
+
+const safeText = (id, value, fallback = "No data") => {
+  const element = document.getElementById(id);
+  if (!element) return;
+  element.textContent = safeValue(value, fallback);
+};
+
+const text = safeText;
 
 const apiJson = async (url, options = {}) => {
   const response = await fetch(url, options);
@@ -18,6 +27,21 @@ const apiJson = async (url, options = {}) => {
 
 const yesNo = (value) => (value ? "yes" : "no");
 
+function setSectionError(ids, message) {
+  for (const id of ids) {
+    safeText(id, message || "Error");
+  }
+}
+
+async function loadSection(name, loader, errorIds = []) {
+  try {
+    await loader();
+  } catch (error) {
+    console.error(`${name} failed`, error);
+    setSectionError(errorIds, "Error");
+  }
+}
+
 async function loadStatus() {
   const [health, config, readiness, packageInfo] = await Promise.all([
     apiJson("/health"),
@@ -25,40 +49,40 @@ async function loadStatus() {
     apiJson("/g2b/real-readiness"),
     apiJson("/ops/package-info"),
   ]);
-  text("status-health", health.status);
-  text("status-package", packageInfo.package_version);
-  text("status-real-api", yesNo(config.real_api_enabled));
-  text("status-service-key", yesNo(config.service_key_configured));
-  text("status-endpoint", yesNo(config.endpoint_path_configured));
-  text("status-fixture", yesNo(config.fixture_mode));
-  text("status-readiness", readiness.ready ? "ready" : "not ready");
+  safeText("status-health", health.status);
+  safeText("status-package", packageInfo.package_version);
+  safeText("status-real-api", yesNo(config.real_api_enabled));
+  safeText("status-service-key", yesNo(config.service_key_configured));
+  safeText("status-endpoint", yesNo(config.endpoint_path_configured));
+  safeText("status-fixture", yesNo(config.fixture_mode));
+  safeText("status-readiness", readiness.ready ? "ready" : "not ready");
   renderPackageInfo(packageInfo);
 }
 
 async function loadQualitySummary() {
   const summary = await apiJson("/ops/quality-summary");
-  text("quality-total-runs", summary.total_runs);
-  text("quality-summary-status", summary.summary_status || "unknown");
-  text("quality-total-reports", summary.total_reports ?? 0);
-  text("quality-real-reports", summary.real_report_count ?? 0);
-  text("quality-total-recommendations", summary.total_recommendations);
-  text("quality-average-score", summary.average_score);
-  text("quality-strong", summary.strong_recommend_count);
-  text("quality-recommend", summary.recommend_count);
-  text("quality-consider", summary.consider_count);
-  text("quality-not-recommended", summary.not_recommended_count);
-  text("quality-latest-run", summary.latest_run_id || "none");
-  text("quality-latest-status", summary.latest_run?.status || "none");
-  text("quality-latest-at", summary.latest_run_created_at || "none");
-  text("quality-latest-error", summary.latest_run?.error_code || "none");
-  text("quality-real-runs", `${summary.real_run_count ?? 0} (${summary.real_mode_status || "empty"})`);
-  text("quality-warnings", summary.warning_count ?? 0);
-  text("quality-errors", summary.error_count ?? 0);
-  text("opportunity-deployment-status", summary.summary_status === "failure" ? "review" : "ready");
-  text("opportunity-latest-run", summary.latest_run_id || "none");
-  text("opportunity-summary-status", summary.summary_status || "unknown");
-  text("opportunity-real-reports", summary.real_report_count ?? 0);
-  text("opportunity-service-key", yesNo(summary.service_key_exposed));
+  safeText("quality-total-runs", summary.total_runs, 0);
+  safeText("quality-summary-status", summary.summary_status || "unknown");
+  safeText("quality-total-reports", summary.total_reports, 0);
+  safeText("quality-real-reports", summary.real_report_count, 0);
+  safeText("quality-total-recommendations", summary.total_recommendations, 0);
+  safeText("quality-average-score", summary.average_score, 0);
+  safeText("quality-strong", summary.strong_recommend_count, 0);
+  safeText("quality-recommend", summary.recommend_count, 0);
+  safeText("quality-consider", summary.consider_count, 0);
+  safeText("quality-not-recommended", summary.not_recommended_count, 0);
+  safeText("quality-latest-run", summary.latest_run_id || "none");
+  safeText("quality-latest-status", summary.latest_run?.status || "none");
+  safeText("quality-latest-at", summary.latest_run_created_at || "none");
+  safeText("quality-latest-error", summary.latest_run?.error_code || "none");
+  safeText("quality-real-runs", `${summary.real_run_count ?? 0} (${summary.real_mode_status || "empty"})`);
+  safeText("quality-warnings", summary.warning_count, 0);
+  safeText("quality-errors", summary.error_count, 0);
+  safeText("opportunity-deployment-status", summary.summary_status === "failure" ? "review" : "ready");
+  safeText("opportunity-latest-run", summary.latest_run_id || "none");
+  safeText("opportunity-summary-status", summary.summary_status || "unknown");
+  safeText("opportunity-real-reports", summary.real_report_count, 0);
+  safeText("opportunity-service-key", yesNo(summary.service_key_exposed));
 }
 
 function requestFromForm(form) {
@@ -83,12 +107,15 @@ function requestFromForm(form) {
 async function runRecommendation(event) {
   event.preventDefault();
   const form = event.currentTarget;
-  text("run-state", "Running");
+  safeText("run-state", "Running");
   const payload = requestFromForm(form);
   if (payload.mode === "real" && !payload.confirm_real_api_call) {
-    text("run-state", "Blocked: confirm real API call first");
-    document.getElementById("run-result").textContent =
-      "Real mode uses live G2B API quota. Check Confirm real API call before submitting.";
+    safeText("run-state", "Blocked: confirm real API call first");
+    const result = document.getElementById("run-result");
+    if (result) {
+      result.textContent =
+        "Real mode uses live G2B API quota. Check Confirm real API call before submitting.";
+    }
     return;
   }
   const result = await apiJson("/ops/run-recommendations", {
@@ -96,30 +123,21 @@ async function runRecommendation(event) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  document.getElementById("run-result").textContent = JSON.stringify(result, null, 2);
-  text("run-state", "Done");
+  const resultBox = document.getElementById("run-result");
+  if (resultBox) resultBox.textContent = JSON.stringify(result, null, 2);
+  safeText("run-state", "Done");
   state.currentRunId = result.run_id || "";
-  await Promise.all([loadRuns(), loadRecommendations(), loadQualitySummary()]);
+  await Promise.allSettled([loadRuns(), loadRecommendations(), loadQualitySummary(), loadOpportunityInbox()]);
   if (state.currentRunId) await loadRunDetail(state.currentRunId);
 }
 
-function escapeHtml(value) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-
 function opportunityQueryParams() {
   const params = new URLSearchParams({ limit: "20" });
-  const keyword = document.getElementById("opportunity-keyword").value;
-  const grade = document.getElementById("opportunity-grade").value;
-  const risk = document.getElementById("opportunity-risk").value;
-  const source = document.getElementById("opportunity-source").value;
-  const sort = document.getElementById("opportunity-sort").value;
+  const keyword = document.getElementById("opportunity-keyword")?.value;
+  const grade = document.getElementById("opportunity-grade")?.value;
+  const risk = document.getElementById("opportunity-risk")?.value;
+  const source = document.getElementById("opportunity-source")?.value;
+  const sort = document.getElementById("opportunity-sort")?.value;
   if (keyword) params.set("keyword", keyword);
   if (grade) params.set("grade", grade);
   if (risk) params.set("risk_level", risk);
@@ -130,17 +148,20 @@ function opportunityQueryParams() {
 
 async function loadOpportunityInbox() {
   const payload = await apiJson("/ops/opportunity-inbox?" + opportunityQueryParams().toString());
-  renderOpportunityInbox(payload);
+  renderOpportunityInbox(payload || {});
 }
 
 function renderOpportunityInbox(payload) {
   const body = document.getElementById("opportunity-body");
   const empty = document.getElementById("opportunity-empty");
+  if (!body) return;
   body.innerHTML = "";
-  const items = payload.items || [];
-  empty.textContent = items.length
-    ? `${items.length} opportunities loaded (${payload.source_mode || "unknown"}).`
-    : payload.empty_state_message || "No opportunity data yet.";
+  const items = Array.isArray(payload.items) ? payload.items : [];
+  if (empty) {
+    empty.textContent = items.length
+      ? `${items.length} opportunities loaded (${payload.source_mode || "unknown"}).`
+      : payload.empty_state_message || "No opportunity data yet.";
+  }
   for (const item of items) {
     const row = document.createElement("tr");
     const values = [
@@ -151,11 +172,11 @@ function renderOpportunityInbox(payload) {
       item.score,
       item.grade,
       item.risk_level,
-      (item.source_badges || [item.source_type]).join(", "),
+      (item.source_badges || [item.source_type]).filter(Boolean).join(", "),
     ];
     for (const value of values) {
       const cell = document.createElement("td");
-      cell.textContent = value ?? "";
+      cell.textContent = safeValue(value, "");
       row.appendChild(cell);
     }
     const action = document.createElement("td");
@@ -182,9 +203,11 @@ async function loadOpportunityDetail(noticeId) {
   const report = await apiJson(`/ops/opportunity-report/${encodeURIComponent(noticeId)}`);
   state.currentOpportunityMarkdown = report.markdown || "";
   state.currentOpportunityTitle = payload.title || noticeId;
-  document.getElementById("opportunity-detail").textContent =
-    `${payload.title} / ${payload.agency || "unknown agency"} / ${payload.source_type} / ${payload.score}??/ ${payload.risk_level}`;
-  document.getElementById("opportunity-markdown").textContent = state.currentOpportunityMarkdown;
+  safeText(
+    "opportunity-detail",
+    `${payload.title || "No title"} / ${payload.agency || "unknown agency"} / ${payload.source_type || "unknown"} / ${payload.score ?? 0}점 / ${payload.risk_level || "unknown"}`,
+  );
+  safeText("opportunity-markdown", state.currentOpportunityMarkdown || "No report content");
 }
 
 function downloadOpportunityMarkdown() {
@@ -206,18 +229,21 @@ function sanitizeFilename(value) {
     .replace(/^-+|-+$/g, "")
     .slice(0, 80) || "yonlab-opportunity";
 }
+
 function formatBudget(value) {
   if (value === null || value === undefined || value === "") return "";
   const number = Number(value);
   if (Number.isNaN(number)) return value;
-  return `${number.toLocaleString()}??;
+  return `${number.toLocaleString()}원`;
 }
 
 async function loadRuns() {
   const payload = await apiJson("/ops/runs?limit=20");
   const body = document.getElementById("runs-body");
+  if (!body) return;
   body.innerHTML = "";
-  for (const run of payload.runs || []) {
+  const runs = Array.isArray(payload.runs) ? payload.runs : [];
+  for (const run of runs) {
     const row = document.createElement("tr");
     for (const value of [
       run.created_at,
@@ -229,7 +255,7 @@ async function loadRuns() {
       run.error_code || "",
     ]) {
       const cell = document.createElement("td");
-      cell.textContent = value ?? "";
+      cell.textContent = safeValue(value, "");
       row.appendChild(cell);
     }
     const action = document.createElement("td");
@@ -247,8 +273,10 @@ async function loadRecommendations(extraParams = {}) {
   const params = new URLSearchParams({ limit: "20", ...extraParams });
   const payload = await apiJson(`/ops/recommendations?${params.toString()}`);
   const body = document.getElementById("recommendations-body");
+  if (!body) return;
   body.innerHTML = "";
-  for (const rec of payload.recommendations || []) {
+  const recommendations = Array.isArray(payload.recommendations) ? payload.recommendations : [];
+  for (const rec of recommendations) {
     const row = document.createElement("tr");
     const cells = [
       rec.rank,
@@ -262,7 +290,7 @@ async function loadRecommendations(extraParams = {}) {
     ];
     for (const value of cells) {
       const cell = document.createElement("td");
-      cell.textContent = value ?? "";
+      cell.textContent = safeValue(value, "");
       row.appendChild(cell);
     }
     const action = document.createElement("td");
@@ -282,8 +310,8 @@ async function loadRecommendations(extraParams = {}) {
 
 async function applyRecommendationFilters() {
   const extra = {};
-  const minScore = document.getElementById("filter-min-score").value;
-  const label = document.getElementById("filter-label").value;
+  const minScore = document.getElementById("filter-min-score")?.value;
+  const label = document.getElementById("filter-label")?.value;
   if (minScore) extra.min_score = minScore;
   if (label) extra.label = label;
   await loadRecommendations(extra);
@@ -296,10 +324,10 @@ async function loadRunDetail(runId) {
     apiJson(`/ops/reports/${encodeURIComponent(runId)}`),
   ]);
   const run = detail.run || {};
-  document.getElementById("run-detail").textContent =
-    `Run ${run.run_id || runId}: ${run.status || "unknown"} / ${run.source_count || 0} source notices`;
+  safeText("run-detail", `Run ${run.run_id || runId}: ${run.status || "unknown"} / ${run.source_count || 0} source notices`);
   await loadRecommendations({ run_id: runId, limit: "100" });
   const reportList = document.getElementById("report-list");
+  if (!reportList) return;
   reportList.innerHTML = "";
   for (const report of reports.reports || []) {
     const button = document.createElement("button");
@@ -314,30 +342,42 @@ async function loadReportContent(runId, noticeId) {
   const payload = await apiJson(
     `/ops/report-content/${encodeURIComponent(runId)}/${encodeURIComponent(noticeId)}`,
   );
-  document.getElementById("report-viewer").textContent = payload.markdown || "";
+  safeText("report-viewer", payload.markdown || "No report content");
 }
 
 function renderPackageInfo(packageInfo) {
-  document.getElementById("package-summary").textContent =
-    `${packageInfo.package_name} ${packageInfo.package_version} / default ${packageInfo.default_run_mode} / reports ${packageInfo.storage.report_dir}`;
+  const storage = packageInfo.storage || {};
+  safeText(
+    "package-summary",
+    `${packageInfo.package_name || "YOnLab G2B Agent"} ${packageInfo.package_version || "unknown"} / default ${packageInfo.default_run_mode || "fixture"} / reports ${storage.report_dir || "No data"}`,
+  );
   renderList("package-capabilities", packageInfo.capabilities || []);
   renderList("package-scripts", packageInfo.scripts || []);
 }
 
 function renderList(elementId, values) {
   const list = document.getElementById(elementId);
+  if (!list) return;
   list.innerHTML = "";
-  for (const value of values) {
+  const safeValues = Array.isArray(values) ? values : [];
+  if (!safeValues.length) {
     const item = document.createElement("li");
-    item.textContent = value;
+    item.textContent = "No data";
+    list.appendChild(item);
+    return;
+  }
+  for (const value of safeValues) {
+    const item = document.createElement("li");
+    item.textContent = safeValue(value, "");
     list.appendChild(item);
   }
 }
 
 function updateRunModeDefaults() {
-  const mode = document.querySelector('[name="mode"]').value;
+  const mode = document.querySelector('[name="mode"]')?.value;
   const rowsInput = document.querySelector('[name="num_rows"]');
   const submitButton = document.querySelector('#run-form button[type="submit"]');
+  if (!rowsInput || !submitButton) return;
   if (mode === "real") {
     rowsInput.value = "3";
     submitButton.textContent = "Run controlled real job";
@@ -348,17 +388,35 @@ function updateRunModeDefaults() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  document.getElementById("refresh-status").addEventListener("click", loadStatus);
-  document.getElementById("refresh-quality").addEventListener("click", loadQualitySummary);
-  document.getElementById("refresh-runs").addEventListener("click", loadRuns);
-  document.getElementById("refresh-opportunities").addEventListener("click", loadOpportunityInbox);
-  document.getElementById("apply-opportunity-filters").addEventListener("click", loadOpportunityInbox);
-  document.getElementById("download-opportunity-markdown").addEventListener("click", downloadOpportunityMarkdown);
-  document.getElementById("run-form").addEventListener("submit", runRecommendation);
-  document.querySelector('[name="mode"]').addEventListener("change", updateRunModeDefaults);
-  document
-    .getElementById("apply-rec-filters")
-    .addEventListener("click", applyRecommendationFilters);
+  document.getElementById("refresh-status")?.addEventListener("click", () =>
+    loadSection("status", loadStatus, ["status-health", "status-package", "status-real-api", "status-service-key", "status-endpoint", "status-fixture", "status-readiness", "package-summary"]),
+  );
+  document.getElementById("refresh-quality")?.addEventListener("click", () =>
+    loadSection("quality", loadQualitySummary, ["quality-summary-status", "opportunity-summary-status"]),
+  );
+  document.getElementById("refresh-runs")?.addEventListener("click", () =>
+    loadSection("runs", loadRuns, ["run-detail"]),
+  );
+  document.getElementById("refresh-opportunities")?.addEventListener("click", () =>
+    loadSection("opportunities", loadOpportunityInbox, ["opportunity-empty"]),
+  );
+  document.getElementById("apply-opportunity-filters")?.addEventListener("click", () =>
+    loadSection("opportunities", loadOpportunityInbox, ["opportunity-empty"]),
+  );
+  document.getElementById("download-opportunity-markdown")?.addEventListener("click", downloadOpportunityMarkdown);
+  document.getElementById("run-form")?.addEventListener("submit", (event) =>
+    loadSection("run recommendation", () => runRecommendation(event), ["run-state", "run-result"]),
+  );
+  document.querySelector('[name="mode"]')?.addEventListener("change", updateRunModeDefaults);
+  document.getElementById("apply-rec-filters")?.addEventListener("click", () =>
+    loadSection("recommendation filters", applyRecommendationFilters, ["run-detail"]),
+  );
   updateRunModeDefaults();
-  await Promise.all([loadStatus(), loadQualitySummary(), loadOpportunityInbox(), loadRuns(), loadRecommendations()]);
+  await Promise.allSettled([
+    loadSection("status", loadStatus, ["status-health", "status-package", "status-real-api", "status-service-key", "status-endpoint", "status-fixture", "status-readiness", "package-summary"]),
+    loadSection("quality", loadQualitySummary, ["quality-summary-status", "opportunity-summary-status"]),
+    loadSection("opportunities", loadOpportunityInbox, ["opportunity-empty"]),
+    loadSection("runs", loadRuns, ["run-detail"]),
+    loadSection("recommendations", loadRecommendations, ["run-detail"]),
+  ]);
 });

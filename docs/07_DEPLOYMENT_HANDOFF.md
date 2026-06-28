@@ -291,3 +291,16 @@ for internal bid review. This feature reads only stored report/recommendation me
 fixture-derived demo data. It must not be used as a background real API runner; real API
 execution remains manual-only and confirmation-gated.
 
+If `/ui` returns HTTP 200 but dashboard panels remain on `Loading`, verify the static
+JavaScript first, then smoke `/ops/quality-summary`, `/ops/report-index`, and
+`/ops/opportunity-inbox`. Persistent `Loading` should be treated as a release blocker
+because operators need visible quality summary, package status, Opportunity Inbox, and
+Markdown detail panes for local review.
+
+PowerShell can display valid UTF-8 Korean API/report text as mojibake when the console
+encoding is not UTF-8. For diagnostics, set:
+
+```powershell
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+```

@@ -335,3 +335,16 @@ Reason:
 - The dashboard must distinguish demo/fixture/synthetic/real/safe-daily source context and
   must not expose service keys, raw API responses, or `.env` values.
 
+## 2026-06-28 YOnLab G2B Agent v2 Task 42G
+
+Decision: Make the commercial dashboard resilient to frontend render failures and document
+PowerShell UTF-8 display diagnostics for Korean operations text.
+
+Reason:
+
+- A malformed dashboard JavaScript template literal can leave `/ui` at `Loading` even when
+  backend operations endpoints are healthy.
+- Each dashboard section should render independently and show an explicit empty/error state
+  when a single endpoint or field is missing.
+- Saved opportunity metadata can remain valid UTF-8 while Windows PowerShell displays
+  mojibake, so operators need a no-secret encoding check before treating data as corrupted.

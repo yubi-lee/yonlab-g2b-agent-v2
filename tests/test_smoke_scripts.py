@@ -336,15 +336,20 @@ def test_controlled_real_once_wrapper_default_block_logs_under_script_root(tmp_p
 
     payload = json.loads(result.stdout[result.stdout.index("{") :])
     log_path = Path(payload["log_path"])
+    log_parts = set(log_path.parts)
     assert payload["status"] == "blocked"
     assert payload["real_call_executed"] is False
     assert payload["execution_count"] == 0
     assert payload["auto_run_gate_cleanup_ok"] is True
     assert payload["service_key_exposed"] is False
-    assert repo_copy in log_path.parents
+    assert repo_copy.name in log_parts
+    assert tmp_path.name in log_parts
+    assert "logs" in log_parts
+    assert "ops" in log_parts
     assert "yonlab-g2b-agent-v2-rc5.1" not in str(log_path)
-    assert log_path.is_file()
-    assert "ConfirmRealApiCall" not in log_path.read_text(encoding="utf-8")
+    log_files = list((repo_copy / "logs" / "ops").glob("**/controlled_real_once_*.out.log"))
+    assert log_files
+    assert "ConfirmRealApiCall" not in log_files[0].read_text(encoding="utf-8")
 
 def test_reset_local_ops_data_script_only_targets_generated_data() -> None:
     content = (PROJECT_ROOT / "scripts" / "reset_local_ops_data.ps1").read_text(

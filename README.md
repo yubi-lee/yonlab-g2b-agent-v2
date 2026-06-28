@@ -109,6 +109,14 @@ From the dashboard you can:
 - view saved recommendations from `/ops/recommendations`.
 - open saved markdown reports through `/ops/report-content/{run_id}/{notice_id}`.
 - inspect enriched report metadata through `/ops/report-index` and aggregate quality state through `/ops/quality-summary`.
+- review commercial candidates in Opportunity Inbox, then open or download a copy-ready
+  Markdown detail report for internal bid review.
+
+The dashboard JavaScript is intentionally section-safe: if one metadata endpoint fails, the
+affected panel shows an explicit error or empty state instead of leaving every card stuck at
+`Loading`. If `/ui` still shows persistent `Loading`, first check that
+`/ui/static/dashboard.js` loads without browser-console syntax errors, then verify
+`/ops/quality-summary`, `/ops/report-index`, and `/ops/opportunity-inbox` individually.
 
 Default operations mode is fixture. Real API mode still requires `.env` configuration,
 `confirm_real_api_call=true`, and the existing real API safety gates. Service key values are
@@ -523,6 +531,14 @@ Do not add service keys to these scripts. Keep keys in local `.env` only.
 
 Korean UTF-8 regression tests are included because G2B/Narajangteo data contains Korean text in notice titles, agencies, qualification text, and descriptions.
 
+If Korean text looks corrupted only in Windows PowerShell while browser/API bytes are valid,
+set the console output encoding before smoke checks:
+
+```powershell
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+```
+
 ## Commercial Opportunity Inbox
 
 The local `/ui` dashboard now includes an Opportunity Inbox for commercial bid review.
@@ -538,4 +554,3 @@ Safe metadata endpoints:
 
 These endpoints do not trigger real G2B API calls and never include `.env` values, service
 keys, raw API responses, or runtime DB contents beyond safe recommendation metadata.
-

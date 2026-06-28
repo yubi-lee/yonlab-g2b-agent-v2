@@ -231,3 +231,15 @@ internal review notes and includes fit summary, why-now rationale, bid strategy,
 documents, risks, and recommended action. The dashboard and `/ops/opportunity-*` endpoints
 are read-only metadata views; they do not enable `YONLAB_AUTO_RUN_REAL_API` or call G2B.
 
+If the dashboard stays on `Loading`, treat it as a frontend smoke issue first. Confirm
+`/ui/static/dashboard.js` has no syntax error, then check these read-only endpoints one by
+one: `/health`, `/ops/quality-summary`, `/ops/report-index`, and `/ops/opportunity-inbox`.
+The UI should render explicit empty/error states even when one section fails.
+
+If Korean looks like mojibake only in PowerShell output, keep the stored/API data unchanged
+and set the shell display encoding before rerunning smoke scripts:
+
+```powershell
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+```

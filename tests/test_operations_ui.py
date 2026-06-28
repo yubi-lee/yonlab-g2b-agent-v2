@@ -1,4 +1,7 @@
 import json
+import shutil
+import subprocess
+import textwrap
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -56,6 +59,175 @@ def test_ui_static_assets_are_available() -> None:
     assert ".topbar" in css_response.text
     assert js_response.status_code == 200
     assert "runRecommendation" in js_response.text
+
+
+def test_dashboard_javascript_parses_cleanly() -> None:
+    node = shutil.which("node")
+    assert node is not None, "node is required for dashboard syntax validation"
+
+    result = subprocess.run(
+        [node, "--check", str(PROJECT_ROOT / "app" / "ui" / "static" / "dashboard.js")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_dashboard_javascript_uses_section_safe_render_guards() -> None:
+    js_text = (PROJECT_ROOT / "app" / "ui" / "static" / "dashboard.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert "safeText" in js_text
+    assert "loadSection" in js_text
+    assert "Promise.allSettled" in js_text
+    assert "setSectionError" in js_text
+    assert "No data" in js_text
+    assert "toLocaleString()}원" in js_text
+    assert "점 /" in js_text
+    assert "\ufffd" not in js_text
+    assert "??/" not in js_text
+    assert "toLocaleString()}??" not in js_text
+
+
+def test_dashboard_render_helpers_replace_loading_with_fallbacks(tmp_path: Path) -> None:
+    node = shutil.which("node")
+    assert node is not None, "node is required for dashboard render validation"
+
+    check_script = tmp_path / "dashboard_render_check.js"
+    check_script.write_text(
+        textwrap.dedent(
+            """
+            const fs = require("fs");
+            const vm = require("vm");
+            const assert = require("assert");
+
+            function makeElement(id) {
+              const element = {
+                id,
+                tagName: id,
+                textContent: "Loading",
+                children: [],
+                appendChild(child) {
+                  this.children.push(child);
+                },
+                addEventListener() {},
+                click() {},
+                remove() {},
+              };
+              Object.defineProperty(element, "innerHTML", {
+                get() {
+                  return this._innerHTML || "";
+                },
+                set(value) {
+                  this._innerHTML = value;
+                  this.children = [];
+                },
+              });
+              return element;
+            }
+
+            const elements = {
+              "opportunity-body": makeElement("opportunity-body"),
+              "opportunity-empty": makeElement("opportunity-empty"),
+              "opportunity-detail": makeElement("opportunity-detail"),
+              "opportunity-markdown": makeElement("opportunity-markdown"),
+            };
+            const document = {
+              body: makeElement("body"),
+              createElement(tag) {
+                return makeElement(tag);
+              },
+              getElementById(id) {
+                return elements[id] || null;
+              },
+              addEventListener() {},
+            };
+            const responses = {
+              "/ops/opportunity-inbox/N-1": {
+                title: null,
+                agency: null,
+                source_type: null,
+                score: null,
+                risk_level: null,
+              },
+              "/ops/opportunity-report/N-1": {
+                markdown:
+                  "## YOnLab \\ub9de\\ucda4 \\ucd94\\ucc9c \\uacf5\\uace0: \\ud14c\\uc2a4\\ud2b8",
+              },
+            };
+            const context = {
+              Blob: function Blob() {},
+              URL: { createObjectURL: () => "blob://local", revokeObjectURL() {} },
+              URLSearchParams,
+              console,
+              document,
+              elements,
+              encodeURIComponent,
+              fetch: async (url) => ({
+                ok: true,
+                status: 200,
+                statusText: "OK",
+                json: async () => responses[url],
+              }),
+            };
+
+            (async () => {
+              vm.createContext(context);
+              vm.runInContext(fs.readFileSync(process.argv[2], "utf8"), context);
+              vm.runInContext(`
+                renderOpportunityInbox({
+                  source_mode: "saved",
+                  items: [{
+                    notice_id: "N-1",
+                    title: null,
+                    agency: "Agency",
+                    deadline: null,
+                    budget: 1200000,
+                    score: 88,
+                    grade: "recommend",
+                    risk_level: null,
+                    source_badges: ["fixture"]
+                  }]
+                });
+              `, context);
+              assert.notStrictEqual(elements["opportunity-empty"].textContent, "Loading");
+              assert.strictEqual(elements["opportunity-body"].children.length, 1);
+              const populatedCells = elements["opportunity-body"].children[0].children;
+              assert.strictEqual(populatedCells[0].textContent, "");
+              assert.strictEqual(populatedCells[3].textContent, "1,200,000\\uc6d0");
+
+              vm.runInContext(
+                "renderOpportunityInbox({ items: null, empty_state_message: null });",
+                context,
+              );
+              assert.strictEqual(elements["opportunity-body"].children.length, 1);
+              const emptyMessage = elements["opportunity-body"].children[0].children[0];
+              assert.match(emptyMessage.textContent, /No opportunity data/);
+
+              await vm.runInContext('loadOpportunityDetail("N-1")', context);
+              assert.match(elements["opportunity-detail"].textContent, /No title/);
+              assert.match(elements["opportunity-detail"].textContent, /0\\uc810/);
+              assert.match(elements["opportunity-markdown"].textContent, /YOnLab/);
+            })().catch((error) => {
+              console.error(error);
+              process.exit(1);
+            });
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [node, str(check_script), str(PROJECT_ROOT / "app" / "ui" / "static" / "dashboard.js")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
 
 
 def test_report_content_endpoint_returns_saved_markdown(
