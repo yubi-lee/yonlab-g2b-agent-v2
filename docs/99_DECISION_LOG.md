@@ -386,3 +386,16 @@ Reason:
   metadata and must not include service keys, `.env` values, raw responses, or local paths.
 - The workflow remains no-real by default and does not alter the existing guarded real API
   execution gates.
+
+## 2026-06-28 YOnLab G2B Agent v2 Task 47G
+
+Decision: Review the rc11 operational workflow before adding more product behavior.
+
+Reason:
+
+- rc11 is ready for safe daily operations, but fresh deployments can show empty saved
+  operations summaries beside demo Opportunity Inbox and Daily Review Pack data.
+- Operators need clearer source-mode language, priority legends, scheduler status, and
+  Korean business review labels before the next usability improvement.
+- The next task should improve operator clarity only; it should not run a confirmed real G2B
+  API call or change the real API safety gates.
