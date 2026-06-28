@@ -122,6 +122,47 @@
         </dl>
       </section>
 
+      <section class="panel daily-review-panel" aria-labelledby="daily-review-title">
+        <div class="panel-heading">
+          <h2 id="daily-review-title">Daily Review Pack</h2>
+          <div class="actions">
+            <button id="refresh-daily-review" type="button">Refresh</button>
+            <button id="download-daily-review-markdown" type="button">Download Markdown</button>
+            <button id="download-daily-review-csv" type="button">Download CSV</button>
+          </div>
+        </div>
+        <dl class="status-grid compact-status">
+          <div><dt>Status</dt><dd id="daily-review-status">Loading</dd></div>
+          <div><dt>Generated At</dt><dd id="daily-review-generated-at">Loading</dd></div>
+          <div><dt>Latest Run</dt><dd id="daily-review-latest-run">Loading</dd></div>
+          <div><dt>Total Items</dt><dd id="daily-review-total-items">Loading</dd></div>
+          <div><dt>P1</dt><dd id="daily-review-p1">Loading</dd></div>
+          <div><dt>P2</dt><dd id="daily-review-p2">Loading</dd></div>
+          <div><dt>P3</dt><dd id="daily-review-p3">Loading</dd></div>
+          <div><dt>Hold</dt><dd id="daily-review-hold">Loading</dd></div>
+          <div><dt>No-Go</dt><dd id="daily-review-no-go">Loading</dd></div>
+        </dl>
+        <div class="package-grid">
+          <div>
+            <h3>Top Opportunities</h3>
+            <ul id="daily-review-top-items"></ul>
+          </div>
+          <div>
+            <h3>Today Actions</h3>
+            <ul id="daily-review-today-actions"></ul>
+          </div>
+          <div>
+            <h3>Documents</h3>
+            <ul id="daily-review-document-actions"></ul>
+          </div>
+          <div>
+            <h3>Risk Summary</h3>
+            <ul id="daily-review-risk-summary"></ul>
+          </div>
+        </div>
+        <pre id="daily-review-markdown" class="markdown-viewer">No opportunity data loaded.</pre>
+      </section>
+
       <section class="panel package-panel" aria-labelledby="package-title">
         <div class="panel-heading">
           <h2 id="package-title">Local Operations v1.0 Package</h2>

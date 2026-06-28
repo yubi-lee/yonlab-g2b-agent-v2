@@ -111,6 +111,8 @@ From the dashboard you can:
 - inspect enriched report metadata through `/ops/report-index` and aggregate quality state through `/ops/quality-summary`.
 - review commercial candidates in Opportunity Inbox, then open or download a copy-ready
   Markdown detail report for internal bid review.
+- use Daily Review Pack to summarize today's P1/P2/P3/Hold opportunities, actions,
+  document checks, and risk counts, then download Markdown or CSV for bid review meetings.
 
 The dashboard JavaScript is intentionally section-safe: if one metadata endpoint fails, the
 affected panel shows an explicit error or empty state instead of leaving every card stuck at
@@ -150,6 +152,9 @@ Operations endpoints:
 - `GET /ops/recommendations`
 - `GET /ops/reports/{run_id}`
 - `GET /ops/report-content/{run_id}/{notice_id}`
+- `GET /ops/daily-review-pack`
+- `GET /ops/daily-review-pack/markdown`
+- `GET /ops/daily-review-pack/csv`
 
 For the packaged local operations workflow, see `docs/07_LOCAL_OPERATIONS_V1.md`.
 For release deployment handoff, see `docs/07_DEPLOYMENT_HANDOFF.md`.

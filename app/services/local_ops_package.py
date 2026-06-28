@@ -21,6 +21,9 @@ PACKAGE_ROUTES = [
     "/ops/recommendations",
     "/ops/reports/{run_id}",
     "/ops/report-content/{run_id}/{notice_id}",
+    "/ops/daily-review-pack",
+    "/ops/daily-review-pack/markdown",
+    "/ops/daily-review-pack/csv",
 ]
 
 PACKAGE_SCRIPTS = [
@@ -51,6 +54,7 @@ PACKAGE_CAPABILITIES = [
     "Document/PDF risk planning layer",
     "Local SQLite operations storage",
     "Saved report content endpoint",
+    "Daily Bid Review Pack Markdown and CSV exports",
     "Recommendation quality summary",
     "Controlled real operations validation scripts",
 ]

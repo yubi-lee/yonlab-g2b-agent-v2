@@ -2,6 +2,7 @@ const state = {
   currentRunId: "",
   currentOpportunityMarkdown: "",
   currentOpportunityTitle: "yonlab-opportunity",
+  currentDailyReviewMarkdown: "",
 };
 
 const safeValue = (value, fallback = "No data") => {
@@ -85,6 +86,59 @@ async function loadQualitySummary() {
   safeText("opportunity-service-key", yesNo(summary.service_key_exposed));
 }
 
+async function loadDailyReviewPack() {
+  const pack = await apiJson("/ops/daily-review-pack");
+  renderDailyReviewPack(pack || {});
+}
+
+function renderDailyReviewPack(pack) {
+  state.currentDailyReviewMarkdown = pack.markdown_report || "";
+  safeText("daily-review-status", pack.status || "empty");
+  safeText("daily-review-generated-at", pack.generated_at || "none");
+  safeText("daily-review-latest-run", pack.latest_run_id || "none");
+  safeText("daily-review-total-items", pack.total_items, 0);
+  safeText("daily-review-p1", pack.p1_count, 0);
+  safeText("daily-review-p2", pack.p2_count, 0);
+  safeText("daily-review-p3", pack.p3_count, 0);
+  safeText("daily-review-hold", pack.hold_count, 0);
+  safeText("daily-review-no-go", pack.no_go_count, 0);
+  renderList(
+    "daily-review-top-items",
+    (pack.top_items || []).map((item) =>
+      `${item.bid_priority || "Hold"} / ${item.notice_id || ""} / ${item.title || "No title"} / ${item.score ?? 0}`,
+    ),
+    "No opportunity data",
+  );
+  renderList(
+    "daily-review-today-actions",
+    (pack.today_actions || []).map((item) =>
+      `${item.bid_priority || "Hold"} / ${item.notice_id || ""}: ${item.today_action || "Review"}`,
+    ),
+    "No opportunity data",
+  );
+  renderList(
+    "daily-review-document-actions",
+    (pack.document_actions || []).map((item) =>
+      `${item.notice_id || ""}: ${item.document_action || "Check documents"}`,
+    ),
+    "No opportunity data",
+  );
+  const risk = pack.risk_summary || {};
+  renderList(
+    "daily-review-risk-summary",
+    [
+      `high: ${risk.high_risk_count ?? 0}`,
+      `medium: ${risk.medium_risk_count ?? 0}`,
+      `low: ${risk.low_risk_count ?? 0}`,
+    ],
+    "No opportunity data",
+  );
+  safeText(
+    "daily-review-markdown",
+    state.currentDailyReviewMarkdown || pack.empty_state_message || "No opportunity data",
+  );
+}
+
 function requestFromForm(form) {
   const data = new FormData(form);
   const payload = {
@@ -127,7 +181,13 @@ async function runRecommendation(event) {
   if (resultBox) resultBox.textContent = JSON.stringify(result, null, 2);
   safeText("run-state", "Done");
   state.currentRunId = result.run_id || "";
-  await Promise.allSettled([loadRuns(), loadRecommendations(), loadQualitySummary(), loadOpportunityInbox()]);
+  await Promise.allSettled([
+    loadRuns(),
+    loadRecommendations(),
+    loadQualitySummary(),
+    loadOpportunityInbox(),
+    loadDailyReviewPack(),
+  ]);
   if (state.currentRunId) await loadRunDetail(state.currentRunId);
 }
 
@@ -266,6 +326,28 @@ function downloadOpportunityMarkdown() {
   URL.revokeObjectURL(url);
 }
 
+function downloadDailyReviewMarkdown() {
+  const markdown = state.currentDailyReviewMarkdown || "# YOnLab Daily Bid Review Pack\n\nNo opportunity data.";
+  const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "yonlab-daily-review-pack.md";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function downloadDailyReviewCsv() {
+  const link = document.createElement("a");
+  link.href = "/ops/daily-review-pack/csv";
+  link.download = "yonlab-daily-review-pack.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
 function sanitizeFilename(value) {
   return (value || "yonlab-opportunity")
     .replace(/[^a-z0-9_-]+/gi, "-")
@@ -398,14 +480,14 @@ function renderPackageInfo(packageInfo) {
   renderList("package-scripts", packageInfo.scripts || []);
 }
 
-function renderList(elementId, values) {
+function renderList(elementId, values, fallback = "No data") {
   const list = document.getElementById(elementId);
   if (!list) return;
   list.innerHTML = "";
   const safeValues = Array.isArray(values) ? values : [];
   if (!safeValues.length) {
     const item = document.createElement("li");
-    item.textContent = "No data";
+    item.textContent = fallback;
     list.appendChild(item);
     return;
   }
@@ -437,6 +519,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("refresh-quality")?.addEventListener("click", () =>
     loadSection("quality", loadQualitySummary, ["quality-summary-status", "opportunity-summary-status"]),
   );
+  document.getElementById("refresh-daily-review")?.addEventListener("click", () =>
+    loadSection("daily review pack", loadDailyReviewPack, ["daily-review-status", "daily-review-markdown"]),
+  );
   document.getElementById("refresh-runs")?.addEventListener("click", () =>
     loadSection("runs", loadRuns, ["run-detail"]),
   );
@@ -447,6 +532,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     loadSection("opportunities", loadOpportunityInbox, ["opportunity-empty"]),
   );
   document.getElementById("download-opportunity-markdown")?.addEventListener("click", downloadOpportunityMarkdown);
+  document.getElementById("download-daily-review-markdown")?.addEventListener("click", downloadDailyReviewMarkdown);
+  document.getElementById("download-daily-review-csv")?.addEventListener("click", downloadDailyReviewCsv);
   document.getElementById("run-form")?.addEventListener("submit", (event) =>
     loadSection("run recommendation", () => runRecommendation(event), ["run-state", "run-result"]),
   );
@@ -458,6 +545,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await Promise.allSettled([
     loadSection("status", loadStatus, ["status-health", "status-package", "status-real-api", "status-service-key", "status-endpoint", "status-fixture", "status-readiness", "package-summary"]),
     loadSection("quality", loadQualitySummary, ["quality-summary-status", "opportunity-summary-status"]),
+    loadSection("daily review pack", loadDailyReviewPack, ["daily-review-status", "daily-review-markdown"]),
     loadSection("opportunities", loadOpportunityInbox, ["opportunity-empty"]),
     loadSection("runs", loadRuns, ["run-detail"]),
     loadSection("recommendations", loadRecommendations, ["run-detail"]),

@@ -73,6 +73,21 @@ GET /ops/report-content/{run_id}/{notice_id}
 The endpoint only uses stored report metadata and rejects report paths outside the configured
 `YONLAB_REPORT_DIR`.
 
+## Daily Review Pack
+
+Use the dashboard `Daily Review Pack` section after saved recommendations exist. It reads the
+same safe Opportunity Inbox data and groups notices into P1, P2, P3, Hold, and No-Go review
+queues. It also summarizes today's actions, document checks, and risk counts.
+
+Exports are no-real and do not include `.env` values, service keys, raw responses, or local
+absolute paths:
+
+```text
+GET /ops/daily-review-pack
+GET /ops/daily-review-pack/markdown
+GET /ops/daily-review-pack/csv
+```
+
 ## Reset Generated Local Ops Data
 
 ```powershell

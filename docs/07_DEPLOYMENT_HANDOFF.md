@@ -135,6 +135,18 @@ http://127.0.0.1:8000/docs
 The dashboard defaults to fixture operations. Keep real mode disabled unless the
 operator is intentionally performing a controlled real validation.
 
+Use `Daily Review Pack` for the daily bid review meeting workflow. It summarizes saved
+Opportunity Inbox candidates into priority groups, today's actions, document checks, and risk
+counts. Operators can download Markdown or CSV from the dashboard, or call:
+
+```text
+GET /ops/daily-review-pack
+GET /ops/daily-review-pack/markdown
+GET /ops/daily-review-pack/csv
+```
+
+These endpoints are deterministic saved-data views and do not call the real G2B API.
+
 ## Safe Daily Scheduled Operations
 
 The production-ready local deployment is `D:\Deploy\yonlab-g2b-agent-v2-rc7`, based on

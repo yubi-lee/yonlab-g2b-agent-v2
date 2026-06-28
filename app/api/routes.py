@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response
 
 from app.core.config import get_settings
 from app.domain.bid_notice import BidNotice
@@ -57,6 +57,10 @@ from app.services.attachment_analysis_planner import (
     build_pdf_analysis_candidates,
 )
 from app.services.attachment_downloader import build_attachment_download_plan_items
+from app.services.daily_review_pack import (
+    build_daily_review_csv,
+    build_daily_review_pack,
+)
 from app.services.document_risk_analyzer import analyze_document_risks
 from app.services.local_ops_package import build_local_ops_package_info
 from app.services.operations_runner import run_recommendation_job
@@ -712,6 +716,42 @@ def ops_opportunity_inbox(
         keyword=keyword,
         source_type=source_type,
         sort=sort,
+    )
+
+
+@router.get("/ops/daily-review-pack")
+def ops_daily_review_pack() -> dict[str, Any]:
+    settings = get_settings()
+    inbox = build_opportunity_inbox(
+        db_path=settings.yonlab_storage_db_path,
+        limit=100,
+        sort="score_desc",
+    )
+    pack = build_daily_review_pack(inbox.get("items") or [])
+    if pack["status"] == "success" and inbox.get("status") == "demo":
+        pack["status"] = "demo"
+    pack["source_mode"] = inbox.get("source_mode") or pack["source_mode"]
+    pack["service_key_exposed"] = False
+    pack["real_api_call_attempted"] = False
+    return pack
+
+
+@router.get("/ops/daily-review-pack/markdown")
+def ops_daily_review_pack_markdown() -> Response:
+    pack = ops_daily_review_pack()
+    return Response(
+        content=str(pack.get("markdown_report") or ""),
+        media_type="text/markdown; charset=utf-8",
+    )
+
+
+@router.get("/ops/daily-review-pack/csv")
+def ops_daily_review_pack_csv() -> Response:
+    pack = ops_daily_review_pack()
+    return Response(
+        content=build_daily_review_csv(pack),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="yonlab-daily-review-pack.csv"'},
     )
 
 

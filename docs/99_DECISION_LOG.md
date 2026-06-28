@@ -372,3 +372,17 @@ Reason:
 - Operators need visible `핵심 정보` and `입찰 준비 전략` sections when copying the
   opportunity report into business review notes.
 - This remains a deterministic saved-metadata workflow and does not change real API gates.
+
+## 2026-06-28 YOnLab G2B Agent v2 Task 46G
+
+Decision: Add a Daily Review Pack service, API, and dashboard export workflow on top of
+Opportunity Inbox data.
+
+Reason:
+
+- Operators need one daily bid review artifact that groups P1/P2/P3/Hold and No-Go notices,
+  today actions, document checks, and risk summaries.
+- Markdown and CSV exports should be generated from deterministic saved/demo opportunity
+  metadata and must not include service keys, `.env` values, raw responses, or local paths.
+- The workflow remains no-real by default and does not alter the existing guarded real API
+  execution gates.
