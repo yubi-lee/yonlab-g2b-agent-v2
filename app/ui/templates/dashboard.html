@@ -245,6 +245,17 @@
             <option value="medium">medium</option>
             <option value="high">high</option>
           </select>
+          <select id="opportunity-review-filter">
+            <option value="">review status</option>
+            <option value="new">new</option>
+            <option value="shortlisted">shortlisted</option>
+            <option value="reviewing">reviewing</option>
+            <option value="go">go</option>
+            <option value="hold">hold</option>
+            <option value="no_go">no_go</option>
+            <option value="submitted">submitted</option>
+            <option value="archived">archived</option>
+          </select>
           <select id="opportunity-source">
             <option value="">source</option>
             <option value="demo">demo</option>
@@ -257,6 +268,14 @@
             <option value="score_desc">score desc</option>
             <option value="deadline_asc">deadline asc</option>
           </select>
+          <label class="checkbox-row compact-checkbox">
+            <input id="opportunity-shortlisted-only" type="checkbox" />
+            shortlisted only
+          </label>
+          <label class="checkbox-row compact-checkbox">
+            <input id="opportunity-hide-archived-no-go" type="checkbox" />
+            hide archived/no_go
+          </label>
           <button id="apply-opportunity-filters" type="button">Apply</button>
         </div>
         <div id="opportunity-empty" class="detail-summary"></div>
@@ -270,6 +289,7 @@
                 <th>budget</th>
                 <th>score</th>
                 <th>grade</th>
+                <th>review</th>
                 <th>decision</th>
                 <th>priority</th>
                 <th>risk</th>
@@ -289,6 +309,38 @@
           <button id="download-opportunity-markdown" type="button">Download Markdown</button>
         </div>
         <div id="opportunity-detail" class="detail-summary">Select an opportunity to view YOnLab bid intelligence.</div>
+        <form id="opportunity-review-form" class="form-grid review-status-form">
+          <label>
+            Status
+            <select id="opportunity-review-status">
+              <option value="new">new</option>
+              <option value="shortlisted">shortlisted</option>
+              <option value="reviewing">reviewing</option>
+              <option value="go">go</option>
+              <option value="hold">hold</option>
+              <option value="no_go">no_go</option>
+              <option value="submitted">submitted</option>
+              <option value="archived">archived</option>
+            </select>
+          </label>
+          <label>
+            Owner
+            <input id="opportunity-review-owner" maxlength="80" />
+          </label>
+          <label class="wide">
+            Next action
+            <input id="opportunity-review-next-action" maxlength="300" />
+          </label>
+          <label class="wide">
+            Note
+            <textarea id="opportunity-review-note" rows="4" maxlength="1200"></textarea>
+          </label>
+          <div class="actions wide">
+            <button id="save-opportunity-review-status" type="button">Save review status</button>
+            <button id="clear-opportunity-review-status" type="button">Clear</button>
+            <span id="opportunity-review-message" role="status">Local only.</span>
+          </div>
+        </form>
         <div id="opportunity-detail-fields" class="detail-summary"></div>
         <pre id="opportunity-markdown" class="markdown-viewer">No opportunity selected.</pre>
       </section>

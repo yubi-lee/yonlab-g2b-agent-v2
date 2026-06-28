@@ -1,5 +1,6 @@
 const state = {
   currentRunId: "",
+  currentOpportunityId: "",
   currentOpportunityMarkdown: "",
   currentOpportunityTitle: "yonlab-opportunity",
   currentDailyReviewMarkdown: "",
@@ -246,13 +247,19 @@ function opportunityQueryParams() {
   const keyword = document.getElementById("opportunity-keyword")?.value;
   const grade = document.getElementById("opportunity-grade")?.value;
   const risk = document.getElementById("opportunity-risk")?.value;
+  const reviewStatus = document.getElementById("opportunity-review-filter")?.value;
   const source = document.getElementById("opportunity-source")?.value;
   const sort = document.getElementById("opportunity-sort")?.value;
+  const shortlistedOnly = document.getElementById("opportunity-shortlisted-only")?.checked;
+  const hideArchivedNoGo = document.getElementById("opportunity-hide-archived-no-go")?.checked;
   if (keyword) params.set("keyword", keyword);
   if (grade) params.set("grade", grade);
   if (risk) params.set("risk_level", risk);
+  if (reviewStatus) params.set("review_status", reviewStatus);
   if (source) params.set("source_type", source);
   if (sort) params.set("sort", sort);
+  if (shortlistedOnly) params.set("shortlisted_only", "true");
+  if (hideArchivedNoGo) params.set("hide_archived_no_go", "true");
   return params;
 }
 
@@ -283,10 +290,11 @@ function renderOpportunityInbox(payload) {
       formatBudget(item.budget),
       item.score,
       item.grade,
+      item.review_status_ko || item.review_status,
       item.decision_label_ko,
       item.bid_priority,
       item.risk_level,
-      item.action_plan?.today_action,
+      item.next_action || item.action_plan?.today_action,
       (item.source_badges || [item.source_type]).filter(Boolean).join(", "),
     ];
     for (const value of values) {
@@ -306,7 +314,7 @@ function renderOpportunityInbox(payload) {
   if (!items.length) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
-    cell.colSpan = 12;
+    cell.colSpan = 13;
     cell.textContent = "No opportunity data yet. Run a fixture job or use the approved controlled real run script with explicit confirmation to populate this view.";
     row.appendChild(cell);
     body.appendChild(row);
@@ -316,9 +324,11 @@ function renderOpportunityInbox(payload) {
 async function loadOpportunityDetail(noticeId) {
   const payload = await apiJson(`/ops/opportunity-inbox/${encodeURIComponent(noticeId)}`);
   const report = await apiJson(`/ops/opportunity-report/${encodeURIComponent(noticeId)}`);
+  state.currentOpportunityId = noticeId;
   state.currentOpportunityMarkdown = report.markdown || "";
   state.currentOpportunityTitle = payload.title || noticeId;
   renderOpportunityDetail(payload);
+  renderOpportunityReviewStatus(payload);
   safeText("opportunity-markdown", state.currentOpportunityMarkdown || "No report content");
 }
 
@@ -344,6 +354,54 @@ function renderOpportunityDetail(payload) {
     (payload.risk_categories || []).map((risk) => `${risk.category_ko || risk.category || "risk"}: ${risk.level || "unknown"}`),
   ));
 }
+
+function renderOpportunityReviewStatus(payload) {
+  const status = document.getElementById("opportunity-review-status");
+  const owner = document.getElementById("opportunity-review-owner");
+  const nextAction = document.getElementById("opportunity-review-next-action");
+  const note = document.getElementById("opportunity-review-note");
+  if (status) status.value = payload.review_status || "new";
+  if (owner) owner.value = payload.owner || "";
+  if (nextAction) nextAction.value = payload.next_action || "";
+  if (note) note.value = payload.note || "";
+  safeText(
+    "opportunity-review-message",
+    payload.updated_at ? `Saved ${payload.updated_at}` : "Local only.",
+  );
+}
+
+async function saveOpportunityReviewStatus() {
+  if (!state.currentOpportunityId) {
+    safeText("opportunity-review-message", "Select an opportunity first.");
+    return;
+  }
+  const payload = {
+    review_status: document.getElementById("opportunity-review-status")?.value || "new",
+    owner: document.getElementById("opportunity-review-owner")?.value || "",
+    next_action: document.getElementById("opportunity-review-next-action")?.value || "",
+    note: document.getElementById("opportunity-review-note")?.value || "",
+  };
+  const result = await apiJson(`/ops/review-status/${encodeURIComponent(state.currentOpportunityId)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  renderOpportunityReviewStatus(result);
+  await Promise.allSettled([loadOpportunityInbox(), loadDailyReviewPack()]);
+}
+
+async function clearOpportunityReviewStatus() {
+  if (!state.currentOpportunityId) {
+    safeText("opportunity-review-message", "Select an opportunity first.");
+    return;
+  }
+  const result = await apiJson(`/ops/review-status/${encodeURIComponent(state.currentOpportunityId)}`, {
+    method: "DELETE",
+  });
+  renderOpportunityReviewStatus(result);
+  await Promise.allSettled([loadOpportunityInbox(), loadDailyReviewPack()]);
+}
+
 function renderFieldGroup(title, values) {
   const section = document.createElement("div");
   const heading = document.createElement("strong");
@@ -598,6 +656,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     loadSection("opportunities", loadOpportunityInbox, ["opportunity-empty"]),
   );
   document.getElementById("download-opportunity-markdown")?.addEventListener("click", downloadOpportunityMarkdown);
+  document.getElementById("save-opportunity-review-status")?.addEventListener("click", () =>
+    loadSection("save review status", saveOpportunityReviewStatus, ["opportunity-review-message"]),
+  );
+  document.getElementById("clear-opportunity-review-status")?.addEventListener("click", () =>
+    loadSection("clear review status", clearOpportunityReviewStatus, ["opportunity-review-message"]),
+  );
   document.getElementById("download-daily-review-markdown")?.addEventListener("click", downloadDailyReviewMarkdown);
   document.getElementById("download-daily-review-csv")?.addEventListener("click", downloadDailyReviewCsv);
   document.getElementById("run-form")?.addEventListener("submit", (event) =>

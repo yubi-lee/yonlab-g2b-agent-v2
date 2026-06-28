@@ -414,3 +414,17 @@ Reason:
 - Safe daily dashboard status must be based on latest local safe-log metadata only; it must
   not expose service keys, full local paths, raw logs, or query Windows Scheduler from the
   server.
+
+## 2026-06-29 YOnLab G2B Agent v2 Task 49G
+
+Decision: Add local-only shortlist and review status workflow for saved/demo opportunity
+review without changing the guarded real API path.
+
+Reason:
+
+- Operators need to mark notices as shortlisted, reviewing, go, hold, no_go, submitted, or
+  archived after first-pass recommendation review.
+- Owner and next action should be visible in Opportunity Inbox and Daily Review Pack so
+  internal bid review can continue without a separate tracker.
+- Full notes remain local-only; exports include status and next action but not private note
+  contents, service keys, raw responses, or local absolute paths.

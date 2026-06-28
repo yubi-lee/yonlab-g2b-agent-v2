@@ -94,6 +94,12 @@ GET /ops/daily-review-pack/markdown
 GET /ops/daily-review-pack/csv
 ```
 
+Review status is local-only operator state. Use the Opportunity Detail panel to set
+`shortlisted`, `reviewing`, `go`, `hold`, `no_go`, `submitted`, or `archived`, then record an
+owner and next action. The dashboard stores this under ignored local operations data, merges
+it into Opportunity Inbox filters, and includes status/next action in Daily Review Pack
+exports. Full private notes stay out of Markdown/CSV exports.
+
 ## Reset Generated Local Ops Data
 
 ```powershell

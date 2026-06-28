@@ -162,11 +162,24 @@ def test_dashboard_contains_opportunity_inbox_ui_hooks() -> None:
     assert "opportunity-detail" in html
     assert "opportunity-markdown" in html
     assert "download-opportunity-markdown" in html
+    assert "opportunity-review-status" in html
+    assert "opportunity-review-owner" in html
+    assert "opportunity-review-next-action" in html
+    assert "opportunity-review-note" in html
+    assert "save-opportunity-review-status" in html
+    assert "clear-opportunity-review-status" in html
+    assert "opportunity-review-filter" in html
+    assert "opportunity-shortlisted-only" in html
     assert "loadOpportunityInbox" in js
     assert 'apiJson("/ops/opportunity-inbox' in js
+    assert "/ops/review-status" in js
     assert "renderOpportunityInbox" in js
+    assert "saveOpportunityReviewStatus" in js
+    assert "clearOpportunityReviewStatus" in js
     assert "downloadOpportunityMarkdown" in js
     assert "No opportunity data yet" in js
+    assert "review_status_ko" in js
+    assert "next_action" in js
     assert "decision_label_ko" in js
     assert "bid_priority" in js
     assert "go_no_go_recommendation_ko" in js

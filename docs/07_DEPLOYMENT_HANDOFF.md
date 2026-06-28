@@ -147,6 +147,12 @@ GET /ops/daily-review-pack/csv
 
 These endpoints are deterministic saved-data views and do not call the real G2B API.
 
+The dashboard also supports local review status for each notice. Operators can shortlist,
+mark reviewing/go/hold/no_go/submitted/archived, assign an owner, and record a next action.
+This state is local-only, stored under ignored operations data, and does not call the real
+G2B API. Daily Review Pack exports include review status and next action, but not full
+private notes.
+
 ## Safe Daily Scheduled Operations
 
 The production-ready local deployment is `D:\Deploy\yonlab-g2b-agent-v2-rc7`, based on

@@ -111,8 +111,10 @@ From the dashboard you can:
 - inspect enriched report metadata through `/ops/report-index` and aggregate quality state through `/ops/quality-summary`.
 - review commercial candidates in Opportunity Inbox, then open or download a copy-ready
   Markdown detail report for internal bid review.
+- save local-only review status for each notice with owner, next action, and private notes.
 - use Daily Review Pack to summarize today's P1/P2/P3/Hold opportunities, actions,
-  document checks, and risk counts, then download Markdown or CSV for bid review meetings.
+  document checks, review status, and risk counts, then download Markdown or CSV for bid
+  review meetings.
 - see the current source mode banner, P1/P2/P3/Hold priority legend, safe daily status card,
   Korean Daily Review Pack labels, executive summary, and grouped document checklist.
 
@@ -149,6 +151,10 @@ Operations endpoints:
 - `GET /ops/quality-summary`
 - `GET /ops/safe-daily-status`
 - `GET /ops/report-index`
+- `GET /ops/review-status`
+- `GET /ops/review-status/{notice_id}`
+- `POST /ops/review-status/{notice_id}`
+- `DELETE /ops/review-status/{notice_id}`
 - `POST /ops/run-recommendations`
 - `GET /ops/runs`
 - `GET /ops/runs/{run_id}`
@@ -564,6 +570,12 @@ Commercial decision fields are deterministic and metadata-only:
 Use `P1` and `Go` items for immediate review, `P2/P3` items for RFP confirmation, and
 `Hold` or `No-Go` items for low-priority monitoring. These fields do not trigger real API
 calls and do not expose service keys.
+
+The review status panel lets operators mark a notice as `shortlisted`, `reviewing`, `go`,
+`hold`, `no_go`, `submitted`, or `archived`, then add an owner, next action, and local note.
+The status is stored only under ignored local operations data and is reflected in Opportunity
+Inbox filters plus Daily Review Pack Markdown/CSV exports. Full private notes are excluded
+from exports.
 
 The opportunity Markdown report includes `핵심 정보`, `입찰 준비 전략`, required
 documents, risk categories, and recommended action so it can be used directly in business

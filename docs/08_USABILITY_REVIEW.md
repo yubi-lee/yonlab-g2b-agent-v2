@@ -202,6 +202,16 @@ behavior:
 - Required documents are grouped for the UI and Markdown exports while preserving the flat
   `required_documents` field.
 
+## Task 49G Follow-Up
+
+Task 49G implements the first local shortlist and review-status workflow without changing
+real API behavior:
+
+- Opportunity Detail can save and clear local review status, owner, next action, and note.
+- Opportunity Inbox can filter by review status, shortlisted-only, and hidden archived/no_go.
+- Daily Review Pack reflects shortlisted/reviewing/go notices and exports status plus next
+  action while excluding full private notes.
+
 ## No-Real And No-Secret Confirmation
 
 - Confirmed real API command was not executed.

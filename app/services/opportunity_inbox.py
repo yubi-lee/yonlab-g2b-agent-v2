@@ -17,6 +17,7 @@ from app.services.opportunity_decision import (
     build_commercial_decision_fields,
     build_commercial_recommendation_report,
 )
+from app.services.review_status import merge_review_statuses
 from app.storage.repository import OperationsRepository
 
 EMPTY_STATE_MESSAGE = (
@@ -52,6 +53,9 @@ def build_opportunity_inbox(
     keyword: str | None = None,
     source_type: str | None = None,
     sort: str = "score_desc",
+    review_status: str | None = None,
+    shortlisted_only: bool = False,
+    hide_archived_no_go: bool = False,
 ) -> dict[str, Any]:
     db_file = Path(db_path)
     saved_items: list[dict[str, Any]] = []
@@ -68,7 +72,14 @@ def build_opportunity_inbox(
         keyword=keyword,
         source_type=source_type,
     )
-    ordered = _sort_items(filtered, sort=sort)[:limit]
+    with_review_status = merge_review_statuses(
+        filtered,
+        db_path=db_path,
+        review_status=review_status,
+        shortlisted_only=shortlisted_only,
+        hide_archived_no_go=hide_archived_no_go,
+    )
+    ordered = _sort_items(with_review_status, sort=sort)[:limit]
     return {
         "status": "success" if saved_items else "demo",
         "source_mode": source_mode,
@@ -86,6 +97,9 @@ def build_opportunity_inbox(
             "risk_level": risk_level,
             "keyword": keyword,
             "source_type": source_type,
+            "review_status": review_status,
+            "shortlisted_only": shortlisted_only,
+            "hide_archived_no_go": hide_archived_no_go,
         },
         "empty_state_message": "" if saved_items else EMPTY_STATE_MESSAGE,
         "empty_state_next_actions": [] if ordered else list(EMPTY_STATE_NEXT_ACTIONS),

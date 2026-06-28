@@ -38,15 +38,21 @@ CSV_FIELDS = [
     "budget",
     "deadline",
     "score",
+    "review_status",
+    "review_status_ko",
+    "owner",
     "decision_label_ko",
     "bid_priority",
     "go_no_go_recommendation_ko",
     "risk_summary",
+    "next_action",
+    "note_preview",
     "today_action",
     "detail_url",
 ]
 PRIORITY_ORDER = {"P1": 0, "P2": 1, "P3": 2, "Hold": 3}
 RISK_ORDER = {"low": 0, "medium": 1, "high": 2}
+SHORTLIST_STATUSES = {"shortlisted", "reviewing", "go"}
 SAFE_URL_RE = re.compile(r"^(https?://|/)")
 WINDOWS_PATH_RE = re.compile(r"[A-Za-z]:\\")
 
@@ -58,6 +64,11 @@ def build_daily_review_pack(items: list[dict[str, Any]] | None) -> dict[str, Any
     )
     groups = group_opportunities_by_priority(safe_items)
     review_items = [*groups["P1"], *groups["P2"], *groups["P3"]]
+    shortlisted_items = [
+        item
+        for item in safe_items
+        if str(item.get("review_status") or "new") in SHORTLIST_STATUSES
+    ]
     hold_items = groups["Hold"]
     no_go_items = [
         item
@@ -76,7 +87,9 @@ def build_daily_review_pack(items: list[dict[str, Any]] | None) -> dict[str, Any
         "p3_count": len(groups["P3"]),
         "hold_count": len(groups["Hold"]),
         "no_go_count": len(no_go_items),
-        "top_items": review_items[:3],
+        "shortlisted_count": len(shortlisted_items),
+        "shortlisted_items": shortlisted_items,
+        "top_items": _prioritize_shortlisted(shortlisted_items, review_items)[:3],
         "review_items": review_items,
         "hold_items": hold_items,
         "no_go_items": no_go_items,
@@ -166,7 +179,8 @@ def build_today_action_summary(items: list[dict[str, Any]] | None) -> list[dict[
                 "title": str(item.get("title") or ""),
                 "bid_priority": _priority(item),
                 "today_action": str(
-                    item.get("today_action")
+                    item.get("next_action")
+                    or item.get("today_action")
                     or action_plan.get("today_action")
                     or item.get("recommended_action")
                     or "Review fit, documents, deadline, and go/no-go decision."
@@ -288,6 +302,8 @@ def build_daily_review_markdown(pack: dict[str, Any]) -> str:
         lines.append(f"- {priority}: {description}")
     lines.extend(["", "## 1. 오늘의 우선 검토 공고"])
     lines.extend(_markdown_item_lines(pack.get("top_items") or []))
+    lines.extend(["", "## Review Status"])
+    lines.extend(_markdown_review_status_lines(pack.get("shortlisted_items") or []))
     lines.extend(["", "## 2. 공고별 판단 요약"])
     lines.extend(_markdown_item_lines(pack.get("review_items") or []))
     lines.extend(["", "## 3. 오늘 할 일"])
@@ -337,14 +353,20 @@ def build_daily_review_csv_rows(pack: dict[str, Any]) -> list[dict[str, Any]]:
                 "budget": _csv_cell(item.get("budget")),
                 "deadline": _csv_cell(item.get("deadline")),
                 "score": _csv_cell(item.get("score")),
+                "review_status": _csv_cell(item.get("review_status")),
+                "review_status_ko": _csv_cell(item.get("review_status_ko")),
+                "owner": _csv_cell(item.get("owner")),
                 "decision_label_ko": _csv_cell(item.get("decision_label_ko")),
                 "bid_priority": _csv_cell(_priority(item)),
                 "go_no_go_recommendation_ko": _csv_cell(
                     item.get("go_no_go_recommendation_ko")
                 ),
                 "risk_summary": _csv_cell(_risk_text(item)),
+                "next_action": _csv_cell(item.get("next_action")),
+                "note_preview": "",
                 "today_action": _csv_cell(
-                    item.get("today_action")
+                    item.get("next_action")
+                    or item.get("today_action")
                     or action_plan.get("today_action")
                     or item.get("recommended_action")
                 ),
@@ -375,6 +397,11 @@ def _safe_item(item: dict[str, Any]) -> dict[str, Any]:
         "deadline": _sanitize_export_text(item.get("deadline")),
         "score": int(item.get("score") or 0),
         "grade": _sanitize_export_text(item.get("grade")),
+        "review_status": _sanitize_export_text(item.get("review_status") or "new"),
+        "review_status_ko": _sanitize_export_text(item.get("review_status_ko") or "신규"),
+        "owner": _sanitize_export_text(item.get("owner")),
+        "note_preview": _sanitize_export_text(item.get("note_preview")),
+        "next_action": _sanitize_export_text(item.get("next_action")),
         "decision_label_ko": _sanitize_export_text(item.get("decision_label_ko")),
         "bid_priority": _priority(item),
         "go_no_go_recommendation": _sanitize_export_text(item.get("go_no_go_recommendation")),
@@ -406,7 +433,7 @@ def _safe_item(item: dict[str, Any]) -> dict[str, Any]:
 def _unique_pack_items(pack: dict[str, Any]) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     seen = set()
-    for group in ("review_items", "hold_items", "no_go_items"):
+    for group in ("shortlisted_items", "review_items", "hold_items", "no_go_items"):
         for item in pack.get(group) or []:
             safe = _safe_item(item)
             notice_id = safe.get("notice_id")
@@ -417,10 +444,40 @@ def _unique_pack_items(pack: dict[str, Any]) -> list[dict[str, Any]]:
     return sorted(items, key=_sort_key)
 
 
+def _prioritize_shortlisted(
+    shortlisted_items: list[dict[str, Any]],
+    review_items: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    seen = set()
+    for item in [*shortlisted_items, *review_items]:
+        notice_id = str(item.get("notice_id") or "")
+        if notice_id in seen:
+            continue
+        seen.add(notice_id)
+        items.append(item)
+    return items
+
+
 def _markdown_item_lines(items: list[dict[str, Any]]) -> list[str]:
     if not items:
         return ["- No opportunity data available."]
     return [_markdown_item_line(item) for item in items]
+
+
+def _markdown_review_status_lines(items: list[dict[str, Any]]) -> list[str]:
+    if not items:
+        return ["- No shortlisted or active review-status items."]
+    lines = []
+    for item in items:
+        next_action = item.get("next_action") or item.get("recommended_action") or "Review"
+        status_label = item.get("review_status_ko") or item.get("review_status")
+        lines.append(
+            "- "
+            f"{item.get('notice_id')}: {status_label} / "
+            f"owner {item.get('owner') or 'unassigned'} / next {next_action}"
+        )
+    return lines
 
 
 def _markdown_item_line(item: dict[str, Any]) -> str:

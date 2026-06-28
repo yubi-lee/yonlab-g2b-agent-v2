@@ -129,10 +129,15 @@ def test_daily_review_csv_contains_safe_fields_and_escapes_formulas() -> None:
         "budget",
         "deadline",
         "score",
+        "review_status",
+        "review_status_ko",
+        "owner",
         "decision_label_ko",
         "bid_priority",
         "go_no_go_recommendation_ko",
         "risk_summary",
+        "next_action",
+        "note_preview",
         "today_action",
         "detail_url",
     }
@@ -210,7 +215,8 @@ def test_daily_review_pack_export_endpoints_return_markdown_and_csv(
 
     assert csv_response.status_code == 200
     assert csv_response.headers["content-type"].startswith("text/csv")
-    assert "notice_id,title,agency,budget,deadline,score" in csv_response.text.lstrip("\ufeff")
+    csv_body = csv_response.text.lstrip("\ufeff")
+    assert "notice_id,title,agency,budget,deadline,score,review_status" in csv_body
     assert "serviceKey" not in csv_response.text
     assert "D:\\Deploy" not in csv_response.text
 

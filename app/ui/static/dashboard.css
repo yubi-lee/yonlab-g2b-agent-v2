@@ -299,3 +299,17 @@ th {
 .opportunity-detail-panel .markdown-viewer {
   min-height: 260px;
 }
+
+.compact-checkbox {
+  width: auto;
+  min-width: 150px;
+}
+
+.review-status-form {
+  margin-bottom: 12px;
+}
+
+.review-status-form button:last-of-type {
+  background: #334155;
+  border-color: #334155;
+}

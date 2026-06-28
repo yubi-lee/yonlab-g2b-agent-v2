@@ -73,6 +73,13 @@ from app.services.opportunity_inbox import (
 )
 from app.services.pdf_text_extractor import extract_pdf_text_from_file
 from app.services.real_ops_readiness import build_real_ops_readiness
+from app.services.review_status import (
+    ReviewStatusUpdate,
+    delete_review_status,
+    get_review_status,
+    list_review_statuses,
+    save_review_status,
+)
 from app.services.safe_daily_status import build_safe_daily_status
 from app.storage.models import OperationsRunSummary, OpsRunRequest
 from app.storage.repository import OperationsRepository
@@ -632,6 +639,37 @@ def ops_safe_daily_status() -> dict[str, Any]:
     return build_safe_daily_status(deploy_path=Path.cwd())
 
 
+@router.get("/ops/review-status")
+def ops_list_review_statuses() -> dict[str, Any]:
+    settings = get_settings()
+    items = list_review_statuses(settings.yonlab_storage_db_path)
+    return {
+        "status": "success",
+        "total_items": len(items),
+        "items": items,
+        "service_key_exposed": False,
+        "real_api_call_attempted": False,
+    }
+
+
+@router.get("/ops/review-status/{notice_id}")
+def ops_get_review_status(notice_id: str) -> dict[str, Any]:
+    return get_review_status(get_settings().yonlab_storage_db_path, notice_id)
+
+
+@router.post("/ops/review-status/{notice_id}")
+def ops_save_review_status(
+    notice_id: str,
+    payload: ReviewStatusUpdate,
+) -> dict[str, Any]:
+    return save_review_status(get_settings().yonlab_storage_db_path, notice_id, payload)
+
+
+@router.delete("/ops/review-status/{notice_id}")
+def ops_delete_review_status(notice_id: str) -> dict[str, Any]:
+    return delete_review_status(get_settings().yonlab_storage_db_path, notice_id)
+
+
 @router.get("/ops/report-index")
 def ops_report_index(limit: int = 20) -> dict[str, Any]:
     settings = get_settings()
@@ -714,6 +752,9 @@ def ops_opportunity_inbox(
     keyword: str | None = None,
     source_type: str | None = None,
     sort: str = "score_desc",
+    review_status: str | None = None,
+    shortlisted_only: bool = False,
+    hide_archived_no_go: bool = False,
 ) -> dict[str, Any]:
     settings = get_settings()
     return build_opportunity_inbox(
@@ -724,6 +765,9 @@ def ops_opportunity_inbox(
         keyword=keyword,
         source_type=source_type,
         sort=sort,
+        review_status=review_status,
+        shortlisted_only=shortlisted_only,
+        hide_archived_no_go=hide_archived_no_go,
     )
 
 
