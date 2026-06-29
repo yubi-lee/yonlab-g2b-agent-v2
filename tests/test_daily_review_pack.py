@@ -77,6 +77,8 @@ def test_daily_review_markdown_contains_required_sections() -> None:
     assert markdown.startswith("# 오늘의 입찰 검토 패키지")
     assert "Generated At" in markdown
     assert "Source Run" in markdown
+    assert "## Review Board Summary" in markdown
+    assert "## Deadline-first Next Actions" in markdown
     assert "## 0. 한눈에 보는 요약" in markdown
     assert "## 1. 오늘의 우선 검토 공고" in markdown
     assert "## 2. 공고별 판단 요약" in markdown
@@ -102,6 +104,23 @@ def test_daily_review_pack_includes_executive_summary_and_priority_legend() -> N
     assert pack["priority_legend"] == PRIORITY_LEGEND
     assert pack["priority_legend"]["P1"].startswith("same-day")
     assert "saved" in pack["source_mode_message"]
+
+
+def test_daily_review_pack_includes_review_board_summary_and_next_actions() -> None:
+    pack = build_daily_review_pack(_sample_items())
+
+    assert pack["review_board_summary"]["active_count"] == 4
+    assert pack["review_board_summary"]["status_counts"]["go"] == 1
+    assert pack["review_board_summary"]["status_counts"]["reviewing"] == 1
+    assert pack["review_board_summary"]["status_counts"]["shortlisted"] == 1
+    assert pack["review_board_summary"]["status_counts"]["hold"] == 1
+    assert [item["notice_id"] for item in pack["deadline_first_next_actions"]] == [
+        "P1-LOWER-SCORE",
+        "P1-HIGHER-SCORE",
+        "P2-ITEM",
+        "HOLD-ITEM",
+    ]
+    assert pack["deadline_first_next_actions"][0]["next_action"]
 
 
 def test_daily_review_pack_groups_required_documents() -> None:
@@ -161,6 +180,9 @@ def test_empty_daily_review_pack_has_explicit_empty_state() -> None:
     assert pack["empty_state_message"]
     assert pack["empty_state_next_actions"]
     assert "controlled real run" in " ".join(pack["empty_state_next_actions"])
+    assert pack["review_board_summary"]["active_count"] == 0
+    assert pack["deadline_first_next_actions"] == []
+    assert "No active review board items yet." in pack["markdown_report"]
     assert "No opportunity data" in pack["markdown_report"]
     assert "saved notices" in pack["source_mode_message"]
     assert pack["service_key_exposed"] is False
@@ -187,6 +209,8 @@ def test_daily_review_pack_api_is_safe_and_uses_existing_opportunity_data(
     assert payload["total_items"] >= 1
     assert payload["markdown_report"]
     assert payload["executive_summary"]
+    assert payload["review_board_summary"]["status_counts"]["go"] >= 0
+    assert "deadline_first_next_actions" in payload
     assert payload["priority_legend"]["P1"].startswith("same-day")
     assert payload["source_mode_message"]
     assert payload["service_key_exposed"] is False
@@ -210,6 +234,8 @@ def test_daily_review_pack_export_endpoints_return_markdown_and_csv(
     assert markdown_response.headers["content-type"].startswith("text/markdown")
     assert "# 오늘의 입찰 검토 패키지" in markdown_response.text
     assert "## 0. 한눈에 보는 요약" in markdown_response.text
+    assert "## Review Board Summary" in markdown_response.text
+    assert "## Deadline-first Next Actions" in markdown_response.text
     assert "serviceKey" not in markdown_response.text
     assert "D:\\Deploy" not in markdown_response.text
 
@@ -299,6 +325,8 @@ def _sample_items() -> list[dict]:
             deadline="2026-07-01",
             risk_level="low",
             run_id="run_daily",
+            review_status="reviewing",
+            next_action="Review P1-HIGHER-SCORE today",
         ),
         _item(
             notice_id="P1-LOWER-SCORE",
@@ -308,6 +336,8 @@ def _sample_items() -> list[dict]:
             deadline="2026-06-30",
             risk_level="low",
             run_id="run_daily",
+            review_status="go",
+            next_action="Review P1-LOWER-SCORE today",
         ),
         _item(
             notice_id="P2-ITEM",
@@ -317,6 +347,8 @@ def _sample_items() -> list[dict]:
             deadline="2026-07-03",
             risk_level="medium",
             run_id="run_daily",
+            review_status="shortlisted",
+            next_action="Review P2-ITEM today",
         ),
         _item(
             notice_id="P3-ITEM",
@@ -326,6 +358,7 @@ def _sample_items() -> list[dict]:
             deadline="2026-07-02",
             risk_level="medium",
             run_id="run_daily",
+            review_status="new",
         ),
         _item(
             notice_id="HOLD-ITEM",
@@ -336,6 +369,8 @@ def _sample_items() -> list[dict]:
             risk_level="high",
             go_no_go="No-Go",
             run_id="run_daily",
+            review_status="hold",
+            next_action="Review HOLD-ITEM today",
         ),
     ]
 
@@ -351,6 +386,8 @@ def _item(
     run_id: str,
     agency: str = "YOnLab test agency",
     go_no_go: str = "Go",
+    review_status: str = "new",
+    next_action: str = "",
 ) -> dict:
     return {
         "notice_id": notice_id,
@@ -361,12 +398,15 @@ def _item(
         "score": score,
         "decision_label_ko": "review",
         "bid_priority": priority,
+        "review_status": review_status,
+        "review_status_ko": review_status,
         "go_no_go_recommendation": go_no_go,
         "go_no_go_recommendation_ko": "review",
         "risk_level": risk_level,
         "source_run_id": run_id,
         "source_mode": "saved",
         "detail_url": "https://example.test/notice",
+        "next_action": next_action,
         "report_path": "D:\\Deploy\\secret\\report.md",
         "raw_json_path": "D:\\Deploy\\secret\\raw.json",
         "raw_source": {"serviceKey": "LOCAL_ONLY_SECRET"},

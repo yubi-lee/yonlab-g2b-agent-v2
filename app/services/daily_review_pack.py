@@ -7,6 +7,7 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 from app.services.opportunity_decision import group_required_documents
+from app.services.review_board import build_review_board
 
 EMPTY_STATE_MESSAGE = (
     "No opportunity data available. No searchable saved notices exist yet."
@@ -62,6 +63,7 @@ def build_daily_review_pack(items: list[dict[str, Any]] | None) -> dict[str, Any
         (_safe_item(item) for item in (items or [])),
         key=_sort_key,
     )
+    review_board = build_review_board(safe_items, source=_source_mode(safe_items))
     groups = group_opportunities_by_priority(safe_items)
     review_items = [*groups["P1"], *groups["P2"], *groups["P3"]]
     shortlisted_items = [
@@ -96,6 +98,12 @@ def build_daily_review_pack(items: list[dict[str, Any]] | None) -> dict[str, Any
         "today_actions": build_today_action_summary(safe_items),
         "document_actions": build_document_action_summary(safe_items),
         "risk_summary": build_risk_summary(safe_items),
+        "review_board_summary": {
+            "status": review_board.get("status") or "empty",
+            "active_count": int(review_board.get("active_count") or 0),
+            "status_counts": dict(review_board.get("status_counts") or {}),
+        },
+        "deadline_first_next_actions": list(review_board.get("deadline_first_actions") or []),
         "empty_state_message": "" if safe_items else EMPTY_STATE_MESSAGE,
         "empty_state_next_actions": [] if safe_items else list(EMPTY_STATE_NEXT_ACTIONS),
         "priority_legend": PRIORITY_LEGEND,
@@ -259,6 +267,8 @@ def build_risk_summary(items: list[dict[str, Any]] | None) -> dict[str, Any]:
 
 
 def build_daily_review_markdown(pack: dict[str, Any]) -> str:
+    review_board_summary = pack.get("review_board_summary") or {}
+    deadline_first_next_actions = pack.get("deadline_first_next_actions") or []
     if int(pack.get("total_items") or 0) == 0:
         return "\n".join(
             [
@@ -272,6 +282,12 @@ def build_daily_review_markdown(pack: dict[str, Any]) -> str:
                     "- Source Message: "
                     f"{pack.get('source_mode_message') or SOURCE_MODE_MESSAGES['empty']}"
                 ),
+                "",
+                "## Review Board Summary",
+                "- No active review board items yet.",
+                "",
+                "## Deadline-first Next Actions",
+                "- No deadline-first next actions yet.",
                 "",
                 "No opportunity data available.",
                 "",
@@ -297,6 +313,10 @@ def build_daily_review_markdown(pack: dict[str, Any]) -> str:
     executive = pack.get("executive_summary") or {}
     for line in executive.get("lines") or []:
         lines.append(f"- {line}")
+    lines.extend(["", "## Review Board Summary"])
+    lines.extend(_markdown_review_board_summary_lines(review_board_summary))
+    lines.extend(["", "## Deadline-first Next Actions"])
+    lines.extend(_markdown_deadline_first_next_action_lines(deadline_first_next_actions))
     lines.extend(["", "## Priority Legend"])
     for priority, description in (pack.get("priority_legend") or PRIORITY_LEGEND).items():
         lines.append(f"- {priority}: {description}")
@@ -476,6 +496,34 @@ def _markdown_review_status_lines(items: list[dict[str, Any]]) -> list[str]:
             "- "
             f"{item.get('notice_id')}: {status_label} / "
             f"owner {item.get('owner') or 'unassigned'} / next {next_action}"
+        )
+    return lines
+
+
+def _markdown_review_board_summary_lines(summary: dict[str, Any]) -> list[str]:
+    status_counts = summary.get("status_counts") or {}
+    active_count = int(summary.get("active_count") or 0)
+    if active_count == 0:
+        return ["- No active review board items yet."]
+    return [
+        f"- Active review items: {active_count}",
+        f"- go: {status_counts.get('go', 0)}",
+        f"- reviewing: {status_counts.get('reviewing', 0)}",
+        f"- shortlisted: {status_counts.get('shortlisted', 0)}",
+        f"- hold: {status_counts.get('hold', 0)}",
+    ]
+
+
+def _markdown_deadline_first_next_action_lines(items: list[dict[str, Any]]) -> list[str]:
+    if not items:
+        return ["- No deadline-first next actions yet."]
+    lines = []
+    for item in items:
+        lines.append(
+            "- "
+            f"{item.get('deadline') or 'No deadline'} / "
+            f"{item.get('notice_id')}: "
+            f"{item.get('next_action') or 'Review'}"
         )
     return lines
 
