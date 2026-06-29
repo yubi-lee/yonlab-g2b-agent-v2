@@ -63,6 +63,7 @@ from app.services.daily_review_pack import (
     build_daily_review_pack,
     build_source_mode_message,
 )
+from app.services.decision_memo import build_decision_memo
 from app.services.document_risk_analyzer import analyze_document_risks
 from app.services.local_ops_package import build_local_ops_package_info
 from app.services.operations_runner import run_recommendation_job
@@ -652,6 +653,16 @@ def ops_review_board() -> dict[str, Any]:
         inbox.get("items") or [],
         source=str(inbox.get("source_mode") or inbox.get("status") or "empty"),
     )
+
+
+@router.get("/ops/decision-memo/{notice_id}")
+def ops_decision_memo(notice_id: str) -> dict[str, Any]:
+    settings = get_settings()
+    detail = get_opportunity_detail(
+        db_path=settings.yonlab_storage_db_path,
+        notice_id=notice_id,
+    )
+    return build_decision_memo(detail, notice_id=notice_id)
 
 
 @router.get("/ops/review-status")
