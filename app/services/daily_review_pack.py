@@ -6,6 +6,7 @@ import re
 from datetime import UTC, date, datetime
 from typing import Any
 
+from app.services.decision_memo import build_decision_memo
 from app.services.opportunity_decision import group_required_documents
 from app.services.review_board import build_review_board
 
@@ -50,12 +51,24 @@ CSV_FIELDS = [
     "note_preview",
     "today_action",
     "detail_url",
+    "decision_memo_status",
+    "decision_memo_decision",
+    "decision_memo_rationale",
+    "decision_memo_fit_summary",
+    "decision_memo_risk_summary",
+    "decision_memo_deadline_urgency",
+    "decision_memo_next_action",
+    "decision_memo_preparation_actions",
+    "decision_memo_required_documents",
+    "decision_memo_short_summary",
 ]
 PRIORITY_ORDER = {"P1": 0, "P2": 1, "P3": 2, "Hold": 3}
 RISK_ORDER = {"low": 0, "medium": 1, "high": 2}
 SHORTLIST_STATUSES = {"shortlisted", "reviewing", "go"}
 SAFE_URL_RE = re.compile(r"^(https?://|/)")
 WINDOWS_PATH_RE = re.compile(r"[A-Za-z]:\\")
+DECISION_VALUES = ("Prepare", "Review", "Hold", "Reject")
+DECISION_MEMO_EMPTY_MESSAGE = "No decision memo candidates available yet."
 
 
 def build_daily_review_pack(items: list[dict[str, Any]] | None) -> dict[str, Any]:
@@ -72,11 +85,18 @@ def build_daily_review_pack(items: list[dict[str, Any]] | None) -> dict[str, Any
         if str(item.get("review_status") or "new") in SHORTLIST_STATUSES
     ]
     hold_items = groups["Hold"]
+    top_items = _prioritize_shortlisted(shortlisted_items, review_items)[:3]
     no_go_items = [
         item
         for item in safe_items
         if str(item.get("go_no_go_recommendation") or "").casefold() == "no-go"
     ]
+    deadline_first_next_actions = list(review_board.get("deadline_first_actions") or [])
+    decision_memo_summary = build_decision_memo_summary(
+        safe_items,
+        deadline_first_next_actions=deadline_first_next_actions,
+        top_items=top_items,
+    )
     pack = {
         "status": "success" if safe_items else "empty",
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
@@ -91,7 +111,7 @@ def build_daily_review_pack(items: list[dict[str, Any]] | None) -> dict[str, Any
         "no_go_count": len(no_go_items),
         "shortlisted_count": len(shortlisted_items),
         "shortlisted_items": shortlisted_items,
-        "top_items": _prioritize_shortlisted(shortlisted_items, review_items)[:3],
+        "top_items": top_items,
         "review_items": review_items,
         "hold_items": hold_items,
         "no_go_items": no_go_items,
@@ -103,7 +123,8 @@ def build_daily_review_pack(items: list[dict[str, Any]] | None) -> dict[str, Any
             "active_count": int(review_board.get("active_count") or 0),
             "status_counts": dict(review_board.get("status_counts") or {}),
         },
-        "deadline_first_next_actions": list(review_board.get("deadline_first_actions") or []),
+        "deadline_first_next_actions": deadline_first_next_actions,
+        "decision_memo_summary": decision_memo_summary,
         "empty_state_message": "" if safe_items else EMPTY_STATE_MESSAGE,
         "empty_state_next_actions": [] if safe_items else list(EMPTY_STATE_NEXT_ACTIONS),
         "priority_legend": PRIORITY_LEGEND,
@@ -266,9 +287,94 @@ def build_risk_summary(items: list[dict[str, Any]] | None) -> dict[str, Any]:
     }
 
 
+def build_decision_memo_summary(
+    items: list[dict[str, Any]] | None,
+    *,
+    deadline_first_next_actions: list[dict[str, Any]] | None = None,
+    top_items: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    safe_items = list(items or [])
+    item_by_notice_id = {
+        str(item.get("notice_id") or ""): item
+        for item in safe_items
+        if str(item.get("notice_id") or "")
+    }
+    candidate_ids = _decision_memo_candidate_ids(
+        deadline_first_next_actions=deadline_first_next_actions,
+        top_items=top_items,
+        fallback_items=safe_items,
+    )
+    if not candidate_ids:
+        return {
+            "status": "empty",
+            "candidate_count": 0,
+            "memo_count": 0,
+            "deadline_first_notice_ids": [],
+            "decision_counts": {value: 0 for value in DECISION_VALUES},
+            "memos": [],
+            "empty_state_message": DECISION_MEMO_EMPTY_MESSAGE,
+            "service_key_exposed": False,
+            "real_api_call_attempted": False,
+        }
+
+    memos = []
+    decision_counts = {value: 0 for value in DECISION_VALUES}
+    for notice_id in candidate_ids:
+        item = item_by_notice_id.get(notice_id)
+        if item is None:
+            continue
+        memo = build_decision_memo(item, notice_id=notice_id)
+        decision_value = str(memo.get("recommended_decision", {}).get("value") or "Hold")
+        if decision_value not in decision_counts:
+            decision_value = "Hold"
+        decision_counts[decision_value] += 1
+        memos.append(
+            {
+                "notice_id": _sanitize_export_text(memo.get("notice_id")),
+                "status": _sanitize_export_text(memo.get("status")),
+                "title": _sanitize_export_text(memo.get("notice", {}).get("title")),
+                "agency": _sanitize_export_text(memo.get("notice", {}).get("agency")),
+                "deadline": _sanitize_export_text(memo.get("notice", {}).get("deadline")),
+                "recommended_decision": decision_value,
+                "rationale": _sanitize_export_text(
+                    memo.get("recommended_decision", {}).get("rationale")
+                ),
+                "yonlab_fit_summary": _decision_memo_fit_summary_text(memo),
+                "risk_summary": _decision_memo_risk_summary_text(memo),
+                "deadline_next_action": _sanitize_export_text(
+                    memo.get("deadline_next_action", {}).get("next_action")
+                ),
+                "deadline_urgency": _sanitize_export_text(
+                    memo.get("deadline_next_action", {}).get("urgency")
+                ),
+                "preparation_actions": _decision_memo_preparation_actions(memo),
+                "required_documents": _decision_memo_required_documents(memo),
+                "copy_ready_summary": _sanitize_export_text(
+                    memo.get("export_blocks", {}).get("short_summary")
+                ),
+                "copy_ready_markdown": _sanitize_export_text(
+                    memo.get("export_blocks", {}).get("markdown")
+                ),
+            }
+        )
+
+    return {
+        "status": "success" if memos else "empty",
+        "candidate_count": len(candidate_ids),
+        "memo_count": len(memos),
+        "deadline_first_notice_ids": candidate_ids,
+        "decision_counts": decision_counts,
+        "memos": memos,
+        "empty_state_message": "" if memos else DECISION_MEMO_EMPTY_MESSAGE,
+        "service_key_exposed": False,
+        "real_api_call_attempted": False,
+    }
+
+
 def build_daily_review_markdown(pack: dict[str, Any]) -> str:
     review_board_summary = pack.get("review_board_summary") or {}
     deadline_first_next_actions = pack.get("deadline_first_next_actions") or []
+    decision_memo_summary = pack.get("decision_memo_summary") or {}
     if int(pack.get("total_items") or 0) == 0:
         return "\n".join(
             [
@@ -285,6 +391,12 @@ def build_daily_review_markdown(pack: dict[str, Any]) -> str:
                 "",
                 "## Review Board Summary",
                 "- No active review board items yet.",
+                "",
+                "## Decision Memo Summary",
+                f"- {DECISION_MEMO_EMPTY_MESSAGE}",
+                "",
+                "## Decision Memo Details",
+                f"- {DECISION_MEMO_EMPTY_MESSAGE}",
                 "",
                 "## Deadline-first Next Actions",
                 "- No deadline-first next actions yet.",
@@ -315,6 +427,10 @@ def build_daily_review_markdown(pack: dict[str, Any]) -> str:
         lines.append(f"- {line}")
     lines.extend(["", "## Review Board Summary"])
     lines.extend(_markdown_review_board_summary_lines(review_board_summary))
+    lines.extend(["", "## Decision Memo Summary"])
+    lines.extend(_markdown_decision_memo_summary_lines(decision_memo_summary))
+    lines.extend(["", "## Decision Memo Details"])
+    lines.extend(_markdown_decision_memo_detail_lines(decision_memo_summary))
     lines.extend(["", "## Deadline-first Next Actions"])
     lines.extend(_markdown_deadline_first_next_action_lines(deadline_first_next_actions))
     lines.extend(["", "## Priority Legend"])
@@ -363,8 +479,13 @@ def build_daily_review_markdown(pack: dict[str, Any]) -> str:
 
 def build_daily_review_csv_rows(pack: dict[str, Any]) -> list[dict[str, Any]]:
     rows = []
+    memo_by_notice_id = {
+        str(item.get("notice_id") or ""): item
+        for item in ((pack.get("decision_memo_summary") or {}).get("memos") or [])
+    }
     for item in _unique_pack_items(pack):
         action_plan = item.get("action_plan") or {}
+        memo = memo_by_notice_id.get(str(item.get("notice_id") or ""), {})
         rows.append(
             {
                 "notice_id": _csv_cell(item.get("notice_id")),
@@ -391,6 +512,20 @@ def build_daily_review_csv_rows(pack: dict[str, Any]) -> list[dict[str, Any]]:
                     or item.get("recommended_action")
                 ),
                 "detail_url": _csv_cell(_safe_url(item.get("detail_url"))),
+                "decision_memo_status": _csv_cell(memo.get("status")),
+                "decision_memo_decision": _csv_cell(memo.get("recommended_decision")),
+                "decision_memo_rationale": _csv_cell(memo.get("rationale")),
+                "decision_memo_fit_summary": _csv_cell(memo.get("yonlab_fit_summary")),
+                "decision_memo_risk_summary": _csv_cell(memo.get("risk_summary")),
+                "decision_memo_deadline_urgency": _csv_cell(memo.get("deadline_urgency")),
+                "decision_memo_next_action": _csv_cell(memo.get("deadline_next_action")),
+                "decision_memo_preparation_actions": _csv_cell(
+                    "; ".join(memo.get("preparation_actions") or [])
+                ),
+                "decision_memo_required_documents": _csv_cell(
+                    "; ".join(memo.get("required_documents") or [])
+                ),
+                "decision_memo_short_summary": _csv_cell(memo.get("copy_ready_summary")),
             }
         )
     return rows
@@ -422,6 +557,7 @@ def _safe_item(item: dict[str, Any]) -> dict[str, Any]:
         "owner": _sanitize_export_text(item.get("owner")),
         "note_preview": _sanitize_export_text(item.get("note_preview")),
         "next_action": _sanitize_export_text(item.get("next_action")),
+        "decision_label": _sanitize_export_text(item.get("decision_label")),
         "decision_label_ko": _sanitize_export_text(item.get("decision_label_ko")),
         "bid_priority": _priority(item),
         "go_no_go_recommendation": _sanitize_export_text(item.get("go_no_go_recommendation")),
@@ -436,6 +572,14 @@ def _safe_item(item: dict[str, Any]) -> dict[str, Any]:
         "recommended_action": _sanitize_export_text(item.get("recommended_action")),
         "today_action": _sanitize_export_text(item.get("today_action")),
         "document_action": _sanitize_export_text(item.get("document_action")),
+        "fit_summary": _sanitize_export_text(item.get("fit_summary")),
+        "why_now": _sanitize_export_text(item.get("why_now")),
+        "bid_strategy": _sanitize_export_text(item.get("bid_strategy")),
+        "decision_reasons": [
+            _sanitize_export_text(value)
+            for value in (item.get("decision_reasons") or [])
+            if _sanitize_export_text(value)
+        ],
         "action_plan": {
             key: _sanitize_export_text(value)
             for key, value in action_plan.items()
@@ -528,6 +672,54 @@ def _markdown_deadline_first_next_action_lines(items: list[dict[str, Any]]) -> l
     return lines
 
 
+def _markdown_decision_memo_summary_lines(summary: dict[str, Any]) -> list[str]:
+    if str(summary.get("status") or "empty") == "empty":
+        return [f"- {summary.get('empty_state_message') or DECISION_MEMO_EMPTY_MESSAGE}"]
+    decision_counts = summary.get("decision_counts") or {}
+    return [
+        f"- Memo candidates: {summary.get('candidate_count') or 0}",
+        f"- Included memos: {summary.get('memo_count') or 0}",
+        f"- Prepare: {decision_counts.get('Prepare', 0)}",
+        f"- Review: {decision_counts.get('Review', 0)}",
+        f"- Hold: {decision_counts.get('Hold', 0)}",
+        f"- Reject: {decision_counts.get('Reject', 0)}",
+    ]
+
+
+def _markdown_decision_memo_detail_lines(summary: dict[str, Any]) -> list[str]:
+    memos = summary.get("memos") or []
+    if not memos:
+        return [f"- {summary.get('empty_state_message') or DECISION_MEMO_EMPTY_MESSAGE}"]
+    lines: list[str] = []
+    for memo in memos:
+        lines.extend(
+            [
+                (
+                    f"- {memo.get('notice_id')}: {memo.get('title')} / {memo.get('agency')} / "
+                    f"{memo.get('deadline')} / {memo.get('recommended_decision')}"
+                ),
+                f"  - rationale: {memo.get('rationale') or 'No rationale available.'}",
+                f"  - YOnLab fit: {memo.get('yonlab_fit_summary') or 'No fit summary available.'}",
+                f"  - risk summary: {memo.get('risk_summary') or 'No risk summary available.'}",
+                (
+                    "  - next action: "
+                    f"{memo.get('deadline_next_action') or 'No next action available.'} "
+                    f"({memo.get('deadline_urgency') or 'unknown'})"
+                ),
+                (
+                    "  - preparation actions: "
+                    f"{', '.join(memo.get('preparation_actions') or ['No actions available.'])}"
+                ),
+                (
+                    "  - required documents: "
+                    f"{', '.join(memo.get('required_documents') or ['No documents listed yet.'])}"
+                ),
+                f"  - copy-ready summary: {memo.get('copy_ready_summary') or ''}",
+            ]
+        )
+    return lines
+
+
 def _markdown_item_line(item: dict[str, Any]) -> str:
     decision = (
         item.get("go_no_go_recommendation_ko")
@@ -610,6 +802,65 @@ def _risk_text(item: dict[str, Any]) -> str:
             if category
         )
     return str(item.get("risk_level") or "medium")
+
+
+def _decision_memo_candidate_ids(
+    *,
+    deadline_first_next_actions: list[dict[str, Any]] | None,
+    top_items: list[dict[str, Any]] | None,
+    fallback_items: list[dict[str, Any]] | None,
+) -> list[str]:
+    candidates: list[str] = []
+    seen: set[str] = set()
+    for group in (
+        deadline_first_next_actions or [],
+        top_items or [],
+        fallback_items or [],
+    ):
+        for item in group:
+            notice_id = str(item.get("notice_id") or "")
+            if not notice_id or notice_id in seen:
+                continue
+            seen.add(notice_id)
+            candidates.append(notice_id)
+    return candidates[:5]
+
+
+def _decision_memo_fit_summary_text(memo: dict[str, Any]) -> str:
+    summary = memo.get("yonlab_fit_summary") or {}
+    parts = [str(value) for value in summary.get("fit_reasons") or [] if value]
+    if not parts:
+        parts = [str(value) for value in summary.get("concern_reasons") or [] if value]
+    return _sanitize_export_text("; ".join(parts[:3]))
+
+
+def _decision_memo_risk_summary_text(memo: dict[str, Any]) -> str:
+    summary = memo.get("risk_summary") or {}
+    parts = []
+    for key in (
+        "eligibility_risks",
+        "document_risks",
+        "schedule_risks",
+        "commercial_risks",
+    ):
+        parts.extend(str(value) for value in summary.get(key) or [] if value)
+    return _sanitize_export_text("; ".join(parts[:4]))
+
+
+def _decision_memo_preparation_actions(memo: dict[str, Any]) -> list[str]:
+    return [
+        _sanitize_export_text(entry.get("action"))
+        for entry in (memo.get("preparation_actions") or [])
+        if _sanitize_export_text(entry.get("action"))
+    ]
+
+
+def _decision_memo_required_documents(memo: dict[str, Any]) -> list[str]:
+    return [
+        _sanitize_export_text(entry.get("name"))
+        for entry in (memo.get("required_documents") or [])
+        if _sanitize_export_text(entry.get("name"))
+    ]
 
 
 def _safe_url(value: Any) -> str:

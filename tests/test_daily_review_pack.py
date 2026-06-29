@@ -123,6 +123,32 @@ def test_daily_review_pack_includes_review_board_summary_and_next_actions() -> N
     assert pack["deadline_first_next_actions"][0]["next_action"]
 
 
+def test_daily_review_pack_includes_decision_memo_summary_and_entries() -> None:
+    pack = build_daily_review_pack(_decision_memo_items())
+
+    summary = pack["decision_memo_summary"]
+    assert summary["status"] == "success"
+    assert summary["memo_count"] >= 1
+    assert summary["candidate_count"] >= 1
+    assert summary["decision_counts"]["Prepare"] >= 1
+    assert summary["deadline_first_notice_ids"][0] == "G2B-SAMPLE-2026-001"
+    memo = summary["memos"][0]
+    assert memo["notice_id"] == "G2B-SAMPLE-2026-001"
+    assert memo["title"] == "서울 AI 기반 행정지원 업무 자동화 시스템 구축"
+    assert memo["agency"] == "서울특별시 산하기관"
+    assert memo["deadline"] == "2099-07-15"
+    assert memo["recommended_decision"] == "Prepare"
+    assert memo["yonlab_fit_summary"]
+    assert memo["deadline_next_action"]
+    assert memo["risk_summary"]
+    assert memo["preparation_actions"]
+    assert memo["required_documents"]
+    assert memo["copy_ready_summary"]
+    assert memo["copy_ready_markdown"]
+    assert summary["service_key_exposed"] is False
+    assert summary["real_api_call_attempted"] is False
+
+
 def test_daily_review_pack_groups_required_documents() -> None:
     pack = build_daily_review_pack(_sample_items())
     item = pack["review_items"][0]
@@ -159,6 +185,16 @@ def test_daily_review_csv_contains_safe_fields_and_escapes_formulas() -> None:
         "note_preview",
         "today_action",
         "detail_url",
+        "decision_memo_status",
+        "decision_memo_decision",
+        "decision_memo_rationale",
+        "decision_memo_fit_summary",
+        "decision_memo_risk_summary",
+        "decision_memo_deadline_urgency",
+        "decision_memo_next_action",
+        "decision_memo_preparation_actions",
+        "decision_memo_required_documents",
+        "decision_memo_short_summary",
     }
     assert "'=Formula Title" in csv_text
     assert "'+Agency" in csv_text
@@ -166,6 +202,7 @@ def test_daily_review_csv_contains_safe_fields_and_escapes_formulas() -> None:
     assert "report_path" not in csv_text
     assert "raw_json_path" not in csv_text
     assert "LOCAL_ONLY_SECRET" not in csv_text
+    assert "decision_memo_decision" in csv_text
 
     parsed = list(csv.DictReader(io.StringIO(csv_text.lstrip("\ufeff"))))
     assert parsed[0]["notice_id"] == "P1-HIGHER-SCORE"
@@ -182,7 +219,11 @@ def test_empty_daily_review_pack_has_explicit_empty_state() -> None:
     assert "controlled real run" in " ".join(pack["empty_state_next_actions"])
     assert pack["review_board_summary"]["active_count"] == 0
     assert pack["deadline_first_next_actions"] == []
+    assert pack["decision_memo_summary"]["status"] == "empty"
+    assert pack["decision_memo_summary"]["memos"] == []
     assert "No active review board items yet." in pack["markdown_report"]
+    assert "## Decision Memo Summary" in pack["markdown_report"]
+    assert "No decision memo candidates available yet." in pack["markdown_report"]
     assert "No opportunity data" in pack["markdown_report"]
     assert "saved notices" in pack["source_mode_message"]
     assert pack["service_key_exposed"] is False
@@ -209,6 +250,9 @@ def test_daily_review_pack_api_is_safe_and_uses_existing_opportunity_data(
     assert payload["total_items"] >= 1
     assert payload["markdown_report"]
     assert payload["executive_summary"]
+    assert payload["decision_memo_summary"]["status"] in {"success", "empty"}
+    assert payload["decision_memo_summary"]["service_key_exposed"] is False
+    assert payload["decision_memo_summary"]["real_api_call_attempted"] is False
     assert payload["review_board_summary"]["status_counts"]["go"] >= 0
     assert "deadline_first_next_actions" in payload
     assert payload["priority_legend"]["P1"].startswith("same-day")
@@ -235,6 +279,8 @@ def test_daily_review_pack_export_endpoints_return_markdown_and_csv(
     assert "# 오늘의 입찰 검토 패키지" in markdown_response.text
     assert "## 0. 한눈에 보는 요약" in markdown_response.text
     assert "## Review Board Summary" in markdown_response.text
+    assert "## Decision Memo Summary" in markdown_response.text
+    assert "## Decision Memo Details" in markdown_response.text
     assert "## Deadline-first Next Actions" in markdown_response.text
     assert "serviceKey" not in markdown_response.text
     assert "D:\\Deploy" not in markdown_response.text
@@ -243,8 +289,39 @@ def test_daily_review_pack_export_endpoints_return_markdown_and_csv(
     assert csv_response.headers["content-type"].startswith("text/csv")
     csv_body = csv_response.text.lstrip("\ufeff")
     assert "notice_id,title,agency,budget,deadline,score,review_status" in csv_body
+    assert "decision_memo_decision" in csv_body
     assert "serviceKey" not in csv_response.text
     assert "D:\\Deploy" not in csv_response.text
+
+
+def test_daily_review_pack_api_includes_known_safe_decision_memo_when_fixture_data_exists(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:  # noqa: ANN001
+    settings = _tmp_settings(tmp_path)
+    monkeypatch.setattr(routes, "get_settings", lambda: settings)
+
+    client.post(
+        "/ops/run-recommendations",
+        json={"mode": "fixture", "keyword": "AI", "num_rows": 3, "include_reports": True},
+    )
+
+    response = client.get("/ops/daily-review-pack")
+
+    assert response.status_code == 200
+    payload = response.json()
+    memo_ids = [item["notice_id"] for item in payload["decision_memo_summary"]["memos"]]
+    assert "G2B-SAMPLE-2026-001" in memo_ids
+    target = next(
+        item
+        for item in payload["decision_memo_summary"]["memos"]
+        if item["notice_id"] == "G2B-SAMPLE-2026-001"
+    )
+    assert target["recommended_decision"] in {"Prepare", "Review", "Hold", "Reject"}
+    assert target["copy_ready_summary"]
+    assert target["copy_ready_markdown"]
+    assert payload["decision_memo_summary"]["real_api_call_attempted"] is False
+    assert payload["decision_memo_summary"]["service_key_exposed"] is False
 
 
 def test_dashboard_contains_daily_review_pack_ui_hooks() -> None:
@@ -375,6 +452,34 @@ def _sample_items() -> list[dict]:
     ]
 
 
+def _decision_memo_items() -> list[dict]:
+    return [
+        _item(
+            notice_id="G2B-SAMPLE-2026-001",
+            title="서울 AI 기반 행정지원 업무 자동화 시스템 구축",
+            agency="서울특별시 산하기관",
+            priority="P1",
+            score=96,
+            deadline="2099-07-15",
+            risk_level="low",
+            run_id="run_decision_memo",
+            review_status="go",
+            next_action="제안 일정 확인",
+            decision_label="strong_recommend",
+            decision_label_ko="적극 추천",
+            fit_summary="YOnLab의 AI/SW 및 클라우드 시스템 역량과 직접 부합합니다.",
+            why_now="마감 전 제안 준비를 바로 시작할 수 있습니다.",
+            bid_strategy="AI Agent와 Device Farm 검증 경험을 중심으로 제안 전략을 구성합니다.",
+            go_no_go_ko="Go",
+            decision_reasons=[
+                "소프트웨어사업자 요구 조건이 와이온랩 핵심 자격과 부합합니다.",
+                "AI/SW 시스템 구축 과업이 와이온랩의 핵심 역량과 부합합니다.",
+            ],
+            risks=["주요 리스크는 낮으며 제안 일정만 확인하면 됩니다."],
+        )
+    ]
+
+
 def _item(
     *,
     notice_id: str,
@@ -388,6 +493,14 @@ def _item(
     go_no_go: str = "Go",
     review_status: str = "new",
     next_action: str = "",
+    decision_label: str = "recommend",
+    decision_label_ko: str = "review",
+    fit_summary: str = "YOnLab fit summary",
+    why_now: str = "Review timing and proposal readiness.",
+    bid_strategy: str = "Use the strongest YOnLab capability fit in the proposal.",
+    go_no_go_ko: str = "review",
+    decision_reasons: list[str] | None = None,
+    risks: list[str] | None = None,
 ) -> dict:
     return {
         "notice_id": notice_id,
@@ -396,17 +509,26 @@ def _item(
         "budget": 100000000,
         "deadline": deadline,
         "score": score,
-        "decision_label_ko": "review",
+        "decision_label": decision_label,
+        "decision_label_ko": decision_label_ko,
         "bid_priority": priority,
         "review_status": review_status,
         "review_status_ko": review_status,
         "go_no_go_recommendation": go_no_go,
-        "go_no_go_recommendation_ko": "review",
+        "go_no_go_recommendation_ko": go_no_go_ko,
         "risk_level": risk_level,
         "source_run_id": run_id,
         "source_mode": "saved",
         "detail_url": "https://example.test/notice",
         "next_action": next_action,
+        "fit_summary": fit_summary,
+        "why_now": why_now,
+        "bid_strategy": bid_strategy,
+        "decision_reasons": decision_reasons
+        or [
+            f"{notice_id} fit reason one",
+            f"{notice_id} fit reason two",
+        ],
         "report_path": "D:\\Deploy\\secret\\report.md",
         "raw_json_path": "D:\\Deploy\\secret\\raw.json",
         "raw_source": {"serviceKey": "LOCAL_ONLY_SECRET"},
@@ -428,7 +550,7 @@ def _item(
                 "message": f"{risk_level} deadline risk",
             }
         ],
-        "risks": [f"{risk_level} risk summary"],
+        "risks": risks or [f"{risk_level} risk summary"],
     }
 
 
