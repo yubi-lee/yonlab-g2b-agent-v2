@@ -271,6 +271,61 @@ th {
   border-color: #334155;
 }
 
+.review-board-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-bottom: 12px;
+}
+
+.review-board-card {
+  border: 1px solid #d7dde1;
+  border-radius: 6px;
+  background: #fbfcfc;
+  padding: 12px;
+}
+
+.review-board-card button {
+  width: 100%;
+  text-align: left;
+}
+
+.review-board-card ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+}
+
+.review-board-card li {
+  margin: 4px 0;
+}
+
+.review-board-card-meta,
+.review-board-next-actions-panel h3 {
+  color: #374151;
+  font-size: 14px;
+}
+
+.review-board-card-meta {
+  margin-top: 8px;
+}
+
+.review-board-next-actions-panel {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 12px;
+}
+
+.review-board-next-action {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.review-board-next-action button {
+  background: #334155;
+  border-color: #334155;
+  flex-shrink: 0;
+}
+
 @media (max-width: 720px) {
   .topbar,
   .panel-heading {

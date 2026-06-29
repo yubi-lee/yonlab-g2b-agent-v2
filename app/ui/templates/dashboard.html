@@ -224,6 +224,29 @@
         </div>
       </section>
 
+      <section class="panel review-board-panel" aria-labelledby="review-board-title">
+        <div class="panel-heading">
+          <h2 id="review-board-title">Review Board</h2>
+          <button id="refresh-review-board" type="button">Refresh</button>
+        </div>
+        <dl class="status-grid compact-status">
+          <div><dt>Generated At</dt><dd id="review-board-generated-at">Loading</dd></div>
+          <div><dt>Source</dt><dd id="review-board-source">Loading</dd></div>
+          <div><dt>Total</dt><dd id="review-board-total-count">Loading</dd></div>
+          <div><dt>Active</dt><dd id="review-board-active-count">Loading</dd></div>
+          <div><dt>Go</dt><dd id="review-board-go">Loading</dd></div>
+          <div><dt>Reviewing</dt><dd id="review-board-reviewing">Loading</dd></div>
+          <div><dt>Shortlisted</dt><dd id="review-board-shortlisted">Loading</dd></div>
+          <div><dt>Hold</dt><dd id="review-board-hold">Loading</dd></div>
+        </dl>
+        <div id="review-board-empty" class="detail-summary">Loading review board.</div>
+        <div id="review-board-cards" class="review-board-grid"></div>
+        <div class="review-board-next-actions-panel">
+          <h3>Deadline-first next actions</h3>
+          <ul id="review-board-next-actions" class="compact-list"></ul>
+        </div>
+      </section>
+
       <section class="panel table-panel opportunity-panel" aria-labelledby="opportunity-title">
         <div class="panel-heading">
           <h2 id="opportunity-title">Opportunity Inbox</h2>

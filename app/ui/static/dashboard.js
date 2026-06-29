@@ -99,6 +99,11 @@ async function loadSafeDailyStatus() {
   renderSafeDailyStatus(payload || {});
 }
 
+async function loadReviewBoard() {
+  const payload = await apiJson("/ops/review-board");
+  renderReviewBoard(payload || {});
+}
+
 function renderDailyReviewPack(pack) {
   state.currentDailyReviewMarkdown = pack.markdown_report || "";
   safeText("daily-review-status", pack.status || "empty");
@@ -190,6 +195,104 @@ function renderSafeDailyStatus(payload) {
   safeText("safe-daily-note", payload.note || "Safe daily status is based on local log metadata only.");
 }
 
+function renderReviewBoard(payload) {
+  const statusCounts = payload.status_counts || {};
+  safeText("review-board-generated-at", payload.generated_at || "none");
+  safeText("review-board-source", payload.source || "empty");
+  safeText("review-board-total-count", payload.total_count, 0);
+  safeText("review-board-active-count", payload.active_count, 0);
+  safeText("review-board-go", statusCounts.go, 0);
+  safeText("review-board-reviewing", statusCounts.reviewing, 0);
+  safeText("review-board-shortlisted", statusCounts.shortlisted, 0);
+  safeText("review-board-hold", statusCounts.hold, 0);
+
+  const cards = Array.isArray(payload.cards) ? payload.cards : [];
+  const nextActions = Array.isArray(payload.deadline_first_actions)
+    ? payload.deadline_first_actions
+    : [];
+  const emptyMessage = cards.some((card) => (card.count || 0) > 0)
+    ? "Click a review card to focus the Opportunity Inbox."
+    : "No active review board items yet. Save local review status from Opportunity Detail to build the board.";
+  safeText("review-board-empty", emptyMessage);
+
+  const cardContainer = document.getElementById("review-board-cards");
+  if (cardContainer) {
+    cardContainer.innerHTML = "";
+    for (const card of cards) {
+      cardContainer.appendChild(renderReviewBoardCard(card));
+    }
+  }
+
+  renderNextActionBoard(nextActions);
+}
+
+function renderReviewBoardCard(card) {
+  const article = document.createElement("article");
+  article.className = "review-board-card";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = `${safeValue(card.review_status_ko || card.review_status, "review")} (${card.count ?? 0})`;
+  button.addEventListener("click", () => applyReviewBoardFilter(card.filter_payload || {}));
+  article.appendChild(button);
+
+  const meta = document.createElement("div");
+  meta.className = "review-board-card-meta";
+  meta.textContent = card.count ? "Active-state-first review slice" : "No active items";
+  article.appendChild(meta);
+
+  const list = document.createElement("ul");
+  const items = Array.isArray(card.items) ? card.items : [];
+  if (!items.length) {
+    const item = document.createElement("li");
+    item.textContent = "No active items";
+    list.appendChild(item);
+  } else {
+    for (const boardItem of items) {
+      const item = document.createElement("li");
+      item.textContent = [
+        safeValue(boardItem.title, "No title"),
+        safeValue(boardItem.deadline, "No deadline"),
+        `${boardItem.score ?? 0}pt`,
+        safeValue(boardItem.next_action, "Review"),
+      ].join(" / ");
+      list.appendChild(item);
+    }
+  }
+  article.appendChild(list);
+  return article;
+}
+
+function renderNextActionBoard(items) {
+  const list = document.getElementById("review-board-next-actions");
+  if (!list) return;
+  list.innerHTML = "";
+  const safeItems = Array.isArray(items) ? items : [];
+  if (!safeItems.length) {
+    const empty = document.createElement("li");
+    empty.textContent = "No deadline-first next actions yet.";
+    list.appendChild(empty);
+    return;
+  }
+  for (const item of safeItems) {
+    const entry = document.createElement("li");
+    entry.className = "review-board-next-action";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = safeValue(item.review_status, "review");
+    button.addEventListener("click", () => applyReviewBoardFilter(item.filter_payload || {}));
+    const summary = document.createElement("span");
+    summary.textContent = [
+      safeValue(item.deadline, "No deadline"),
+      safeValue(item.title, "No title"),
+      safeValue(item.next_action, "Review"),
+    ].join(" / ");
+    entry.appendChild(button);
+    entry.appendChild(summary);
+    list.appendChild(entry);
+  }
+}
+
 function requestFromForm(form) {
   const data = new FormData(form);
   const payload = {
@@ -237,9 +340,21 @@ async function runRecommendation(event) {
     loadRecommendations(),
     loadQualitySummary(),
     loadOpportunityInbox(),
+    loadReviewBoard(),
     loadDailyReviewPack(),
   ]);
   if (state.currentRunId) await loadRunDetail(state.currentRunId);
+}
+
+function syncInboxDefaultFilters() {
+  const hideArchivedNoGo = document.getElementById("opportunity-hide-archived-no-go");
+  const sort = document.getElementById("opportunity-sort");
+  if (hideArchivedNoGo && !hideArchivedNoGo.checked) {
+    hideArchivedNoGo.checked = true;
+  }
+  if (sort && !sort.value) {
+    sort.value = "score_desc";
+  }
 }
 
 function opportunityQueryParams() {
@@ -261,6 +376,20 @@ function opportunityQueryParams() {
   if (shortlistedOnly) params.set("shortlisted_only", "true");
   if (hideArchivedNoGo) params.set("hide_archived_no_go", "true");
   return params;
+}
+
+async function applyReviewBoardFilter(filterPayload = {}) {
+  const reviewStatus = document.getElementById("opportunity-review-filter");
+  const shortlistedOnly = document.getElementById("opportunity-shortlisted-only");
+  const hideArchivedNoGo = document.getElementById("opportunity-hide-archived-no-go");
+  const sort = document.getElementById("opportunity-sort");
+
+  if (reviewStatus) reviewStatus.value = filterPayload.review_status || "";
+  if (shortlistedOnly) shortlistedOnly.checked = Boolean(filterPayload.shortlisted_only);
+  if (hideArchivedNoGo) hideArchivedNoGo.checked = filterPayload.hide_archived_no_go !== false;
+  if (sort) sort.value = filterPayload.sort || "score_desc";
+  syncInboxDefaultFilters();
+  await loadOpportunityInbox();
 }
 
 async function loadOpportunityInbox() {
@@ -387,7 +516,7 @@ async function saveOpportunityReviewStatus() {
     body: JSON.stringify(payload),
   });
   renderOpportunityReviewStatus(result);
-  await Promise.allSettled([loadOpportunityInbox(), loadDailyReviewPack()]);
+  await Promise.allSettled([loadOpportunityInbox(), loadReviewBoard(), loadDailyReviewPack()]);
 }
 
 async function clearOpportunityReviewStatus() {
@@ -399,7 +528,7 @@ async function clearOpportunityReviewStatus() {
     method: "DELETE",
   });
   renderOpportunityReviewStatus(result);
-  await Promise.allSettled([loadOpportunityInbox(), loadDailyReviewPack()]);
+  await Promise.allSettled([loadOpportunityInbox(), loadReviewBoard(), loadDailyReviewPack()]);
 }
 
 function renderFieldGroup(title, values) {
@@ -634,6 +763,7 @@ function updateRunModeDefaults() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  syncInboxDefaultFilters();
   document.getElementById("refresh-status")?.addEventListener("click", () =>
     loadSection("status", loadStatus, ["status-health", "status-package", "status-real-api", "status-service-key", "status-endpoint", "status-fixture", "status-readiness", "package-summary"]),
   );
@@ -645,6 +775,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   );
   document.getElementById("refresh-safe-daily")?.addEventListener("click", () =>
     loadSection("safe daily", loadSafeDailyStatus, ["safe-daily-current-status", "safe-daily-latest-result"]),
+  );
+  document.getElementById("refresh-review-board")?.addEventListener("click", () =>
+    loadSection("review board", loadReviewBoard, ["review-board-empty", "review-board-total-count"]),
   );
   document.getElementById("refresh-runs")?.addEventListener("click", () =>
     loadSection("runs", loadRuns, ["run-detail"]),
@@ -677,6 +810,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     loadSection("quality", loadQualitySummary, ["quality-summary-status", "opportunity-summary-status"]),
     loadSection("daily review pack", loadDailyReviewPack, ["daily-review-status", "daily-review-markdown"]),
     loadSection("safe daily", loadSafeDailyStatus, ["safe-daily-current-status", "safe-daily-latest-result"]),
+    loadSection("review board", loadReviewBoard, ["review-board-empty", "review-board-total-count"]),
     loadSection("opportunities", loadOpportunityInbox, ["opportunity-empty"]),
     loadSection("runs", loadRuns, ["run-detail"]),
     loadSection("recommendations", loadRecommendations, ["run-detail"]),

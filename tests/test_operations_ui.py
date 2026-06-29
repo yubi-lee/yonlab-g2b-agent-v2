@@ -370,6 +370,257 @@ def test_dashboard_contains_operator_clarity_hooks() -> None:
     assert "controlled real run" in js_text
 
 
+def test_dashboard_contains_review_board_section_before_opportunity_inbox() -> None:
+    html = (PROJECT_ROOT / "app" / "ui" / "templates" / "dashboard.html").read_text(
+        encoding="utf-8"
+    )
+    js_text = (PROJECT_ROOT / "app" / "ui" / "static" / "dashboard.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert "review-board-title" in html
+    assert "refresh-review-board" in html
+    assert "review-board-cards" in html
+    assert "review-board-next-actions" in html
+    assert html.index("review-board-title") < html.index("opportunity-title")
+    assert 'apiJson("/ops/review-board")' in js_text
+    assert "loadReviewBoard" in js_text
+    assert "applyReviewBoardFilter" in js_text
+    assert "syncInboxDefaultFilters" in js_text
+
+
+def test_dashboard_review_board_helpers_render_and_drive_inbox_filters(tmp_path: Path) -> None:
+    node = shutil.which("node")
+    assert node is not None, "node is required for dashboard render validation"
+
+    check_script = tmp_path / "dashboard_review_board_check.js"
+    check_script.write_text(
+        textwrap.dedent(
+            """
+            const fs = require("fs");
+            const vm = require("vm");
+            const assert = require("assert");
+
+            function makeElement(id) {
+              const element = {
+                id,
+                tagName: id,
+                textContent: "Loading",
+                children: [],
+                dataset: {},
+                value: "",
+                checked: false,
+                listeners: {},
+                appendChild(child) {
+                  this.children.push(child);
+                },
+                addEventListener(type, handler) {
+                  this.listeners[type] = handler;
+                },
+                click() {
+                  if (this.listeners.click) {
+                    return this.listeners.click({ currentTarget: this, preventDefault() {} });
+                  }
+                  return undefined;
+                },
+                remove() {},
+              };
+              Object.defineProperty(element, "innerHTML", {
+                get() {
+                  return this._innerHTML || "";
+                },
+                set(value) {
+                  this._innerHTML = value;
+                  this.children = [];
+                },
+              });
+              return element;
+            }
+
+            const elements = {
+              "review-board-cards": makeElement("review-board-cards"),
+              "review-board-next-actions": makeElement("review-board-next-actions"),
+              "review-board-empty": makeElement("review-board-empty"),
+              "review-board-generated-at": makeElement("review-board-generated-at"),
+              "review-board-source": makeElement("review-board-source"),
+              "review-board-total-count": makeElement("review-board-total-count"),
+              "review-board-active-count": makeElement("review-board-active-count"),
+              "review-board-go": makeElement("review-board-go"),
+              "review-board-reviewing": makeElement("review-board-reviewing"),
+              "review-board-shortlisted": makeElement("review-board-shortlisted"),
+              "review-board-hold": makeElement("review-board-hold"),
+              "opportunity-review-filter": makeElement("opportunity-review-filter"),
+              "opportunity-hide-archived-no-go": makeElement("opportunity-hide-archived-no-go"),
+              "opportunity-shortlisted-only": makeElement("opportunity-shortlisted-only"),
+              "opportunity-sort": makeElement("opportunity-sort"),
+              "opportunity-keyword": makeElement("opportunity-keyword"),
+              "opportunity-grade": makeElement("opportunity-grade"),
+              "opportunity-risk": makeElement("opportunity-risk"),
+              "opportunity-source": makeElement("opportunity-source"),
+              "opportunity-body": makeElement("opportunity-body"),
+              "opportunity-empty": makeElement("opportunity-empty"),
+              "source-mode-current": makeElement("source-mode-current"),
+              "source-mode-message": makeElement("source-mode-message"),
+              "source-mode-latest-run": makeElement("source-mode-latest-run"),
+              "source-mode-latest-at": makeElement("source-mode-latest-at"),
+              "source-mode-real-reports": makeElement("source-mode-real-reports"),
+              "source-mode-total-items": makeElement("source-mode-total-items"),
+              "source-mode-next-actions": makeElement("source-mode-next-actions"),
+              "priority-legend": makeElement("priority-legend"),
+            };
+            const document = {
+              body: makeElement("body"),
+              createElement(tag) {
+                return makeElement(tag);
+              },
+              getElementById(id) {
+                return elements[id] || null;
+              },
+              querySelector() {
+                return null;
+              },
+              addEventListener() {},
+            };
+            const fetchCalls = [];
+            const context = {
+              Blob: function Blob() {},
+              URL: { createObjectURL: () => "blob://local", revokeObjectURL() {} },
+              URLSearchParams,
+              console,
+              document,
+              elements,
+              encodeURIComponent,
+              fetch: async (url) => {
+                fetchCalls.push(url);
+                if (String(url).startsWith("/ops/opportunity-inbox?")) {
+                  return {
+                    ok: true,
+                    status: 200,
+                    statusText: "OK",
+                    json: async () => ({
+                      items: [{
+                        notice_id: "REVIEWING-1",
+                        title: "Review notice",
+                        agency: "Agency",
+                        deadline: "2099-01-01",
+                        budget: 1000,
+                        score: 82,
+                        grade: "recommend",
+                        review_status: "reviewing",
+                        review_status_ko: "reviewing",
+                        source_badges: ["fixture"],
+                      }],
+                      source_mode: "saved",
+                      empty_state_message: "",
+                      empty_state_next_actions: [],
+                      priority_legend: {},
+                    }),
+                  };
+                }
+                throw new Error("Unexpected fetch " + url);
+              },
+            };
+
+            (async () => {
+              vm.createContext(context);
+              vm.runInContext(fs.readFileSync(process.argv[2], "utf8"), context);
+              vm.runInContext(`
+                renderReviewBoard({
+                  generated_at: "2026-06-29T12:00:00+00:00",
+                  source: "saved",
+                  total_count: 3,
+                  active_count: 2,
+                  status_counts: { go: 1, reviewing: 1, shortlisted: 0, hold: 0 },
+                  cards: [{
+                    review_status: "reviewing",
+                    review_status_ko: "reviewing",
+                    count: 1,
+                    items: [{
+                      notice_id: "REVIEWING-1",
+                      title: "Review notice",
+                      agency: "Agency",
+                      deadline: "2099-01-01",
+                      deadline_status: "upcoming",
+                      review_status: "reviewing",
+                      score: 82,
+                      risk_level: "medium",
+                      next_action: "Confirm scope",
+                      filter_payload: {
+                        review_status: "reviewing",
+                        shortlisted_only: false,
+                        hide_archived_no_go: true,
+                        sort: "deadline_asc"
+                      }
+                    }],
+                    filter_payload: {
+                      review_status: "reviewing",
+                      shortlisted_only: false,
+                      hide_archived_no_go: true,
+                      sort: "deadline_asc"
+                    }
+                  }],
+                  deadline_first_actions: [{
+                    notice_id: "REVIEWING-1",
+                    title: "Review notice",
+                    agency: "Agency",
+                    deadline: "2099-01-01",
+                    deadline_status: "upcoming",
+                    review_status: "reviewing",
+                    score: 82,
+                    risk_level: "medium",
+                    next_action: "Confirm scope",
+                    filter_payload: {
+                      review_status: "reviewing",
+                      shortlisted_only: false,
+                      hide_archived_no_go: true,
+                      sort: "deadline_asc"
+                    }
+                  }]
+                });
+              `, context);
+              assert.strictEqual(elements["review-board-cards"].children.length, 1);
+              assert.strictEqual(elements["review-board-next-actions"].children.length, 1);
+              const boardButton = elements["review-board-cards"].children[0].children[0];
+              assert.ok(boardButton);
+              await boardButton.click();
+              assert.strictEqual(elements["opportunity-review-filter"].value, "reviewing");
+              assert.strictEqual(elements["opportunity-hide-archived-no-go"].checked, true);
+              assert.strictEqual(elements["opportunity-sort"].value, "deadline_asc");
+              assert.ok(
+                fetchCalls.some((url) =>
+                  String(url).includes("review_status=reviewing") &&
+                  String(url).includes("hide_archived_no_go=true") &&
+                  String(url).includes("sort=deadline_asc")
+                ),
+              );
+
+              vm.runInContext(
+                "renderReviewBoard({ cards: [], deadline_first_actions: [], status_counts: {} });",
+                context,
+              );
+              assert.match(
+                elements["review-board-empty"].textContent,
+                /No active review board items/i,
+              );
+            })().catch((error) => {
+              console.error(error);
+              process.exit(1);
+            });
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [node, str(check_script), str(PROJECT_ROOT / "app" / "ui" / "static" / "dashboard.js")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
 def test_duplicated_korean_fragments_absent_from_fixture_and_fresh_ops_output(
     tmp_path: Path,
     monkeypatch,
