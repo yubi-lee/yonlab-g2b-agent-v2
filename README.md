@@ -53,6 +53,9 @@ Preferred full local validation, including pytest, temporary local server startu
 .\scripts\validate_local.ps1
 ```
 
+`validate_local.ps1` now includes a Review Board no-real smoke path for `/ops/review-board`,
+`/ui` Review Board rendering, and Daily Review Pack Review Board export sections.
+
 ## Start Server
 
 ```powershell
@@ -111,10 +114,12 @@ From the dashboard you can:
 - inspect enriched report metadata through `/ops/report-index` and aggregate quality state through `/ops/quality-summary`.
 - review commercial candidates in Opportunity Inbox, then open or download a copy-ready
   Markdown detail report for internal bid review.
+- use Review Board at the top of `/ui` to see active-state-first review status counts and
+  deadline-first next actions before opening the Inbox.
 - save local-only review status for each notice with owner, next action, and private notes.
 - use Daily Review Pack to summarize today's P1/P2/P3/Hold opportunities, actions,
-  document checks, review status, and risk counts, then download Markdown or CSV for bid
-  review meetings.
+  document checks, review status, Review Board summary, and risk counts, then download
+  Markdown or CSV for bid review meetings.
 - see the current source mode banner, P1/P2/P3/Hold priority legend, safe daily status card,
   Korean Daily Review Pack labels, executive summary, and grouped document checklist.
 
@@ -150,6 +155,7 @@ Operations endpoints:
 - `GET /ops/real-readiness`
 - `GET /ops/quality-summary`
 - `GET /ops/safe-daily-status`
+- `GET /ops/review-board`
 - `GET /ops/report-index`
 - `GET /ops/review-status`
 - `GET /ops/review-status/{notice_id}`
@@ -576,6 +582,13 @@ The review status panel lets operators mark a notice as `shortlisted`, `reviewin
 The status is stored only under ignored local operations data and is reflected in Opportunity
 Inbox filters plus Daily Review Pack Markdown/CSV exports. Full private notes are excluded
 from exports.
+
+Review Board is the operator shortcut for this workflow. It shows active-state-first groups
+in this order: `go`, `reviewing`, `shortlisted`, `hold`. It also shows deadline-first next
+actions derived from the same safe local Opportunity Inbox data. Clicking a Review Board card
+updates the Inbox filter state so operators can move directly into the relevant slice of work.
+`GET /ops/review-board`, `/ui` Review Board rendering, and Daily Review Pack Review Board
+sections are no-real by default and do not call the real G2B API.
 
 The opportunity Markdown report includes `핵심 정보`, `입찰 준비 전략`, required
 documents, risk categories, and recommended action so it can be used directly in business

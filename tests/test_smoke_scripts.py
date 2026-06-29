@@ -25,6 +25,7 @@ SMOKE_SCRIPT_NAMES = (
     "smoke_ui_health.ps1",
     "smoke_ops_package_info.ps1",
     "smoke_ops_real_readiness.ps1",
+    "smoke_ops_review_board.ps1",
     "smoke_ops_quality_summary.ps1",
     "smoke_ops_report_index.ps1",
     "smoke_ops_ui_flow.ps1",
@@ -104,6 +105,7 @@ def test_validate_local_script_runs_expected_validation_steps() -> None:
     assert "smoke_ui_health.ps1" in content
     assert "run_ops_fixture.ps1" in content
     assert "smoke_ops_real_readiness.ps1" in content
+    assert "smoke_ops_review_board.ps1" in content
     assert "smoke_ops_quality_summary.ps1" in content
     assert "smoke_ops_report_index.ps1" in content
     assert "smoke_ops_ui_flow.ps1" in content
@@ -119,6 +121,27 @@ def test_validate_local_script_runs_expected_validation_steps() -> None:
     assert "smoke_g2b_real_confirmed_template.ps1" not in content
     assert "smoke_g2b_real_recommend_template.ps1" not in content
     assert "Stop-Job" in content
+
+
+def test_review_board_smoke_script_is_offline_and_checks_review_board_workflow() -> None:
+    content = (PROJECT_ROOT / "scripts" / "smoke_ops_review_board.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "System.Text.UTF8Encoding($false)" in content
+    assert "/ops/review-board" in content
+    assert "/ops/daily-review-pack" in content
+    assert "/ui" in content
+    assert "review-board-title" in content
+    assert "Review Board Summary" in content
+    assert "real_api_call_attempted" in content
+    assert "service_key_exposed" in content
+    assert "Invoke-WebRequest" in content
+    assert "-UseBasicParsing" in content
+    assert "RawContentStream" in content
+    assert "ConfirmRealApiCall" not in content
+    assert "run_ops_real_controlled.ps1" not in content
+    assert "SECRET-KEY" not in content
 
 
 def test_controlled_real_ops_scripts_are_guarded_and_secret_safe() -> None:

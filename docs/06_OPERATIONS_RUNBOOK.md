@@ -29,6 +29,7 @@ GET /ops/package-info
 GET /ops/real-readiness
 GET /ops/quality-summary
 GET /ops/safe-daily-status
+GET /ops/review-board
 GET /ops/report-index
 ```
 
@@ -39,6 +40,11 @@ safe report references. They do not expose service keys.
 `/ops/safe-daily-status` summarizes the latest safe daily log metadata for the dashboard.
 It reports only safe names/booleans, not full local paths, `.env` values, service keys, or
 raw log contents. It does not query Windows Task Scheduler from the server.
+
+`/ops/review-board` summarizes safe local Opportunity Inbox state for operators. It is a
+read-only, no-real endpoint that groups active review work in active-state-first order:
+`go`, `reviewing`, `shortlisted`, then `hold`. It also exposes deadline-first next actions.
+It does not call the real G2B API.
 
 ## Run a Fixture Recommendation Job
 
@@ -99,6 +105,13 @@ Review status is local-only operator state. Use the Opportunity Detail panel to 
 owner and next action. The dashboard stores this under ignored local operations data, merges
 it into Opportunity Inbox filters, and includes status/next action in Daily Review Pack
 exports. Full private notes stay out of Markdown/CSV exports.
+
+Review Board sits above Opportunity Inbox on `/ui`. Clicking a Review Board card applies the
+matching Inbox filter so the operator can move directly from summary to working list without
+changing any real API gate. The next-action lane is deadline-first: earlier deadlines are
+shown first, and undated items fall later. Daily Review Pack exports include this Review
+Board summary and the same deadline-first next actions from safe local data only. This does
+not call the real G2B API.
 
 ## Reset Generated Local Ops Data
 

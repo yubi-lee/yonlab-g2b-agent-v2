@@ -140,18 +140,24 @@ Opportunity Inbox candidates into priority groups, today's actions, document che
 counts. Operators can download Markdown or CSV from the dashboard, or call:
 
 ```text
+GET /ops/review-board
 GET /ops/daily-review-pack
 GET /ops/daily-review-pack/markdown
 GET /ops/daily-review-pack/csv
 ```
 
-These endpoints are deterministic saved-data views and do not call the real G2B API.
+These endpoints are deterministic saved-data views and make no real G2B API call.
+
+Review Board is the top dashboard summary for this workflow. It is active-state-first:
+`go`, `reviewing`, `shortlisted`, then `hold`. It also shows deadline-first next actions.
+Clicking a Review Board card applies the matching Opportunity Inbox filter in `/ui` so the
+operator can move from summary to working list without changing any real API safety gate.
 
 The dashboard also supports local review status for each notice. Operators can shortlist,
 mark reviewing/go/hold/no_go/submitted/archived, assign an owner, and record a next action.
 This state is local-only, stored under ignored operations data, and does not call the real
-G2B API. Daily Review Pack exports include review status and next action, but not full
-private notes.
+G2B API. Daily Review Pack exports include review status, Review Board summary, and
+deadline-first next actions, but not full private notes.
 
 ## Safe Daily Scheduled Operations
 

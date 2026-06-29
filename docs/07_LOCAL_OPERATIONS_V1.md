@@ -35,6 +35,8 @@ Use another port when needed:
 This delegates to `scripts/validate_local.ps1`, which runs pytest, starts a temporary
 local FastAPI server, executes fixture-safe API/UI/ops smoke checks, and stops the server.
 It does not call the real G2B/Public Data Portal API.
+That no-real validation path now includes Review Board smoke coverage for `/ops/review-board`,
+top-of-dashboard `/ui` rendering, and Daily Review Pack Review Board export sections.
 
 ## Inspect Package Metadata
 
@@ -43,6 +45,7 @@ GET /ops/package-info
 GET /ops/real-readiness
 GET /ops/quality-summary
 GET /ops/safe-daily-status
+GET /ops/review-board
 GET /ops/report-index
 ```
 
@@ -60,6 +63,8 @@ directory. Neither endpoint returns service key values.
 `/ops/safe-daily-status` powers the dashboard safe daily card from latest local log metadata
 only. It avoids full path exposure and does not call the real API or query the Windows
 Scheduler from the server.
+`/ops/review-board` is the safe Review Board summary endpoint. It is read-only, shows
+active-state-first review work, exposes deadline-first next actions, and does not call the real G2B API.
 
 ## Operator Clarity Dashboard
 
@@ -67,6 +72,17 @@ The `/ui` dashboard includes a source-mode banner, P1/P2/P3/Hold priority legend
 status card, Korean Daily Review Pack labels, executive summary, and grouped document
 checklist. Demo and fixture data are labeled as non-real; controlled real runs remain
 script-only and require explicit operator confirmation.
+
+At the top of `/ui`, Review Board groups work in active-state-first order:
+
+- `go`
+- `reviewing`
+- `shortlisted`
+- `hold`
+
+The next-action list is deadline-first. Clicking a Review Board card applies the matching
+Opportunity Inbox filter so the operator can move directly into the relevant saved-data slice.
+This remains a no-real workflow, does not call the real G2B API, and does not open any real API gate.
 
 ## Fixture Operations Flow
 

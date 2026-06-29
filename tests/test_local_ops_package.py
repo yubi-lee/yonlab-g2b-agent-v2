@@ -79,6 +79,10 @@ def test_deployment_handoff_doc_is_safe_and_operator_ready() -> None:
     content = (PROJECT_ROOT / "docs" / "07_DEPLOYMENT_HANDOFF.md").read_text(encoding="utf-8")
 
     assert "Deployment Handoff" in content
+    assert "/ops/review-board" in content
+    assert "Review Board" in content
+    assert "deadline-first" in content
+    assert "no real G2B API" in content
     assert "validate_local.ps1" in content
     assert "check_deploy_readiness.ps1" in content
     assert "YONLAB_AUTO_RUN_REAL_API" in content
@@ -92,3 +96,20 @@ def test_validate_local_references_package_smoke() -> None:
     content = (PROJECT_ROOT / "scripts" / "validate_local.ps1").read_text(encoding="utf-8")
 
     assert "smoke_ops_package_info.ps1" in content
+
+
+def test_operator_docs_cover_review_board_workflow_and_no_real_safety() -> None:
+    readme = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
+    runbook = (PROJECT_ROOT / "docs" / "06_OPERATIONS_RUNBOOK.md").read_text(
+        encoding="utf-8"
+    )
+    local_ops = (PROJECT_ROOT / "docs" / "07_LOCAL_OPERATIONS_V1.md").read_text(
+        encoding="utf-8"
+    )
+
+    for content in (readme, runbook, local_ops):
+        assert "Review Board" in content
+        assert "/ops/review-board" in content
+        assert "deadline-first" in content
+        assert "active-state-first" in content
+        assert "does not call the real G2B API" in content
