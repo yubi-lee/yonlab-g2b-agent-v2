@@ -438,3 +438,19 @@ Reason:
   internal bid review can continue without a separate tracker.
 - Full notes remain local-only; exports include status and next action but not private note
   contents, service keys, raw responses, or local absolute paths.
+
+## 2026-06-29 YOnLab G2B Agent v2 Task 50M
+
+Decision: Release the Review Board workflow as `v0.1.0-rc14` only after full no-real
+validation, fresh deployment validation, and Review Board workflow smoke checks pass.
+
+Reason:
+
+- Task 50G through 50L added the Review Board summary endpoint, top-of-dashboard `/ui`
+  workflow, Inbox filter click-through, Daily Review Pack/export summary, and explicit
+  no-real validation coverage.
+- The rc14 release should remain deterministic and local-safe: `/ops/review-board`, `/ui`,
+  Daily Review Pack/export, and deployment validation must complete without any real G2B API
+  call, service key exposure, or `.env` value disclosure.
+- Fresh deployment validation should confirm the Review Board workflow from a clean
+  deployment path before rc14 is treated as the next release candidate baseline.
