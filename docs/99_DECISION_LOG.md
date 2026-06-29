@@ -454,3 +454,37 @@ Reason:
   call, service key exposure, or `.env` value disclosure.
 - Fresh deployment validation should confirm the Review Board workflow from a clean
   deployment path before rc14 is treated as the next release candidate baseline.
+
+## 2026-06-30 YOnLab G2B Agent v2 Task 51F
+
+Decision: Prepare the Decision Memo workflow release as `v0.1.0-rc15` only after full
+local no-real validation passes and the same no-real checks are repeated in a fresh
+deployment at `D:\Deploy\yonlab-g2b-agent-v2-rc15`.
+
+Release scope:
+
+- safe backend endpoint: `GET /ops/decision-memo/{notice_id}`
+- `/ui` Decision Memo panel
+- Review Board click to Decision Memo load path
+- Opportunity Inbox selected item to Decision Memo load path
+- Daily Review Pack/export Decision Memo summary
+- known safe fixture notice id: `G2B-SAMPLE-2026-001`
+
+Local no-real validation result before tagging:
+
+- `python -m pytest -q`: pass
+- `ruff check app tests`: pass
+- `scripts/check_deploy_readiness.ps1`: `deploy_ready=true`
+- `scripts/validate_local.ps1`: pass
+- `scripts/validate_ops_package.ps1`: pass
+
+No-real safety confirmation:
+
+- `real_api_call_attempted=false`
+- `real_network_call_attempted=false`
+- `service_key_exposed=false`
+
+Known limitation:
+
+- manual `Prepare` / `Review` / `Hold` / `Reject` persistence is not implemented in rc15
+- Decision Memo values are generated from safe local data only
