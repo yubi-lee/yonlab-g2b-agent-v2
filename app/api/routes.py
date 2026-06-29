@@ -73,6 +73,7 @@ from app.services.opportunity_inbox import (
 )
 from app.services.pdf_text_extractor import extract_pdf_text_from_file
 from app.services.real_ops_readiness import build_real_ops_readiness
+from app.services.review_board import build_review_board
 from app.services.review_status import (
     ReviewStatusUpdate,
     delete_review_status,
@@ -637,6 +638,20 @@ def ops_quality_summary() -> dict[str, Any]:
 @router.get("/ops/safe-daily-status")
 def ops_safe_daily_status() -> dict[str, Any]:
     return build_safe_daily_status(deploy_path=Path.cwd())
+
+
+@router.get("/ops/review-board")
+def ops_review_board() -> dict[str, Any]:
+    settings = get_settings()
+    inbox = build_opportunity_inbox(
+        db_path=settings.yonlab_storage_db_path,
+        limit=100,
+        sort="score_desc",
+    )
+    return build_review_board(
+        inbox.get("items") or [],
+        source=str(inbox.get("source_mode") or inbox.get("status") or "empty"),
+    )
 
 
 @router.get("/ops/review-status")
