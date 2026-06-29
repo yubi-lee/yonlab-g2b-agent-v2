@@ -389,6 +389,31 @@ def test_dashboard_contains_review_board_section_before_opportunity_inbox() -> N
     assert "syncInboxDefaultFilters" in js_text
 
 
+def test_dashboard_contains_decision_memo_panel_and_loader_hooks() -> None:
+    html = (PROJECT_ROOT / "app" / "ui" / "templates" / "dashboard.html").read_text(
+        encoding="utf-8"
+    )
+    js_text = (PROJECT_ROOT / "app" / "ui" / "static" / "dashboard.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert "decision-memo-title" in html
+    assert "decision-memo-notice-id" in html
+    assert "load-decision-memo" in html
+    assert "open-selected-decision-memo" in html
+    assert "decision-memo-summary" in html
+    assert "decision-memo-decision" in html
+    assert "decision-memo-fit-summary" in html
+    assert "decision-memo-risk-summary" in html
+    assert "decision-memo-next-action" in html
+    assert "decision-memo-preparation-actions" in html
+    assert "decision-memo-required-documents" in html
+    assert "decision-memo-copy-block" in html
+    assert "loadDecisionMemo" in js_text
+    assert "renderDecisionMemo" in js_text
+    assert "/ops/decision-memo/" in js_text
+
+
 def test_dashboard_review_board_helpers_render_and_drive_inbox_filters(tmp_path: Path) -> None:
     node = shutil.which("node")
     assert node is not None, "node is required for dashboard render validation"
@@ -601,6 +626,501 @@ def test_dashboard_review_board_helpers_render_and_drive_inbox_filters(tmp_path:
               assert.match(
                 elements["review-board-empty"].textContent,
                 /No active review board items/i,
+              );
+            })().catch((error) => {
+              console.error(error);
+              process.exit(1);
+            });
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [node, str(check_script), str(PROJECT_ROOT / "app" / "ui" / "static" / "dashboard.js")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_dashboard_decision_memo_helpers_render_known_notice_and_safe_empty_state(
+    tmp_path: Path,
+) -> None:
+    node = shutil.which("node")
+    assert node is not None, "node is required for dashboard render validation"
+
+    check_script = tmp_path / "dashboard_decision_memo_check.js"
+    check_script.write_text(
+        textwrap.dedent(
+            """
+            const fs = require("fs");
+            const vm = require("vm");
+            const assert = require("assert");
+
+            function makeElement(id) {
+              const element = {
+                id,
+                tagName: id,
+                textContent: "Loading",
+                children: [],
+                dataset: {},
+                value: "",
+                checked: false,
+                listeners: {},
+                appendChild(child) {
+                  this.children.push(child);
+                },
+                addEventListener(type, handler) {
+                  this.listeners[type] = handler;
+                },
+                click() {
+                  if (this.listeners.click) {
+                    return this.listeners.click({ currentTarget: this, preventDefault() {} });
+                  }
+                  return undefined;
+                },
+                remove() {},
+              };
+              Object.defineProperty(element, "innerHTML", {
+                get() {
+                  return this._innerHTML || "";
+                },
+                set(value) {
+                  this._innerHTML = value;
+                  this.children = [];
+                },
+              });
+              return element;
+            }
+
+            const elementIds = [
+              "decision-memo-status",
+              "decision-memo-notice-id",
+              "decision-memo-summary",
+              "decision-memo-decision",
+              "decision-memo-rationale",
+              "decision-memo-fit-summary",
+              "decision-memo-risk-summary",
+              "decision-memo-next-action",
+              "decision-memo-preparation-actions",
+              "decision-memo-required-documents",
+              "decision-memo-copy-block",
+              "open-selected-decision-memo",
+              "load-decision-memo",
+            ];
+            const elements = Object.fromEntries(elementIds.map((id) => [id, makeElement(id)]));
+            const document = {
+              body: makeElement("body"),
+              createElement(tag) {
+                return makeElement(tag);
+              },
+              getElementById(id) {
+                return elements[id] || null;
+              },
+              querySelector() {
+                return null;
+              },
+              addEventListener() {},
+            };
+            const responses = {
+              "/ops/decision-memo/G2B-SAMPLE-2026-001": {
+                status: "success",
+                notice_id: "G2B-SAMPLE-2026-001",
+                notice: {
+                  title: "Seoul AI workflow automation",
+                  agency: "Seoul agency",
+                  deadline: "2026-07-15",
+                },
+                yonlab_fit_summary: {
+                  fit_reasons: ["AI/SW fit", "Seoul region fit"],
+                  concern_reasons: ["Further review needed"],
+                },
+                risk_summary: {
+                  eligibility_risks: ["Recent performance check required"],
+                  document_risks: ["Document review required"],
+                  schedule_risks: ["Deadline approaching"],
+                  commercial_risks: [],
+                },
+                deadline_next_action: {
+                  deadline: "2026-07-15",
+                  urgency: "due_soon",
+                  next_action: "Confirm proposal schedule",
+                },
+                recommended_decision: {
+                  value: "Prepare",
+                  rationale: "Fit is strong enough to begin preparation.",
+                },
+                preparation_actions: [
+                  { action: "Draft proposal scope", owner: "ops", priority: "high" },
+                ],
+                required_documents: [
+                  { name: "Software business certificate", status: "required", reason: "required" },
+                ],
+                export_blocks: {
+                  markdown: "# YOnLab Decision Memo\\n\\n- Decision: Prepare",
+                  short_summary: "Prepare - Seoul AI workflow automation",
+                },
+                safety: {
+                  real_api_call_attempted: false,
+                  source_data_mode: "fixture",
+                },
+              },
+              "/ops/decision-memo/UNKNOWN-NOTICE-ID": {
+                status: "not_found",
+                notice_id: "UNKNOWN-NOTICE-ID",
+                notice: { title: "", agency: "", deadline: "" },
+                yonlab_fit_summary: { fit_reasons: [], concern_reasons: [] },
+                risk_summary: {
+                  eligibility_risks: [],
+                  document_risks: [],
+                  schedule_risks: [],
+                  commercial_risks: [],
+                },
+                deadline_next_action: {
+                  deadline: "",
+                  urgency: "unknown",
+                  next_action:
+                    "Select a known local notice from Review Board or Opportunity Inbox.",
+                },
+                recommended_decision: {
+                  value: "Hold",
+                  rationale: "No local-safe notice data is available yet for this notice id.",
+                },
+                preparation_actions: [],
+                required_documents: [],
+                export_blocks: {
+                  markdown: "# YOnLab Decision Memo\\n\\nDecision Memo Unavailable",
+                  short_summary: "Decision memo unavailable for notice UNKNOWN-NOTICE-ID.",
+                },
+                safety: {
+                  real_api_call_attempted: false,
+                  source_data_mode: "empty",
+                },
+              },
+            };
+            const context = {
+              Blob: function Blob() {},
+              URL: { createObjectURL: () => "blob://local", revokeObjectURL() {} },
+              URLSearchParams,
+              console,
+              document,
+              elements,
+              encodeURIComponent,
+              fetch: async (url) => ({
+                ok: true,
+                status: 200,
+                statusText: "OK",
+                json: async () => {
+                  if (!responses[url]) {
+                    throw new Error("Unexpected fetch " + url);
+                  }
+                  return responses[url];
+                },
+              }),
+            };
+
+            (async () => {
+              vm.createContext(context);
+              vm.runInContext(fs.readFileSync(process.argv[2], "utf8"), context);
+
+              await vm.runInContext('loadDecisionMemo("G2B-SAMPLE-2026-001")', context);
+              assert.match(
+                elements["decision-memo-summary"].textContent,
+                /Seoul AI workflow automation/,
+              );
+              assert.match(elements["decision-memo-summary"].textContent, /Seoul agency/);
+              assert.match(elements["decision-memo-summary"].textContent, /2026-07-15/);
+              assert.match(elements["decision-memo-decision"].textContent, /Prepare/);
+              assert.match(
+                elements["decision-memo-fit-summary"].children[0].textContent,
+                /AI\\/SW fit/,
+              );
+              assert.match(
+                elements["decision-memo-risk-summary"].children[0].textContent,
+                /Recent performance check required/,
+              );
+              assert.match(
+                elements["decision-memo-next-action"].children[2].textContent,
+                /Confirm proposal schedule/,
+              );
+              assert.match(
+                elements["decision-memo-preparation-actions"].children[0].textContent,
+                /Draft proposal scope/,
+              );
+              assert.match(
+                elements["decision-memo-required-documents"].children[0].textContent,
+                /Software business certificate/,
+              );
+              assert.match(elements["decision-memo-copy-block"].textContent, /Decision: Prepare/);
+
+              await vm.runInContext('loadDecisionMemo("UNKNOWN-NOTICE-ID")', context);
+              assert.match(elements["decision-memo-status"].textContent, /not_found/);
+              assert.match(elements["decision-memo-decision"].textContent, /Hold/);
+              assert.match(
+                elements["decision-memo-summary"].textContent,
+                /Decision memo unavailable/i,
+              );
+              assert.match(
+                elements["decision-memo-next-action"].children[2].textContent,
+                /Select a known local notice/i,
+              );
+            })().catch((error) => {
+              console.error(error);
+              process.exit(1);
+            });
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [node, str(check_script), str(PROJECT_ROOT / "app" / "ui" / "static" / "dashboard.js")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_dashboard_review_board_items_can_open_decision_memo_without_real_api(
+    tmp_path: Path,
+) -> None:
+    node = shutil.which("node")
+    assert node is not None, "node is required for dashboard render validation"
+
+    check_script = tmp_path / "dashboard_review_board_decision_memo_check.js"
+    check_script.write_text(
+        textwrap.dedent(
+            """
+            const fs = require("fs");
+            const vm = require("vm");
+            const assert = require("assert");
+
+            function makeElement(id) {
+              const element = {
+                id,
+                tagName: id,
+                textContent: "Loading",
+                children: [],
+                dataset: {},
+                value: "",
+                checked: false,
+                listeners: {},
+                appendChild(child) {
+                  this.children.push(child);
+                },
+                addEventListener(type, handler) {
+                  this.listeners[type] = handler;
+                },
+                click() {
+                  if (this.listeners.click) {
+                    return this.listeners.click({ currentTarget: this, preventDefault() {} });
+                  }
+                  return undefined;
+                },
+                remove() {},
+              };
+              Object.defineProperty(element, "innerHTML", {
+                get() {
+                  return this._innerHTML || "";
+                },
+                set(value) {
+                  this._innerHTML = value;
+                  this.children = [];
+                },
+              });
+              return element;
+            }
+
+            const elementIds = [
+              "review-board-cards",
+              "review-board-next-actions",
+              "review-board-empty",
+              "review-board-generated-at",
+              "review-board-source",
+              "review-board-total-count",
+              "review-board-active-count",
+              "review-board-go",
+              "review-board-reviewing",
+              "review-board-shortlisted",
+              "review-board-hold",
+              "opportunity-review-filter",
+              "opportunity-hide-archived-no-go",
+              "opportunity-shortlisted-only",
+              "opportunity-sort",
+              "opportunity-keyword",
+              "opportunity-grade",
+              "opportunity-risk",
+              "opportunity-source",
+              "opportunity-body",
+              "opportunity-empty",
+              "source-mode-current",
+              "source-mode-message",
+              "source-mode-latest-run",
+              "source-mode-latest-at",
+              "source-mode-real-reports",
+              "source-mode-total-items",
+              "source-mode-next-actions",
+              "priority-legend",
+              "decision-memo-status",
+              "decision-memo-notice-id",
+              "decision-memo-summary",
+              "decision-memo-decision",
+              "decision-memo-rationale",
+              "decision-memo-fit-summary",
+              "decision-memo-risk-summary",
+              "decision-memo-next-action",
+              "decision-memo-preparation-actions",
+              "decision-memo-required-documents",
+              "decision-memo-copy-block",
+            ];
+            const elements = Object.fromEntries(elementIds.map((id) => [id, makeElement(id)]));
+            const document = {
+              body: makeElement("body"),
+              createElement(tag) {
+                return makeElement(tag);
+              },
+              getElementById(id) {
+                return elements[id] || null;
+              },
+              querySelector() {
+                return null;
+              },
+              addEventListener() {},
+            };
+            const fetchCalls = [];
+            const context = {
+              Blob: function Blob() {},
+              URL: { createObjectURL: () => "blob://local", revokeObjectURL() {} },
+              URLSearchParams,
+              console,
+              document,
+              elements,
+              encodeURIComponent,
+              fetch: async (url) => {
+                fetchCalls.push(url);
+                if (String(url).startsWith("/ops/opportunity-inbox?")) {
+                  return {
+                    ok: true,
+                    status: 200,
+                    statusText: "OK",
+                    json: async () => ({
+                      items: [],
+                      source_mode: "saved",
+                      empty_state_message: "",
+                      empty_state_next_actions: [],
+                      priority_legend: {},
+                    }),
+                  };
+                }
+                if (String(url) === "/ops/decision-memo/REVIEWING-1") {
+                  return {
+                    ok: true,
+                    status: 200,
+                    statusText: "OK",
+                    json: async () => ({
+                      status: "success",
+                      notice_id: "REVIEWING-1",
+                      notice: {
+                        title: "Review notice",
+                        agency: "Agency",
+                        deadline: "2099-01-01",
+                      },
+                      yonlab_fit_summary: { fit_reasons: ["AI fit"], concern_reasons: [] },
+                      risk_summary: {
+                        eligibility_risks: [],
+                        document_risks: [],
+                        schedule_risks: [],
+                        commercial_risks: ["Confirm scope"],
+                      },
+                      deadline_next_action: {
+                        deadline: "2099-01-01",
+                        urgency: "upcoming",
+                        next_action: "Confirm scope",
+                      },
+                      recommended_decision: {
+                        value: "Review",
+                        rationale: "Further operator review needed.",
+                      },
+                      preparation_actions: [],
+                      required_documents: [],
+                      export_blocks: {
+                        markdown: "# YOnLab Decision Memo",
+                        short_summary: "Review - Review notice",
+                      },
+                      safety: {
+                        real_api_call_attempted: false,
+                        source_data_mode: "saved",
+                      },
+                    }),
+                  };
+                }
+                throw new Error("Unexpected fetch " + url);
+              },
+            };
+
+            (async () => {
+              vm.createContext(context);
+              vm.runInContext(fs.readFileSync(process.argv[2], "utf8"), context);
+              vm.runInContext(`
+                renderReviewBoard({
+                  generated_at: "2026-06-29T12:00:00+00:00",
+                  source: "saved",
+                  total_count: 1,
+                  active_count: 1,
+                  status_counts: { go: 0, reviewing: 1, shortlisted: 0, hold: 0 },
+                  cards: [{
+                    review_status: "reviewing",
+                    review_status_ko: "reviewing",
+                    count: 1,
+                    items: [{
+                      notice_id: "REVIEWING-1",
+                      title: "Review notice",
+                      agency: "Agency",
+                      deadline: "2099-01-01",
+                      deadline_status: "upcoming",
+                      review_status: "reviewing",
+                      score: 82,
+                      risk_level: "medium",
+                      next_action: "Confirm scope",
+                      filter_payload: {
+                        review_status: "reviewing",
+                        shortlisted_only: false,
+                        hide_archived_no_go: true,
+                        sort: "deadline_asc"
+                      }
+                    }],
+                    filter_payload: {
+                      review_status: "reviewing",
+                      shortlisted_only: false,
+                      hide_archived_no_go: true,
+                      sort: "deadline_asc"
+                    }
+                  }],
+                  deadline_first_actions: []
+                });
+              `, context);
+
+              const reviewBoardCard = elements["review-board-cards"].children[0];
+              const list = reviewBoardCard.children[2];
+              const itemButton = list.children[0].children[0];
+              await itemButton.click();
+
+              assert.strictEqual(elements["opportunity-review-filter"].value, "reviewing");
+              assert.strictEqual(elements["opportunity-sort"].value, "deadline_asc");
+              assert.strictEqual(elements["decision-memo-notice-id"].value, "REVIEWING-1");
+              assert.match(elements["decision-memo-summary"].textContent, /Review notice/);
+              assert.match(elements["decision-memo-decision"].textContent, /Review/);
+              assert.ok(fetchCalls.includes("/ops/decision-memo/REVIEWING-1"));
+              assert.ok(
+                fetchCalls.some((url) =>
+                  String(url).includes("review_status=reviewing") &&
+                  String(url).includes("sort=deadline_asc")
+                ),
               );
             })().catch((error) => {
               console.error(error);

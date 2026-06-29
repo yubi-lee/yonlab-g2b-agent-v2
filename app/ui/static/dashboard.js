@@ -4,6 +4,8 @@ const state = {
   currentOpportunityMarkdown: "",
   currentOpportunityTitle: "yonlab-opportunity",
   currentDailyReviewMarkdown: "",
+  currentDecisionMemoId: "",
+  currentDecisionMemoMarkdown: "",
 };
 
 const safeValue = (value, fallback = "No data") => {
@@ -102,6 +104,20 @@ async function loadSafeDailyStatus() {
 async function loadReviewBoard() {
   const payload = await apiJson("/ops/review-board");
   renderReviewBoard(payload || {});
+}
+
+async function loadDecisionMemo(noticeId) {
+  const safeNoticeId = String(noticeId || "").trim();
+  if (!safeNoticeId) {
+    renderDecisionMemo(emptyDecisionMemo());
+    return;
+  }
+  const payload = await apiJson(`/ops/decision-memo/${encodeURIComponent(safeNoticeId)}`);
+  state.currentDecisionMemoId = payload.notice_id || safeNoticeId;
+  state.currentDecisionMemoMarkdown = payload.export_blocks?.markdown || "";
+  const input = document.getElementById("decision-memo-notice-id");
+  if (input) input.value = state.currentDecisionMemoId;
+  renderDecisionMemo(payload || emptyDecisionMemo());
 }
 
 function renderDailyReviewPack(pack) {
@@ -250,12 +266,16 @@ function renderReviewBoardCard(card) {
   } else {
     for (const boardItem of items) {
       const item = document.createElement("li");
-      item.textContent = [
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = [
         safeValue(boardItem.title, "No title"),
         safeValue(boardItem.deadline, "No deadline"),
         `${boardItem.score ?? 0}pt`,
         safeValue(boardItem.next_action, "Review"),
       ].join(" / ");
+      button.addEventListener("click", () => openReviewBoardItem(boardItem));
+      item.appendChild(button);
       list.appendChild(item);
     }
   }
@@ -280,7 +300,7 @@ function renderNextActionBoard(items) {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = safeValue(item.review_status, "review");
-    button.addEventListener("click", () => applyReviewBoardFilter(item.filter_payload || {}));
+    button.addEventListener("click", () => openReviewBoardItem(item));
     const summary = document.createElement("span");
     summary.textContent = [
       safeValue(item.deadline, "No deadline"),
@@ -392,6 +412,14 @@ async function applyReviewBoardFilter(filterPayload = {}) {
   await loadOpportunityInbox();
 }
 
+async function openReviewBoardItem(item = {}) {
+  const noticeId = item.notice_id || "";
+  await applyReviewBoardFilter(item.filter_payload || {});
+  if (noticeId) {
+    await loadDecisionMemo(noticeId);
+  }
+}
+
 async function loadOpportunityInbox() {
   const payload = await apiJson("/ops/opportunity-inbox?" + opportunityQueryParams().toString());
   renderOpportunityInbox(payload || {});
@@ -482,6 +510,143 @@ function renderOpportunityDetail(payload) {
     "Risk Categories",
     (payload.risk_categories || []).map((risk) => `${risk.category_ko || risk.category || "risk"}: ${risk.level || "unknown"}`),
   ));
+}
+
+function emptyDecisionMemo() {
+  return {
+    status: "empty",
+    notice_id: "",
+    notice: { title: "", agency: "", deadline: "" },
+    yonlab_fit_summary: { fit_reasons: [], concern_reasons: [] },
+    risk_summary: {
+      eligibility_risks: [],
+      document_risks: [],
+      schedule_risks: [],
+      commercial_risks: [],
+    },
+    deadline_next_action: {
+      deadline: "",
+      urgency: "unknown",
+      next_action: "Select a Review Board item or enter a known notice id.",
+    },
+    recommended_decision: {
+      value: "Hold",
+      rationale: "No local-safe Decision Memo has been selected yet.",
+    },
+    preparation_actions: [],
+    required_documents: [],
+    export_blocks: {
+      markdown: "",
+      short_summary: "Select a Review Board item or enter a known notice id.",
+    },
+  };
+}
+
+function renderDecisionMemo(payload) {
+  const memo = payload || emptyDecisionMemo();
+  const notice = memo.notice || {};
+  const fitSummary = memo.yonlab_fit_summary || {};
+  const riskSummary = memo.risk_summary || {};
+  const nextAction = memo.deadline_next_action || {};
+  const decision = memo.recommended_decision || {};
+  const input = document.getElementById("decision-memo-notice-id");
+  if (input) {
+    input.value = memo.notice_id || state.currentDecisionMemoId || "";
+  }
+
+  safeText("decision-memo-status", memo.status || "empty");
+  safeText("decision-memo-decision", decision.value || "Hold");
+  safeText(
+    "decision-memo-rationale",
+    decision.rationale || "No local-safe Decision Memo has been selected yet.",
+  );
+
+  const summary = memo.status === "not_found"
+    ? memo.export_blocks?.short_summary || "Decision memo unavailable."
+    : [
+        safeValue(notice.title, "No title"),
+        safeValue(notice.agency, "unknown agency"),
+        safeValue(notice.deadline, "No deadline"),
+      ].join(" / ");
+  safeText("decision-memo-summary", summary);
+
+  renderList(
+    "decision-memo-fit-summary",
+    [
+      ...(Array.isArray(fitSummary.fit_reasons) ? fitSummary.fit_reasons : []),
+      ...(Array.isArray(fitSummary.concern_reasons) ? fitSummary.concern_reasons : []),
+    ],
+    "No fit summary available yet.",
+  );
+  renderList(
+    "decision-memo-risk-summary",
+    [
+      ...(Array.isArray(riskSummary.eligibility_risks) ? riskSummary.eligibility_risks : []),
+      ...(Array.isArray(riskSummary.document_risks) ? riskSummary.document_risks : []),
+      ...(Array.isArray(riskSummary.schedule_risks) ? riskSummary.schedule_risks : []),
+      ...(Array.isArray(riskSummary.commercial_risks) ? riskSummary.commercial_risks : []),
+    ],
+    "No material risk was identified from the current local-safe metadata.",
+  );
+  renderList(
+    "decision-memo-next-action",
+    [
+      `deadline: ${safeValue(nextAction.deadline, "No deadline")}`,
+      `urgency: ${safeValue(nextAction.urgency, "unknown")}`,
+      safeValue(nextAction.next_action, "Select a Review Board item or enter a known notice id."),
+    ],
+    "No next action available yet.",
+  );
+  renderList(
+    "decision-memo-preparation-actions",
+    (Array.isArray(memo.preparation_actions) ? memo.preparation_actions : []).map((item) =>
+      [
+        safeValue(item.action, "Review"),
+        safeValue(item.owner, "unassigned"),
+        safeValue(item.priority, "medium"),
+      ].join(" / "),
+    ),
+    "No preparation actions available yet.",
+  );
+  renderList(
+    "decision-memo-required-documents",
+    (Array.isArray(memo.required_documents) ? memo.required_documents : []).map((item) =>
+      [
+        safeValue(item.name, "unknown document"),
+        safeValue(item.status, "required"),
+        safeValue(item.reason, "check readiness"),
+      ].join(" / "),
+    ),
+    "No required documents listed yet.",
+  );
+  safeText(
+    "decision-memo-copy-block",
+    memo.export_blocks?.markdown || memo.export_blocks?.short_summary || "No decision memo selected.",
+  );
+}
+
+function loadDecisionMemoFromInput() {
+  const input = document.getElementById("decision-memo-notice-id");
+  const noticeId = input?.value || "";
+  return loadDecisionMemo(noticeId);
+}
+
+function openSelectedDecisionMemo() {
+  if (!state.currentOpportunityId) {
+    renderDecisionMemo({
+      ...emptyDecisionMemo(),
+      export_blocks: {
+        markdown: "",
+        short_summary: "Select an opportunity from Opportunity Inbox first.",
+      },
+      recommended_decision: {
+        value: "Hold",
+        rationale: "Select an opportunity from Opportunity Inbox first.",
+      },
+    });
+    return;
+  }
+  return loadDecisionMemo(state.currentOpportunityId);
 }
 
 function renderOpportunityReviewStatus(payload) {
@@ -788,6 +953,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("apply-opportunity-filters")?.addEventListener("click", () =>
     loadSection("opportunities", loadOpportunityInbox, ["opportunity-empty"]),
   );
+  document.getElementById("load-decision-memo")?.addEventListener("click", () =>
+    loadSection("decision memo", loadDecisionMemoFromInput, ["decision-memo-status", "decision-memo-summary"]),
+  );
+  document.getElementById("open-selected-decision-memo")?.addEventListener("click", () =>
+    loadSection("decision memo", openSelectedDecisionMemo, ["decision-memo-status", "decision-memo-summary"]),
+  );
   document.getElementById("download-opportunity-markdown")?.addEventListener("click", downloadOpportunityMarkdown);
   document.getElementById("save-opportunity-review-status")?.addEventListener("click", () =>
     loadSection("save review status", saveOpportunityReviewStatus, ["opportunity-review-message"]),
@@ -805,6 +976,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     loadSection("recommendation filters", applyRecommendationFilters, ["run-detail"]),
   );
   updateRunModeDefaults();
+  renderDecisionMemo(emptyDecisionMemo());
   await Promise.allSettled([
     loadSection("status", loadStatus, ["status-health", "status-package", "status-real-api", "status-service-key", "status-endpoint", "status-fixture", "status-readiness", "package-summary"]),
     loadSection("quality", loadQualitySummary, ["quality-summary-status", "opportunity-summary-status"]),

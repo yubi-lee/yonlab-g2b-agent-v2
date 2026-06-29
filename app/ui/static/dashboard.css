@@ -355,6 +355,14 @@ th {
   min-height: 260px;
 }
 
+.decision-memo-controls {
+  margin-bottom: 12px;
+}
+
+.decision-memo-grid {
+  margin-bottom: 12px;
+}
+
 .compact-checkbox {
   width: auto;
   min-width: 150px;

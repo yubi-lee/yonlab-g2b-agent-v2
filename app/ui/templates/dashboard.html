@@ -368,6 +368,48 @@
         <pre id="opportunity-markdown" class="markdown-viewer">No opportunity selected.</pre>
       </section>
 
+      <section class="panel detail-panel" aria-labelledby="decision-memo-title">
+        <div class="panel-heading">
+          <h2 id="decision-memo-title">Decision Memo</h2>
+        </div>
+        <div class="filters decision-memo-controls">
+          <input id="decision-memo-notice-id" placeholder="known notice id" />
+          <button id="load-decision-memo" type="button">Load notice id</button>
+          <button id="open-selected-decision-memo" type="button">Open selected opportunity</button>
+        </div>
+        <dl class="status-grid compact-status">
+          <div><dt>Status</dt><dd id="decision-memo-status">empty</dd></div>
+          <div><dt>Decision</dt><dd id="decision-memo-decision">Hold</dd></div>
+          <div><dt>Rationale</dt><dd id="decision-memo-rationale">Select a Review Board item or enter a known notice id.</dd></div>
+        </dl>
+        <div id="decision-memo-summary" class="detail-summary">
+          Select a Review Board item or enter a known notice id to load a safe local-only Decision Memo.
+        </div>
+        <div class="package-grid decision-memo-grid">
+          <div>
+            <h3>YOnLab fit summary</h3>
+            <ul id="decision-memo-fit-summary"></ul>
+          </div>
+          <div>
+            <h3>Risk summary</h3>
+            <ul id="decision-memo-risk-summary"></ul>
+          </div>
+          <div>
+            <h3>Deadline / next action</h3>
+            <ul id="decision-memo-next-action"></ul>
+          </div>
+          <div>
+            <h3>Preparation actions</h3>
+            <ul id="decision-memo-preparation-actions"></ul>
+          </div>
+          <div>
+            <h3>Required documents</h3>
+            <ul id="decision-memo-required-documents"></ul>
+          </div>
+        </div>
+        <pre id="decision-memo-copy-block" class="markdown-viewer">No decision memo selected.</pre>
+      </section>
+
       <section class="panel table-panel" aria-labelledby="runs-title">
         <div class="panel-heading">
           <h2 id="runs-title">Saved Runs</h2>
