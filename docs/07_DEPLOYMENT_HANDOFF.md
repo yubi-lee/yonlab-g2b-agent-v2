@@ -160,6 +160,14 @@ The production-ready local deployment is `D:\Deploy\yonlab-g2b-agent-v2-rc7`, ba
 `run_20260627_175740_008807`; Task 40G keeps real API execution manual-only and leaves the
 safe daily deployment status as `ready`.
 
+Historical release note:
+
+- Task 48G was first published as `v0.1.0-rc12`.
+- The exact `rc12` deployment was preserved for traceability, but it is not the canonical
+  validated no-real artifact.
+- Use `v0.1.0-rc12.1` and `D:\Deploy\yonlab-g2b-agent-v2-rc12.1` as the authoritative
+  validated closeout for the Task 48G operator-clarity and Daily Review UX release line.
+
 Routine scheduled operations must use the safe daily script only. In a deployment checkout,
 the operational scripts resolve an omitted `-DeployPath` to the script's repo root; scheduler
 registration should still pass the active deployment path explicitly:

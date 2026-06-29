@@ -415,6 +415,16 @@ Reason:
   not expose service keys, full local paths, raw logs, or query Windows Scheduler from the
   server.
 
+Release history note:
+
+- `v0.1.0-rc12` and `D:\Deploy\yonlab-g2b-agent-v2-rc12` remain part of the recorded
+  release history and must not be rewritten.
+- The exact `rc12` fresh deployment was later found to be incomplete for no-real validation:
+  the deployment-local pytest suite fails on the safe-daily deployment-path assertion, and
+  `validate_real_ops_controlled.ps1` fails before any confirmed real call.
+- The corrected and validated Task 48G closeout artifact is `v0.1.0-rc12.1` with deployment
+  path `D:\Deploy\yonlab-g2b-agent-v2-rc12.1`.
+
 ## 2026-06-29 YOnLab G2B Agent v2 Task 49G
 
 Decision: Add local-only shortlist and review status workflow for saved/demo opportunity
