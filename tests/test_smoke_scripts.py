@@ -33,6 +33,7 @@ SMOKE_SCRIPT_NAMES = (
 OPS_SCRIPT_NAMES = (
     "start_local_ops.ps1",
     "check_deploy_readiness.ps1",
+    "validate_release.ps1",
     "validate_ops_package.ps1",
     "validate_g2b_real_ops_readiness.ps1",
     "validate_real_ops_controlled.ps1",
@@ -45,6 +46,7 @@ OPS_SCRIPT_NAMES = (
     "run_release_closeout_harness.ps1",
 )
 VALIDATION_SCRIPT_NAME = "validate_local.ps1"
+RELEASE_VALIDATION_SCRIPT_NAME = "validate_release.ps1"
 REAL_READINESS_SCRIPT_NAME = "validate_g2b_real_readiness.ps1"
 NO_SECRET_SCRIPT_NAME = "check_no_secrets.ps1"
 CREATE_ENV_TEMPLATE_SCRIPT_NAME = "create_env_template.ps1"
@@ -121,6 +123,29 @@ def test_validate_local_script_runs_expected_validation_steps() -> None:
     assert "smoke_g2b_real_confirmed_template.ps1" not in content
     assert "smoke_g2b_real_recommend_template.ps1" not in content
     assert "Stop-Job" in content
+
+
+def test_validate_release_script_runs_expected_validation_steps() -> None:
+    content = (PROJECT_ROOT / "scripts" / RELEASE_VALIDATION_SCRIPT_NAME).read_text(
+        encoding="utf-8"
+    )
+
+    assert "System.Text.UTF8Encoding($false)" in content
+    assert ".venv\\Scripts\\python.exe" in content
+    assert '-m pytest -q' in content
+    assert '-m ruff check app tests' in content
+    assert "check_deploy_readiness.ps1" in content
+    assert "validate_local.ps1" in content
+    assert "validate_ops_package.ps1" in content
+    assert "-ExecutionPolicy" in content
+    assert "-File" in content
+    assert "PASS" in content
+    assert "FAIL" in content
+    assert ' $Python = "python"' not in content
+    assert "Get-Content -LiteralPath (Join-Path $ProjectRoot \".env\")" not in content
+    assert "Write-Host $env:" not in content
+    assert "G2B_API_SERVICE_KEY" not in content
+    assert "SECRET-KEY" not in content
 
 
 def test_review_board_smoke_script_is_offline_and_checks_review_board_workflow() -> None:
