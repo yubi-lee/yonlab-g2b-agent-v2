@@ -12,810 +12,408 @@
 
 ## 1. Scope
 
-This rc17 work is a validation-process hardening release, not a product feature release.
+This rc17 plan covers only release-validation hardening:
 
-In scope:
+- add `scripts/validate_release.ps1`
+- make the wrapper choose `.venv\Scripts\python.exe`
+- keep the existing validation scripts directly runnable
+- document one canonical Windows-safe validation command
+- validate the wrapper in both the dev repo and a fresh deploy copy
+- update `docs/99_DECISION_LOG.md` only after implementation validation succeeds
 
-- create `scripts/validate_release.ps1` as the canonical Windows release validation entrypoint
-- make the wrapper resolve the repository root from the script location
-- make the wrapper require and use `.\.venv\Scripts\python.exe`
-- run `pytest` and `ruff` through repo-local Python instead of relying on global `python`
-- invoke:
-  - `scripts/check_deploy_readiness.ps1`
-  - `scripts/validate_local.ps1`
-  - `scripts/validate_ops_package.ps1`
-- stop on the first failed step and return a non-zero exit code
-- print concise `==> step` plus `PASS`/failure output without exposing `.env` contents or secrets
-- keep the existing validation scripts directly runnable on their own
-- update the operator/developer documentation that currently advertises validation commands
-- add or extend narrow script/documentation tests where the existing repository patterns support them
-- validate the wrapper both in the development checkout and in a fresh deploy checkout
-
-Implementation assumption to keep explicit:
-
-- The wrapper will intentionally call both `scripts/validate_local.ps1` and `scripts/validate_ops_package.ps1` even though `validate_ops_package.ps1` already delegates to `validate_local.ps1`. This duplicates one validation run, but it preserves the agreed rc17 requirement that the wrapper composes the existing scripts instead of changing their semantics.
+This plan does not change any rc16 product behavior, API behavior, UI behavior, persistence
+behavior, or no-real safety gates.
 
 ## 2. Non-goals
 
-Out of scope for rc17:
-
-- no product/API/UI behavior changes under `app/`
-- no model, service, or route changes for recommendation, review board, decision memo, or manual decision persistence behavior
-- no new real G2B/Public Data Portal call path
-- no new network behavior from the application
-- no `.env` schema expansion
-- no CI/CD redesign
-- no replacement of `scripts/validate_local.ps1`, `scripts/validate_ops_package.ps1`, or `scripts/check_deploy_readiness.ps1`
-- no update to `docs/99_DECISION_LOG.md` during the implementation tasks before validation is complete
-- no secrets, tokens, service keys, `.env` values, or credentials exposed in scripts, docs, tests, or command output
+- no product-code changes under `app/`
+- no test-behavior changes unrelated to wrapper/documentation coverage
+- no rc16 manual decision workflow changes
+- no application refactor
+- no new authentication or operator workflow
+- no new external dependencies
+- no CI/CD overhaul
+- no real G2B/API/network execution
+- no secrets or `.env` value exposure
 
 ## 3. Existing code map
 
-### Current repo observations
-
-- Repo path: `D:\Views\yonlab-g2b-agent-v2`
-- Planning baseline branch: `main`
-- Planning-time status: `## main...origin/main [ahead 1]`
-- Planning-time HEAD: `602f994 docs: add rc17 validation environment hardening design`
-- rc16 release baseline tag: `v0.1.0-rc16 -> 02482d3322bd94abb6ebacf069e827eb439e9ccb`
-
-### Validation scripts already present
+### Existing scripts
 
 - `scripts/check_deploy_readiness.ps1`
-  - resolves repo root via `Split-Path -Parent $PSScriptRoot`
-  - switches to repo root with `Set-Location`
-  - reads `.env` only as boolean presence/true checks
-  - does not call `Invoke-WebRequest`
-  - returns JSON with `deploy_ready`, `real_network_call_attempted = false`, and `service_key_exposed = false`
+  - repo-root readiness and safe configuration summary
+  - already returns JSON with `deploy_ready`, `real_network_call_attempted`, and
+    `service_key_exposed`
 - `scripts/validate_local.ps1`
-  - resolves repo root via `Split-Path -Parent $PSScriptRoot`
-  - dot-sources `.venv\Scripts\Activate.ps1` if present
-  - prefers `.venv\Scripts\python.exe`, falls back to `python` if missing
-  - runs `check_no_secrets.ps1`
-  - runs `python -m pytest -q`
-  - starts local `uvicorn` with `Start-Job`
-  - runs fixture-safe smoke scripts and stops the server in `finally`
+  - currently resolves repo root
+  - optionally activates `.venv\Scripts\Activate.ps1`
+  - prefers `.venv\Scripts\python.exe`, but falls back to global `python`
+  - runs pytest, starts a temporary local FastAPI server, and runs the offline smoke suite
 - `scripts/validate_ops_package.ps1`
-  - prints a package validation banner
-  - delegates directly to `scripts/validate_local.ps1`
-- `scripts/check_no_secrets.ps1`
-  - already enforces no-secret validation and should stay part of the `validate_local.ps1` path
-- `scripts/run_release_closeout_harness.ps1`
-  - already orchestrates a broader release flow and should remain separate from the new narrow wrapper
+  - thin wrapper over `scripts/validate_local.ps1`
 
-### Existing docs that mention validation entrypoints
+### Existing docs
 
 - `README.md`
-  - documents `python -m pytest -q`
-  - documents `.\scripts\validate_local.ps1`
-  - documents `ruff check app tests` in the MVP release checklist
+  - documents `python -m pytest -q` and `.\scripts\validate_local.ps1`
 - `docs/04_TESTING_STRATEGY.md`
-  - calls `.\scripts\validate_local.ps1` the preferred local end-to-end validation command
-  - says `python -m pytest -q` remains the standard validation command
+  - documents the standard validation commands and `validate_local.ps1`
 - `docs/06_OPERATIONS_RUNBOOK.md`
-  - contains a `Validation` section listing pytest and the PowerShell validation scripts
+  - operator-facing validation flow
 - `docs/07_DEPLOYMENT_HANDOFF.md`
-  - contains the operator-facing local validation sequence
+  - release/deploy workflow, validation commands, and fresh deploy procedures
 - `docs/99_DECISION_LOG.md`
-  - records rc15 and rc16 validation acceptance and should be updated only after rc17 implementation validation passes
+  - release closeout and validation history; should be updated only after rc17 implementation
+    validation passes
 
-### Existing app and test files that will likely be touched
+### Existing script-test pattern
 
-- `app/services/local_ops_package.py`
-  - publishes package metadata and script lists through `/ops/package-info`
-  - currently lists:
-    - `scripts/validate_local.ps1`
-    - `scripts/validate_ops_package.ps1`
-    - `scripts/check_deploy_readiness.ps1`
-  - currently reports `validation["pytest"] = "python -m pytest -q"`
-- `tests/test_local_ops_package.py`
-  - checks package script presence, safe documentation references, and package metadata
+The repository already validates PowerShell scripts by inspecting content rather than executing
+every script in unit tests:
+
 - `tests/test_smoke_scripts.py`
-  - checks script existence and exact string-level validation/safety characteristics
+  - verifies script existence, UTF-8 handling, guard behavior, and expected command references
+- `tests/test_local_ops_package.py`
+  - verifies docs and operator surfacing references to validation/package scripts
 
-### Existing file paths confirmed present
+This means rc17 should extend existing script/doc coverage rather than invent a new testing
+pattern unless implementation inspection proves that content-level tests are insufficient.
 
-- `README.md`
+### Existing runtime constraints
+
 - `pyproject.toml`
-- `scripts/check_deploy_readiness.ps1`
-- `scripts/validate_local.ps1`
-- `scripts/validate_ops_package.ps1`
-- `scripts/check_no_secrets.ps1`
-- `docs/04_TESTING_STRATEGY.md`
-- `docs/06_OPERATIONS_RUNBOOK.md`
-- `docs/07_DEPLOYMENT_HANDOFF.md`
-- `docs/99_DECISION_LOG.md`
-- `app/services/local_ops_package.py`
-- `tests/test_local_ops_package.py`
-- `tests/test_smoke_scripts.py`
-
-### Files not found
-
-- no additional top-level developer runbook outside `README.md` and `docs/04_TESTING_STRATEGY.md`, `docs/06_OPERATIONS_RUNBOOK.md`, `docs/07_DEPLOYMENT_HANDOFF.md`
-- no `tools/` directory is required for the rc17 validation command set
+  - sets pytest base temp to `.pytest_tmp`
+  - does not define a separate task runner
+- the repo already assumes a local `.venv`
+- current validation semantics must remain unchanged:
+  - `scripts/check_deploy_readiness.ps1`
+  - `scripts/validate_local.ps1`
+  - `scripts/validate_ops_package.ps1`
 
 ## 4. Target wrapper behavior
 
-Create `scripts/validate_release.ps1` with the following behavior:
+The future wrapper at `scripts/validate_release.ps1` should behave like this:
 
-1. Resolve the repository root from the script file location:
-   - `$ProjectRoot = Split-Path -Parent $PSScriptRoot`
-   - `Set-Location $ProjectRoot`
-2. Set UTF-8 console output the same way the existing scripts do:
-   - `System.Text.UTF8Encoding($false)`
-   - `[Console]::OutputEncoding = $Utf8`
-   - `$OutputEncoding = $Utf8`
-   - `chcp.com 65001 | Out-Null` in a guarded `try`
-3. Resolve the repo-local interpreter only:
-   - `Join-Path $ProjectRoot ".venv\Scripts\python.exe"`
-   - if missing, print a short error such as `FAIL repo-local python missing: .venv\Scripts\python.exe`
-   - exit non-zero immediately
-4. Use one internal helper such as `Invoke-ReleaseStep` to standardize step banners:
-   - print `==> pytest`
-   - print `PASS pytest`
-   - on failure print `FAIL pytest`
-5. Run validation commands in this order:
-   - `.\.venv\Scripts\python.exe -m pytest -q`
-   - `.\.venv\Scripts\python.exe -m ruff check app tests`
-   - `powershell -ExecutionPolicy Bypass -File scripts/check_deploy_readiness.ps1`
-   - `powershell -ExecutionPolicy Bypass -File scripts/validate_local.ps1`
-   - `powershell -ExecutionPolicy Bypass -File scripts/validate_ops_package.ps1`
-6. Stop immediately on the first non-zero exit code
-7. Return `0` only after all steps pass
-8. Never print:
-   - `.env` contents
-   - service key values
-   - token-like values
-9. Preserve direct invocation of the existing scripts without changing their internal semantics
+1. resolve repo root from the script location
+2. set UTF-8 console/output defaults consistent with other repo scripts
+3. resolve repo-local Python strictly from:
+   - `.venv\Scripts\python.exe`
+4. fail fast if the repo-local Python does not exist
+5. run these steps in this order:
+   - `.venv\Scripts\python.exe -m pytest -q`
+   - `.venv\Scripts\python.exe -m ruff check app tests`
+   - `scripts/check_deploy_readiness.ps1`
+   - `scripts/validate_local.ps1`
+   - `scripts/validate_ops_package.ps1`
+6. invoke existing PowerShell scripts with PowerShell-safe execution
+7. print concise step-level PASS/FAIL markers
+8. stop immediately on the first failure
+9. return non-zero if any step fails
+10. avoid printing `.env` contents, service keys, tokens, or secrets
 
-Expected wrapper output shape:
+Canonical operator invocation:
 
-```text
-==> pytest
-PASS pytest
-==> ruff
-PASS ruff
-==> check_deploy_readiness
-PASS check_deploy_readiness
-==> validate_local
-PASS validate_local
-==> validate_ops_package
-PASS validate_ops_package
-Validation release gate passed.
-```
+- `powershell -ExecutionPolicy Bypass -File scripts/validate_release.ps1`
 
-Expected underlying output patterns that the wrapper should allow to surface safely:
+Non-canonical but preserved commands:
 
-- `No issues found!`
-- `All tests passed!`
-- `"deploy_ready":  true` or `"deploy_ready": true`
-- `Local validation completed successfully.`
-- `Local operations v1.0 package validation completed.`
+- `python -m pytest -q`
+- `python -m ruff check app tests`
+- `scripts/check_deploy_readiness.ps1`
+- `scripts/validate_local.ps1`
+- `scripts/validate_ops_package.ps1`
 
 ## 5. Failure behavior
 
-The wrapper should fail fast and classify errors by step name, not by stack trace volume.
+The wrapper should fail clearly and early.
 
 Required failure cases:
 
-- missing `.\.venv\Scripts\python.exe`
-  - message pattern: `FAIL repo-local python missing`
-  - exit code: non-zero
-- pytest failure
-  - message pattern: `FAIL pytest`
-  - exit code: non-zero
-- ruff failure
-  - message pattern: `FAIL ruff`
-  - exit code: non-zero
-- `check_deploy_readiness.ps1` failure or malformed output
-  - message pattern: `FAIL check_deploy_readiness`
-  - exit code: non-zero
-- `validate_local.ps1` failure
-  - message pattern: `FAIL validate_local`
-  - exit code: non-zero
-- `validate_ops_package.ps1` failure
-  - message pattern: `FAIL validate_ops_package`
-  - exit code: non-zero
+1. missing `.venv\Scripts\python.exe`
+   - fail before any validation step starts
+   - print a concise message telling the operator that repo-local Python is required
+2. pytest failure
+   - stop immediately
+   - return non-zero
+3. ruff failure
+   - stop immediately
+   - return non-zero
+4. readiness failure
+   - stop immediately
+   - return non-zero
+5. `validate_local.ps1` failure
+   - stop immediately
+   - return non-zero
+6. `validate_ops_package.ps1` failure
+   - stop immediately
+   - return non-zero
 
-Implementation assumptions:
+Failure-reporting rules:
 
-- The wrapper should not swallow the underlying script output. It should add concise step framing, then propagate the existing step output so operators can still diagnose the failure source.
-- The wrapper should not parse `.env` itself. That avoids accidental value echo and keeps secret-sensitive logic in already-reviewed scripts.
-- The wrapper should use `-ExecutionPolicy Bypass` per process when invoking PowerShell child scripts so the operator does not need a machine-level policy change.
+- do not continue after the first failing step
+- do not mask the underlying script exit status
+- do not dump `.env`
+- do not echo secret-bearing environment values
 
 ## 6. Security / no-real constraints
 
-Required rc17 safety invariants:
+The implementation must preserve the existing no-real model:
 
-- `real_api_call_attempted=false`
-- `real_network_call_attempted=false`
-- `service_key_exposed=false`
+- no real G2B/Public Data Portal calls
+- no real application network calls
+- no `.env` value printing
+- no service key printing
+- no credential/token printing
+- no persistence behavior changes
+- no automatic runtime gate enabling
 
-Specific constraints for implementation:
+Specific implementation constraints:
 
-- do not add any call to `Invoke-WebRequest`, `Invoke-RestMethod`, `httpx`, or remote endpoints inside `scripts/validate_release.ps1`
-- do not read `.env` contents for printing or diagnostics
-- do not echo environment variables containing:
-  - `SERVICE_KEY`
-  - `TOKEN`
-  - `SECRET`
-  - `PASSWORD`
-- keep `scripts/check_deploy_readiness.ps1`, `scripts/validate_local.ps1`, and `scripts/validate_ops_package.ps1` independently runnable
-- keep `validate_local.ps1` as the script that owns local FastAPI startup/shutdown and smoke semantics
-- keep `validate_ops_package.ps1` as the package-oriented wrapper over `validate_local.ps1`
+- the wrapper may call existing scripts, but it must not widen their semantics
+- it must not set `YONLAB_AUTO_RUN_REAL_API=true`
+- it must not call `validate_real_ops_controlled.ps1 -ConfirmRealApiCall`
+- it must not add any real API branch to release validation
 
 ## 7. Test and validation plan
 
-### Development repo validation commands
+### Likely code/test/doc files for implementation
 
-Run from:
+- Create: `scripts/validate_release.ps1`
+- Modify: `tests/test_smoke_scripts.py`
+- Modify: `tests/test_local_ops_package.py`
+- Modify if needed:
+  - `README.md`
+  - `docs/04_TESTING_STRATEGY.md`
+  - `docs/06_OPERATIONS_RUNBOOK.md`
+  - `docs/07_DEPLOYMENT_HANDOFF.md`
+- Modify only after validation passes:
+  - `docs/99_DECISION_LOG.md`
 
-`D:\Views\yonlab-g2b-agent-v2`
+### Expected test strategy
 
-Required commands:
+Prefer the existing content-inspection pattern first:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/validate_release.ps1
-python -m pytest -q
-python -m ruff check app tests
-scripts/check_deploy_readiness.ps1
-scripts/validate_local.ps1
-scripts/validate_ops_package.ps1
-```
+- add a script-existence assertion for `scripts/validate_release.ps1`
+- add content assertions that the wrapper:
+  - resolves `.venv\Scripts\python.exe`
+  - does not fall back to global `python`
+  - runs `-m pytest -q`
+  - runs `-m ruff check app tests`
+  - references `check_deploy_readiness.ps1`
+  - references `validate_local.ps1`
+  - references `validate_ops_package.ps1`
+  - uses PowerShell-safe invocation patterns
+  - stays secret-safe
 
-Expected patterns:
+If the current test pattern proves too weak during implementation, only then consider a narrow
+execution-style test. That should be a second choice, not the default approach.
 
-- wrapper:
-  - `PASS pytest`
-  - `PASS ruff`
-  - `PASS check_deploy_readiness`
-  - `PASS validate_local`
-  - `PASS validate_ops_package`
-- pytest:
-  - `All tests passed!` or quiet successful exit
-- ruff:
-  - no findings, zero exit code
-- deploy readiness:
-  - `"deploy_ready": true`
-  - `"real_network_call_attempted": false`
-  - `"service_key_exposed": false`
-- local validation:
-  - `Local validation completed successfully.`
-- package validation:
-  - `Local operations v1.0 package validation completed.`
+### Required validation commands after implementation
 
-### Wrapper coverage strategy
+From `D:\Views\yonlab-g2b-agent-v2`:
 
-The repository already supports narrow script/documentation verification through:
-
-- `tests/test_smoke_scripts.py`
-- `tests/test_local_ops_package.py`
-
-That means rc17 should add string-level coverage instead of inventing a new PowerShell test framework.
-
-Recommended wrapper checks:
-
-- script file exists
-- script references `.venv\Scripts\python.exe`
-- script references `-m pytest -q`
-- script references `-m ruff check app tests`
-- script invokes:
-  - `scripts/check_deploy_readiness.ps1`
-  - `scripts/validate_local.ps1`
-  - `scripts/validate_ops_package.ps1`
-- script contains no obvious secret-printing markers
-- package metadata and docs reference the wrapper as the preferred release command
-
-### Fresh deploy validation commands
-
-Run from:
-
-`D:\Deploy\yonlab-g2b-agent-v2-rc17`
-
-Required commands:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/validate_release.ps1
-scripts/check_deploy_readiness.ps1
-scripts/validate_local.ps1
-scripts/validate_ops_package.ps1
-```
-
-Expected patterns:
-
-- wrapper passes from the deployment checkout root
-- `"deploy_ready": true`
-- `Local validation completed successfully.`
-- `Local operations v1.0 package validation completed.`
-- `real_api_call_attempted=false`
-- `real_network_call_attempted=false`
-- `service_key_exposed=false`
+- `powershell -ExecutionPolicy Bypass -File scripts/validate_release.ps1`
+- `python -m pytest -q`
+- `python -m ruff check app tests`
+- `scripts/check_deploy_readiness.ps1`
+- `scripts/validate_local.ps1`
+- `scripts/validate_ops_package.ps1`
 
 ## 8. Implementation tasks
 
-### Task 1: Inspect existing validation scripts and docs
+### Task 1: Reconfirm existing validation boundaries
 
-**Goal**
+**Files:**
 
-Capture the exact current invocation patterns, repo-root assumptions, Python resolution behavior, and no-secret posture before changing anything.
+- Inspect: `scripts/check_deploy_readiness.ps1`
+- Inspect: `scripts/validate_local.ps1`
+- Inspect: `scripts/validate_ops_package.ps1`
+- Inspect: `tests/test_smoke_scripts.py`
+- Inspect: `tests/test_local_ops_package.py`
+- Inspect: `README.md`
+- Inspect: `docs/04_TESTING_STRATEGY.md`
+- Inspect: `docs/06_OPERATIONS_RUNBOOK.md`
+- Inspect: `docs/07_DEPLOYMENT_HANDOFF.md`
 
-**Files to modify/create**
+- [ ] Confirm the wrapper can remain a narrow orchestration layer rather than refactoring the
+      existing scripts.
+- [ ] Confirm which tests already assert script presence and content.
+- [ ] Confirm which docs should become the canonical home of the new release-validation command.
+- [ ] Commit nothing in this task unless inspection reveals a required scope adjustment.
 
-- No code changes expected.
-- Read only:
-  - `scripts/check_deploy_readiness.ps1`
-  - `scripts/validate_local.ps1`
-  - `scripts/validate_ops_package.ps1`
-  - `pyproject.toml`
-  - `README.md`
-  - `docs/04_TESTING_STRATEGY.md`
-  - `docs/06_OPERATIONS_RUNBOOK.md`
-  - `docs/07_DEPLOYMENT_HANDOFF.md`
-  - `docs/99_DECISION_LOG.md`
-  - `app/services/local_ops_package.py`
-  - `tests/test_local_ops_package.py`
-  - `tests/test_smoke_scripts.py`
+### Task 2: Add `scripts/validate_release.ps1`
 
-**Test or validation files**
+**Files:**
 
-- `tests/test_local_ops_package.py`
-- `tests/test_smoke_scripts.py`
+- Create: `scripts/validate_release.ps1`
 
-**Specific validation cases**
+- [ ] Add UTF-8 console/output setup matching the existing script family.
+- [ ] Resolve `$ProjectRoot` from `$PSScriptRoot`.
+- [ ] Resolve `$Python` strictly as `Join-Path $ProjectRoot ".venv\\Scripts\\python.exe"`.
+- [ ] Fail fast with a clear message if that path is missing.
+- [ ] Add a small step runner helper so output stays concise and the first failure stops
+      execution.
+- [ ] Run pytest through repo-local Python.
+- [ ] Run ruff through repo-local Python.
+- [ ] Invoke `scripts/check_deploy_readiness.ps1` safely.
+- [ ] Invoke `scripts/validate_local.ps1` safely.
+- [ ] Invoke `scripts/validate_ops_package.ps1` safely.
+- [ ] Return non-zero on the first failed validation step.
+- [ ] Keep direct script semantics unchanged; do not edit existing scripts unless inspection
+      proves a compatibility fix is required.
+- [ ] Commit with a wrapper-focused message.
 
-- verify that `validate_local.ps1` already prefers `.venv\Scripts\python.exe`
-- verify that `validate_ops_package.ps1` delegates to `validate_local.ps1`
-- verify that `check_deploy_readiness.ps1` is offline and secret-safe
-- verify that docs currently advertise legacy validation commands
-- verify that existing tests already support string-based script validation
+### Task 3: Add wrapper validation coverage
 
-**Implementation steps**
+**Files:**
 
-- [ ] Read the existing validation scripts and record:
-  - repo-root resolution style
-  - Python invocation style
-  - PowerShell invocation style
-  - whether each script can run offline
-- [ ] Read the existing docs and record the validation commands they currently recommend.
-- [ ] Read `app/services/local_ops_package.py` and record whether package metadata should advertise the new wrapper.
-- [ ] Read `tests/test_local_ops_package.py` and `tests/test_smoke_scripts.py` and confirm they are the correct place for wrapper presence/content assertions.
-- [ ] Do not change product code, tests, scripts, or `docs/99_DECISION_LOG.md` in this task.
+- Modify: `tests/test_smoke_scripts.py`
+- Modify if needed: `tests/test_local_ops_package.py`
 
-**Validation commands**
+- [ ] Add a test that `scripts/validate_release.ps1` exists.
+- [ ] Add a test that the wrapper references `.venv\\Scripts\\python.exe`.
+- [ ] Add a test that the wrapper references `-m pytest -q`.
+- [ ] Add a test that the wrapper references `-m ruff check app tests`.
+- [ ] Add a test that the wrapper calls:
+      - `check_deploy_readiness.ps1`
+      - `validate_local.ps1`
+      - `validate_ops_package.ps1`
+- [ ] Add a test that the wrapper is secret-safe and does not embed sample credentials.
+- [ ] Run the targeted test files.
+- [ ] Commit the test coverage.
 
-```powershell
-git status -sb
-rg -n "validate_local|validate_ops_package|check_deploy_readiness|python -m pytest|ruff" README.md docs app tests scripts
-```
+### Task 4: Update validation docs
 
-**Commit message recommendation**
+**Files:**
 
-- `chore: inspect rc17 validation entrypoints`
+- Modify: `README.md`
+- Modify: `docs/04_TESTING_STRATEGY.md`
+- Modify: `docs/06_OPERATIONS_RUNBOOK.md`
+- Modify: `docs/07_DEPLOYMENT_HANDOFF.md`
 
-### Task 2: Add release validation wrapper
+- [ ] Update the primary release-validation command to:
+      `powershell -ExecutionPolicy Bypass -File scripts/validate_release.ps1`
+- [ ] Keep the legacy direct commands documented for debugging and fallback verification.
+- [ ] Document that the wrapper prefers repo-local Python and fails clearly if `.venv` is
+      missing.
+- [ ] Keep no-real and no-secret guidance unchanged.
+- [ ] Do not update `docs/99_DECISION_LOG.md` in this task.
+- [ ] Commit the doc updates.
 
-**Goal**
+### Task 5: Run full local validation
 
-Create `scripts/validate_release.ps1` as the canonical Windows release validation command.
+**Files:**
 
-**Files to modify/create**
+- Validate only; no required file edits
 
-- Create:
-  - `scripts/validate_release.ps1`
-
-**Test or validation files**
-
-- direct execution first
-- later string-level coverage in `tests/test_smoke_scripts.py`
-
-**Specific validation cases**
-
-- wrapper resolves repo root from script location
-- wrapper fails with a clear message if `.venv\Scripts\python.exe` is missing
-- wrapper runs `pytest` and `ruff` through repo-local Python
-- wrapper invokes the three existing validation scripts with `-ExecutionPolicy Bypass`
-- wrapper exits on first failure
-- wrapper does not print `.env` contents or secrets
-
-**Implementation steps**
-
-- [ ] Create `scripts/validate_release.ps1`.
-- [ ] Add UTF-8 console setup consistent with the existing PowerShell scripts.
-- [ ] Add a helper function for step framing, for example `Invoke-ReleaseStep`.
-- [ ] Resolve `$ProjectRoot` from `$PSScriptRoot` and call `Set-Location $ProjectRoot`.
-- [ ] Resolve `$Python = Join-Path $ProjectRoot ".venv\Scripts\python.exe"`.
-- [ ] If `$Python` is missing, print a short non-secret error and `exit 1`.
 - [ ] Run:
-  - `& $Python -m pytest -q`
-  - `& $Python -m ruff check app tests`
-  - `powershell -ExecutionPolicy Bypass -File (Join-Path $ProjectRoot "scripts\check_deploy_readiness.ps1")`
-  - `powershell -ExecutionPolicy Bypass -File (Join-Path $ProjectRoot "scripts\validate_local.ps1")`
-  - `powershell -ExecutionPolicy Bypass -File (Join-Path $ProjectRoot "scripts\validate_ops_package.ps1")`
-- [ ] On any non-zero exit, print `FAIL <step>` and return non-zero immediately.
-- [ ] After the final step, print `Validation release gate passed.`
-
-**Validation commands**
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/validate_release.ps1
-```
-
-Expected output patterns:
-
-```text
-==> pytest
-PASS pytest
-==> ruff
-PASS ruff
-==> check_deploy_readiness
-PASS check_deploy_readiness
-```
-
-**Commit message recommendation**
-
-- `chore: add rc17 release validation wrapper`
-
-### Task 3: Add wrapper validation coverage and package metadata alignment
-
-**Goal**
-
-Use the existing repository test patterns to verify wrapper existence/content and expose the wrapper in package metadata.
-
-**Files to modify/create**
-
-- Modify:
-  - `app/services/local_ops_package.py`
-  - `tests/test_local_ops_package.py`
-  - `tests/test_smoke_scripts.py`
-
-**Test or validation files**
-
-- `tests/test_local_ops_package.py`
-- `tests/test_smoke_scripts.py`
-
-**Specific validation cases**
-
-- `/ops/package-info` includes `scripts/validate_release.ps1`
-- package metadata exposes the wrapper as the preferred release validation command
-- wrapper file exists
-- wrapper references `.venv\Scripts\python.exe`
-- wrapper references `pytest`, `ruff`, and all three delegated PowerShell scripts
-- wrapper contains no obvious secret-printing pattern
-
-**Implementation steps**
-
-- [ ] Add `scripts/validate_release.ps1` to `PACKAGE_SCRIPTS` in `app/services/local_ops_package.py`.
-- [ ] Extend `validation` metadata in `build_local_ops_package_info()` with a new key such as:
-  - `"release": "powershell -ExecutionPolicy Bypass -File scripts/validate_release.ps1"`
-- [ ] Update `tests/test_local_ops_package.py` to assert:
-  - `scripts/validate_release.ps1` exists
-  - `/ops/package-info` includes the wrapper reference
-  - package validation metadata contains the release wrapper command
-- [ ] Update `tests/test_smoke_scripts.py` to assert wrapper content includes:
-  - `.venv\\Scripts\\python.exe`
-  - `-m pytest -q`
-  - `-m ruff check app tests`
-  - `check_deploy_readiness.ps1`
-  - `validate_local.ps1`
-  - `validate_ops_package.ps1`
-  - no `SECRET-KEY`
-- [ ] Keep the tests narrow and string-based; do not introduce a brittle subprocess-heavy PowerShell test framework here.
-
-**Validation commands**
-
-```powershell
-python -m pytest -q tests/test_local_ops_package.py
-python -m pytest -q tests/test_smoke_scripts.py
-```
-
-Expected output patterns:
-
-- zero exit code
-- no assertion mentioning missing `scripts/validate_release.ps1`
-
-**Commit message recommendation**
-
-- `test: cover rc17 release validation wrapper`
-
-### Task 4: Documentation update
-
-**Goal**
-
-Document the wrapper as the preferred Windows release validation entrypoint without exposing `.env` contents or changing decision-log history early.
-
-**Files to modify/create**
-
-- Modify:
-  - `README.md`
-  - `docs/04_TESTING_STRATEGY.md`
-  - `docs/06_OPERATIONS_RUNBOOK.md`
-  - `docs/07_DEPLOYMENT_HANDOFF.md`
-
-**Test or validation files**
-
-- `tests/test_local_ops_package.py`
-- `tests/test_smoke_scripts.py` if doc presence assertions are extended
-
-**Specific validation cases**
-
-- docs show:
-  - `powershell -ExecutionPolicy Bypass -File scripts/validate_release.ps1`
-- docs explain:
-  - per-process execution policy bypass only
-  - no machine-level PowerShell policy change required
-  - repo-local `.venv\Scripts\python.exe` is used by the wrapper
-- docs do not show:
-  - `.env` contents
-  - real service key examples
-
-**Implementation steps**
-
-- [ ] Update `README.md` so the preferred release validation command is the wrapper.
-- [ ] Update `docs/04_TESTING_STRATEGY.md` so the release validation path is clearly distinguished from the existing local validation path.
-- [ ] Update `docs/06_OPERATIONS_RUNBOOK.md` to point operators to the wrapper for release validation.
-- [ ] Update `docs/07_DEPLOYMENT_HANDOFF.md` to make the wrapper the canonical pre-release and fresh-deploy command.
-- [ ] Keep `docs/99_DECISION_LOG.md` unchanged in this task.
-
-**Validation commands**
-
-```powershell
-rg -n "validate_release.ps1|ExecutionPolicy Bypass|\\.venv\\\\Scripts\\\\python.exe" README.md docs
-```
-
-Expected output patterns:
-
-- all four doc files reference `scripts/validate_release.ps1`
-- no doc line prints a service key or `.env` content
-
-**Commit message recommendation**
-
-- `docs: document rc17 release validation wrapper`
-
-### Task 5: Full local validation
-
-**Goal**
-
-Validate that the wrapper works from the main development checkout and that the legacy commands still pass independently.
-
-**Files to modify/create**
-
-- No new files expected.
-- Use the wrapper and the existing scripts exactly as implemented.
-
-**Test or validation files**
-
-- whole test suite
-- validation scripts
-
-**Specific validation cases**
-
-- wrapper passes
-- pytest passes directly
-- ruff passes directly
-- deploy readiness returns `deploy_ready=true`
-- local validation passes
-- ops package validation passes
-- no-real confirmation remains explicit
-
-**Implementation steps**
-
-- [ ] Run the wrapper from repo root.
-- [ ] Run the legacy direct commands from repo root.
-- [ ] Capture the exact output patterns and any step that takes materially longer than expected.
-- [ ] If the wrapper fails, fix the wrapper or the narrow documentation/package-metadata integration that caused the failure without changing product behavior.
-
-**Validation commands**
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/validate_release.ps1
-python -m pytest -q
-python -m ruff check app tests
-scripts/check_deploy_readiness.ps1
-scripts/validate_local.ps1
-scripts/validate_ops_package.ps1
-```
-
-Expected output patterns:
-
-```text
-PASS pytest
-PASS ruff
-PASS check_deploy_readiness
-PASS validate_local
-PASS validate_ops_package
-```
-
-And:
-
-```text
-"deploy_ready": true
-real_api_call_attempted=false
-real_network_call_attempted=false
-service_key_exposed=false
-```
-
-**Commit message recommendation**
-
-- `chore: verify rc17 local release validation flow`
-
-### Task 6: Fresh deploy validation
-
-**Goal**
-
-Prove the wrapper works outside the development checkout in a fresh deployment path.
-
-**Files to modify/create**
-
-- No product-code files expected.
-- Deployment target:
-  - `D:\Deploy\yonlab-g2b-agent-v2-rc17`
-
-**Test or validation files**
-
-- deployment-local validation scripts
-
-**Specific validation cases**
-
-- wrapper works from the fresh deploy root
-- deploy readiness is true
-- legacy scripts still pass in the fresh deploy
-- no-real confirmations remain false
-- if `.env` or `.venv` are copied or linked, that fact is reported without exposing contents
-
-**Implementation steps**
+      `powershell -ExecutionPolicy Bypass -File scripts/validate_release.ps1`
+- [ ] Run:
+      `python -m pytest -q`
+- [ ] Run:
+      `python -m ruff check app tests`
+- [ ] Run:
+      `scripts/check_deploy_readiness.ps1`
+- [ ] Run:
+      `scripts/validate_local.ps1`
+- [ ] Run:
+      `scripts/validate_ops_package.ps1`
+- [ ] Verify:
+      - no real API calls
+      - no real network calls
+      - no secrets printed
+- [ ] If any command fails, fix only wrapper/doc/test changes required for rc17 scope.
+- [ ] Commit only after local validation is fully green.
+
+### Task 6: Run fresh deploy validation
+
+**Files:**
+
+- Validate only; no required file edits
 
 - [ ] Create or refresh `D:\Deploy\yonlab-g2b-agent-v2-rc17`.
-- [ ] Ensure `.venv` exists in the fresh deploy or record clearly whether it is copied, recreated, or linked.
-- [ ] If `.env` is copied for deployment validation, report only that it was present; do not print contents.
-- [ ] Run the wrapper and the three legacy validation scripts from the fresh deploy root.
-- [ ] Record `deploy_ready=true` and the no-real confirmation fields.
+- [ ] Ensure the deploy copy has a repo-local `.venv` or an equivalent prepared repo-local
+      Python path exactly where the wrapper expects it.
+- [ ] Run:
+      `powershell -ExecutionPolicy Bypass -File scripts/validate_release.ps1`
+      from the deploy copy.
+- [ ] Re-run:
+      - `scripts/check_deploy_readiness.ps1`
+      - `scripts/validate_local.ps1`
+      - `scripts/validate_ops_package.ps1`
+- [ ] Verify:
+      - `deploy_ready=true`
+      - no-real confirmation remains true
+      - no secrets printed
+- [ ] Record any deploy-only path assumptions found during validation.
+- [ ] Commit nothing in this task unless a wrapper/doc fix is required.
 
-**Validation commands**
+### Task 7: Update decision log after validation passes
 
-```powershell
-Set-Location D:\Deploy\yonlab-g2b-agent-v2-rc17
-powershell -ExecutionPolicy Bypass -File scripts/validate_release.ps1
-scripts/check_deploy_readiness.ps1
-scripts/validate_local.ps1
-scripts/validate_ops_package.ps1
-```
+**Files:**
 
-Expected output patterns:
+- Modify: `docs/99_DECISION_LOG.md`
 
-- wrapper passes
-- `"deploy_ready": true`
-- `real_api_call_attempted=false`
-- `real_network_call_attempted=false`
-- `service_key_exposed=false`
-
-**Commit message recommendation**
-
-- `chore: validate rc17 release wrapper in fresh deploy`
-
-### Task 7: Decision log update
-
-**Goal**
-
-Update the decision log only after implementation and both validation passes are complete.
-
-**Files to modify/create**
-
-- Modify:
-  - `docs/99_DECISION_LOG.md`
-
-**Test or validation files**
-
-- none directly
-- rely on the already-passing validation evidence from Tasks 5 and 6
-
-**Specific validation cases**
-
-- decision log records:
-  - wrapper command
-  - local validation result
-  - fresh deploy validation result
-  - no-real confirmation
-  - no product behavior change confirmation
-
-**Implementation steps**
-
-- [ ] Append one rc17 decision-log entry after all implementation validation is green.
-- [ ] Include the preferred wrapper command:
-  - `powershell -ExecutionPolicy Bypass -File scripts/validate_release.ps1`
-- [ ] Record local and fresh deploy validation outcomes.
-- [ ] Record:
-  - `real_api_call_attempted=false`
-  - `real_network_call_attempted=false`
-  - `service_key_exposed=false`
-- [ ] Record that rc17 changed validation environment hardening only, not product behavior.
-
-**Validation commands**
-
-```powershell
-git diff -- docs/99_DECISION_LOG.md
-```
-
-Expected output patterns:
-
-- one new rc17 decision-log entry only
-- no secret values
-
-**Commit message recommendation**
-
-- `docs: record rc17 validation hardening result`
+- [ ] Add a short rc17 validation-environment hardening entry only after:
+      - local validation passes
+      - fresh deploy validation passes
+- [ ] Record that the hardened entrypoint uses repo-local Python and PowerShell-safe
+      invocation.
+- [ ] Record that existing validation scripts remain independently runnable.
+- [ ] Record no-real confirmation results.
+- [ ] Commit the decision-log update as the final rc17 implementation closeout commit.
 
 ## 9. Fresh deploy validation plan
 
-Fresh deploy target:
+Fresh deploy validation should happen at:
 
 - `D:\Deploy\yonlab-g2b-agent-v2-rc17`
 
-Required preparation sequence:
+Required checks in the deploy copy:
 
-- clone or refresh the rc17 target checkout
-- ensure `main` or the intended validated rc17 commit is present
-- ensure `.venv` exists under the deployment root
-- ensure `.env` handling is operator-safe and no contents are echoed
+1. wrapper command:
+   - `powershell -ExecutionPolicy Bypass -File scripts/validate_release.ps1`
+2. direct readiness:
+   - `scripts/check_deploy_readiness.ps1`
+3. direct local validation:
+   - `scripts/validate_local.ps1`
+4. direct package validation:
+   - `scripts/validate_ops_package.ps1`
 
-Fresh deploy command set:
+Expected fresh deploy outcomes:
 
-```powershell
-Set-Location D:\Deploy\yonlab-g2b-agent-v2-rc17
-powershell -ExecutionPolicy Bypass -File scripts/validate_release.ps1
-scripts/check_deploy_readiness.ps1
-scripts/validate_local.ps1
-scripts/validate_ops_package.ps1
-```
-
-Fresh deploy acceptance criteria:
-
-- wrapper uses deployment-local `.venv\Scripts\python.exe`
-- deploy root is resolved from script location, not from the caller's previous shell location
+- wrapper passes end to end
+- direct scripts still pass
 - `deploy_ready=true`
 - `real_api_call_attempted=false`
 - `real_network_call_attempted=false`
 - `service_key_exposed=false`
-- no machine-level PowerShell policy changes required
 
-If a copied `.env` or linked `.venv` is used:
-
-- report that it was copied or linked
-- do not print its contents
-- do not print any path that reveals secret material
+Fresh deploy remains a release-validation task, not a scheduler-retargeting task.
 
 ## 10. Decision log update policy
 
-The decision log must remain untouched during the planning-only task and during early implementation steps.
-
-Policy for rc17 implementation:
-
-- do not update `docs/99_DECISION_LOG.md` in Task 1, Task 2, Task 3, or Task 4
-- update `docs/99_DECISION_LOG.md` only after:
-  - `powershell -ExecutionPolicy Bypass -File scripts/validate_release.ps1` passes
-  - direct `python -m pytest -q` passes
-  - direct `python -m ruff check app tests` passes
-  - `scripts/check_deploy_readiness.ps1` passes
-  - `scripts/validate_local.ps1` passes
-  - `scripts/validate_ops_package.ps1` passes
-  - fresh deploy validation at `D:\Deploy\yonlab-g2b-agent-v2-rc17` passes
-- record the wrapper command and explicit no-real confirmation fields in the decision log entry
+- `docs/99_DECISION_LOG.md` must not change during wrapper design or early implementation
+  steps
+- update `docs/99_DECISION_LOG.md` only after all rc17 implementation validation passes
+- the decision-log entry should summarize:
+  - the new canonical release-validation command
+  - repo-local Python enforcement
+  - PowerShell-safe invocation
+  - preserved no-real validation behavior
 
 ## 11. Self-review checklist
 
-- [ ] The plan only references files that were confirmed to exist in `D:\Views\yonlab-g2b-agent-v2`.
-- [ ] The plan keeps rc17 scoped to validation-process hardening only.
-- [ ] The plan does not require product code changes under `app/api`, route behavior changes, or new real-network behavior.
-- [ ] The plan includes the exact wrapper path: `scripts/validate_release.ps1`.
-- [ ] The plan requires repo-local Python at `.venv\Scripts\python.exe`.
-- [ ] The plan preserves direct use of:
-  - `scripts/check_deploy_readiness.ps1`
-  - `scripts/validate_local.ps1`
-  - `scripts/validate_ops_package.ps1`
-- [ ] The plan includes the required development validation commands.
-- [ ] The plan includes the required fresh deploy validation commands.
-- [ ] The plan includes explicit no-real confirmation:
-  - `real_api_call_attempted=false`
-  - `real_network_call_attempted=false`
-  - `service_key_exposed=false`
-- [ ] The plan makes `docs/99_DECISION_LOG.md` a post-validation update only.
-- [ ] The implementation tasks are small, codebase-specific, and include file paths, validation cases, commands, and commit recommendations.
+- [ ] The plan keeps rc17 scoped to validation-environment hardening only.
+- [ ] The plan does not require product-code changes under `app/`.
+- [ ] The plan preserves rc16 manual decision behavior unchanged.
+- [ ] The plan uses `scripts/validate_release.ps1` as a narrow wrapper, not a script refactor.
+- [ ] The plan preserves existing script semantics and direct usability.
+- [ ] The plan includes repo-local `.venv\Scripts\python.exe` enforcement.
+- [ ] The plan includes explicit failure behavior for missing `.venv`.
+- [ ] The plan includes script-test coverage using existing repo patterns.
+- [ ] The plan includes doc updates only where present in this repo.
+- [ ] The plan includes full local validation.
+- [ ] The plan includes fresh deploy validation at `D:\Deploy\yonlab-g2b-agent-v2-rc17`.
+- [ ] The plan postpones `docs/99_DECISION_LOG.md` updates until after implementation
+      validation passes.
