@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 import app.api.routes as routes
 from app.core.config import Settings
 from app.main import app
+from app.services.decision_memo import build_decision_memo
 
 client = TestClient(app)
 
@@ -132,6 +133,34 @@ def test_ops_decision_memo_returns_safe_not_found_payload_for_unknown_notice(
     assert payload["safety"]["real_api_call_attempted"] is False
     assert payload["safety"]["source_data_mode"] == "empty"
     assert payload["service_key_exposed"] is False
+
+
+def test_build_decision_memo_aligns_not_found_payload_with_persisted_manual_override() -> None:
+    payload = build_decision_memo(
+        None,
+        notice_id="UNKNOWN-NOTICE-ID",
+        manual_decision={
+            "decision": "Reject",
+            "note": "Saved operator override for this missing notice.",
+            "updated_at": "2026-06-30T10:00:00+00:00",
+            "persisted": True,
+        },
+    )
+
+    assert payload["status"] == "not_found"
+    assert payload["source"] == "empty"
+    assert payload["manual_decision"] == {
+        "decision": "Reject",
+        "note": "Saved operator override for this missing notice.",
+        "updated_at": "2026-06-30T10:00:00+00:00",
+        "persisted": True,
+    }
+    assert payload["recommended_decision"] == {
+        "value": "Reject",
+        "rationale": "Saved operator override for this missing notice.",
+    }
+    assert "- Decision: Reject" in payload["export_blocks"]["markdown"]
+    assert payload["export_blocks"]["short_summary"].startswith("Reject - ")
 
 
 def test_ops_decision_memo_never_constructs_real_g2b_client(

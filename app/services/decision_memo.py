@@ -80,7 +80,25 @@ def build_decision_memo(
 ) -> dict[str, Any]:
     if not detail:
         payload = build_empty_decision_memo(notice_id)
-        payload["manual_decision"] = _normalize_manual_decision(manual_decision)
+        manual_decision = _normalize_manual_decision(manual_decision)
+        if manual_decision["persisted"] and manual_decision["decision"]:
+            rationale = manual_decision["note"] or payload["recommended_decision"]["rationale"]
+            summary = (
+                f"{manual_decision['decision']} - Decision memo unavailable for notice {notice_id}."
+            )
+            payload["recommended_decision"] = {
+                "value": manual_decision["decision"],
+                "rationale": rationale,
+            }
+            payload["export_blocks"] = {
+                "markdown": _build_export_markdown(
+                    title="Decision Memo Unavailable",
+                    decision=manual_decision["decision"],
+                    lines=[summary],
+                ),
+                "short_summary": summary,
+            }
+        payload["manual_decision"] = manual_decision
         return payload
 
     source_mode = _safe_text(detail.get("source_type")) or "unknown"
