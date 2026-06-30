@@ -9,6 +9,7 @@ import app.api.routes as routes
 from app.core.config import Settings
 from app.main import app
 from app.services.daily_review_pack import (
+    CSV_FIELDS,
     PRIORITY_LEGEND,
     build_daily_review_csv,
     build_daily_review_csv_rows,
@@ -259,6 +260,60 @@ def test_daily_review_csv_contains_safe_fields_and_escapes_formulas() -> None:
 
     parsed = list(csv.DictReader(io.StringIO(csv_text.lstrip("\ufeff"))))
     assert parsed[0]["notice_id"] == "P1-HIGHER-SCORE"
+
+
+def test_daily_review_csv_uses_persisted_manual_decision_value() -> None:
+    pack = build_daily_review_pack(
+        _decision_memo_items(
+            manual_decision="Review",
+            manual_decision_note="Need one more operator check before prepare.",
+            manual_decision_updated_at="2026-06-30T08:30:00+00:00",
+            manual_decision_persisted=True,
+        )
+    )
+
+    rows = build_daily_review_csv_rows(pack)
+
+    assert rows[0]["decision_memo_decision"] == "Review"
+    assert rows[0]["decision_memo_fit_summary"]
+    assert rows[0]["decision_memo_short_summary"]
+
+
+def test_daily_review_csv_preserves_existing_decision_memo_columns() -> None:
+    pack = build_daily_review_pack(
+        _decision_memo_items(
+            manual_decision="Prepare",
+            manual_decision_note="Strong fit and ready for proposal preparation.",
+            manual_decision_updated_at="2026-06-30T08:30:00+00:00",
+            manual_decision_persisted=True,
+        )
+    )
+
+    rows = build_daily_review_csv_rows(pack)
+
+    assert set(rows[0]) == set(CSV_FIELDS)
+    assert "manual_decision" not in rows[0]
+    assert "manual_decision_note" not in rows[0]
+    assert "manual_decision_updated_at" not in rows[0]
+
+
+def test_daily_review_csv_does_not_export_manual_review_note_or_local_paths() -> None:
+    pack = build_daily_review_pack(
+        _decision_memo_items(
+            manual_decision="Reject",
+            manual_decision_note="Operator-only note should stay out of dedicated CSV columns.",
+            manual_decision_updated_at="2026-06-30T08:30:00+00:00",
+            manual_decision_persisted=True,
+        )
+    )
+
+    csv_text = build_daily_review_csv(pack)
+
+    assert "manual_decision_note" not in csv_text
+    assert "note_preview" in csv_text
+    assert "D:\\Deploy" not in csv_text
+    assert "raw_json_path" not in csv_text
+    assert "LOCAL_ONLY_SECRET" not in csv_text
 
 
 def test_empty_daily_review_pack_has_explicit_empty_state() -> None:
