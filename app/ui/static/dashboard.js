@@ -485,11 +485,21 @@ async function loadOpportunityDetail(noticeId) {
   const payload = await apiJson(`/ops/opportunity-inbox/${encodeURIComponent(noticeId)}`);
   const report = await apiJson(`/ops/opportunity-report/${encodeURIComponent(noticeId)}`);
   state.currentOpportunityId = noticeId;
+  alignDecisionMemoToSelectedOpportunity(noticeId);
   state.currentOpportunityMarkdown = report.markdown || "";
   state.currentOpportunityTitle = payload.title || noticeId;
   renderOpportunityDetail(payload);
   renderOpportunityReviewStatus(payload);
   safeText("opportunity-markdown", state.currentOpportunityMarkdown || "No report content");
+}
+
+function alignDecisionMemoToSelectedOpportunity(noticeId) {
+  const safeNoticeId = String(noticeId || "").trim();
+  state.currentDecisionMemoId = safeNoticeId;
+  const input = document.getElementById("decision-memo-notice-id");
+  if (input) {
+    input.value = safeNoticeId;
+  }
 }
 
 function renderOpportunityDetail(payload) {

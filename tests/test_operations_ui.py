@@ -138,6 +138,23 @@ def test_dashboard_render_helpers_replace_loading_with_fallbacks(tmp_path: Path)
               "opportunity-empty": makeElement("opportunity-empty"),
               "opportunity-detail": makeElement("opportunity-detail"),
               "opportunity-markdown": makeElement("opportunity-markdown"),
+              "decision-memo-notice-id": makeElement("decision-memo-notice-id"),
+              "decision-memo-status": makeElement("decision-memo-status"),
+              "decision-memo-summary": makeElement("decision-memo-summary"),
+              "decision-memo-decision": makeElement("decision-memo-decision"),
+              "decision-memo-rationale": makeElement("decision-memo-rationale"),
+              "decision-memo-fit-summary": makeElement("decision-memo-fit-summary"),
+              "decision-memo-risk-summary": makeElement("decision-memo-risk-summary"),
+              "decision-memo-next-action": makeElement("decision-memo-next-action"),
+              "decision-memo-preparation-actions": makeElement("decision-memo-preparation-actions"),
+              "decision-memo-required-documents": makeElement("decision-memo-required-documents"),
+              "decision-memo-copy-block": makeElement("decision-memo-copy-block"),
+              "decision-memo-manual-prepare": makeElement("decision-memo-manual-prepare"),
+              "decision-memo-manual-review": makeElement("decision-memo-manual-review"),
+              "decision-memo-manual-hold": makeElement("decision-memo-manual-hold"),
+              "decision-memo-manual-reject": makeElement("decision-memo-manual-reject"),
+              "decision-memo-manual-note": makeElement("decision-memo-manual-note"),
+              "decision-memo-manual-message": makeElement("decision-memo-manual-message"),
             };
             const document = {
               body: makeElement("body"),
@@ -161,7 +178,44 @@ def test_dashboard_render_helpers_replace_loading_with_fallbacks(tmp_path: Path)
                 markdown:
                   "## YOnLab \\ub9de\\ucda4 \\ucd94\\ucc9c \\uacf5\\uace0: \\ud14c\\uc2a4\\ud2b8",
               },
+              "/ops/decision-memo/N-1": {
+                status: "success",
+                notice_id: "N-1",
+                notice: {
+                  title: "Selected notice",
+                  agency: "Agency",
+                  deadline: "2099-01-01",
+                },
+                yonlab_fit_summary: { fit_reasons: ["Aligned"], concern_reasons: [] },
+                risk_summary: {
+                  eligibility_risks: [],
+                  document_risks: [],
+                  schedule_risks: [],
+                  commercial_risks: [],
+                },
+                deadline_next_action: {
+                  deadline: "2099-01-01",
+                  urgency: "upcoming",
+                  next_action: "Confirm scope",
+                },
+                recommended_decision: {
+                  value: "Prepare",
+                  rationale: "Selected opportunity is aligned.",
+                },
+                manual_decision: {
+                  decision: "prepare",
+                  note: "",
+                  updated_at: "2026-06-30T12:00:00+09:00",
+                },
+                preparation_actions: [],
+                required_documents: [],
+                export_blocks: {
+                  markdown: "# YOnLab Decision Memo",
+                  short_summary: "Prepare - Selected notice",
+                },
+              },
             };
+            const fetchCalls = [];
             const context = {
               Blob: function Blob() {},
               URL: { createObjectURL: () => "blob://local", revokeObjectURL() {} },
@@ -170,12 +224,15 @@ def test_dashboard_render_helpers_replace_loading_with_fallbacks(tmp_path: Path)
               document,
               elements,
               encodeURIComponent,
-              fetch: async (url) => ({
-                ok: true,
-                status: 200,
-                statusText: "OK",
-                json: async () => responses[url],
-              }),
+              fetch: async (url) => {
+                fetchCalls.push(String(url));
+                return {
+                  ok: true,
+                  status: 200,
+                  statusText: "OK",
+                  json: async () => responses[url],
+                };
+              },
             };
 
             (async () => {
@@ -215,6 +272,11 @@ def test_dashboard_render_helpers_replace_loading_with_fallbacks(tmp_path: Path)
               assert.match(elements["opportunity-detail"].textContent, /No title/);
               assert.match(elements["opportunity-detail"].textContent, /0\\uc810/);
               assert.match(elements["opportunity-markdown"].textContent, /YOnLab/);
+              assert.strictEqual(elements["decision-memo-notice-id"].value, "N-1");
+
+              await vm.runInContext("openSelectedDecisionMemo()", context);
+              assert.ok(fetchCalls.includes("/ops/decision-memo/N-1"));
+              assert.match(elements["decision-memo-summary"].textContent, /Selected notice/);
             })().catch((error) => {
               console.error(error);
               process.exit(1);
