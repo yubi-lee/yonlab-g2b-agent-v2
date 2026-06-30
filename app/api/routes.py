@@ -76,10 +76,12 @@ from app.services.pdf_text_extractor import extract_pdf_text_from_file
 from app.services.real_ops_readiness import build_real_ops_readiness
 from app.services.review_board import build_review_board
 from app.services.review_status import (
+    ManualDecisionUpdate,
     ReviewStatusUpdate,
     delete_review_status,
     get_review_status,
     list_review_statuses,
+    save_manual_decision,
     save_review_status,
 )
 from app.services.safe_daily_status import build_safe_daily_status
@@ -662,7 +664,21 @@ def ops_decision_memo(notice_id: str) -> dict[str, Any]:
         db_path=settings.yonlab_storage_db_path,
         notice_id=notice_id,
     )
-    return build_decision_memo(detail, notice_id=notice_id)
+    payload = build_decision_memo(detail, notice_id=notice_id)
+    review_status = get_review_status(settings.yonlab_storage_db_path, notice_id)
+    manual_decision = {
+        "decision": review_status["manual_decision"],
+        "note": review_status["manual_decision_note"],
+        "updated_at": review_status["manual_decision_updated_at"],
+        "persisted": review_status["manual_decision_persisted"],
+    }
+    payload["manual_decision"] = manual_decision
+    if manual_decision["persisted"] and manual_decision["decision"]:
+        payload["recommended_decision"] = {
+            "value": manual_decision["decision"],
+            "rationale": "Using the saved local manual decision override.",
+        }
+    return payload
 
 
 @router.get("/ops/review-status")
@@ -689,6 +705,45 @@ def ops_save_review_status(
     payload: ReviewStatusUpdate,
 ) -> dict[str, Any]:
     return save_review_status(get_settings().yonlab_storage_db_path, notice_id, payload)
+
+
+@router.post("/ops/manual-decision/{notice_id}")
+def ops_save_manual_decision(
+    notice_id: str,
+    payload: ManualDecisionUpdate,
+) -> dict[str, Any]:
+    settings = get_settings()
+    detail = get_opportunity_detail(
+        db_path=settings.yonlab_storage_db_path,
+        notice_id=notice_id,
+    )
+    if detail is None:
+        return {
+            "status": "not_found",
+            "notice_id": notice_id,
+            "manual_decision": {
+                "decision": "",
+                "note": "",
+                "updated_at": "",
+                "persisted": False,
+            },
+            "service_key_exposed": False,
+            "real_api_call_attempted": False,
+        }
+
+    saved = save_manual_decision(settings.yonlab_storage_db_path, notice_id, payload)
+    return {
+        "status": "success",
+        "notice_id": notice_id,
+        "manual_decision": {
+            "decision": saved["manual_decision"],
+            "note": saved["manual_decision_note"],
+            "updated_at": saved["manual_decision_updated_at"],
+            "persisted": saved["manual_decision_persisted"],
+        },
+        "service_key_exposed": False,
+        "real_api_call_attempted": False,
+    }
 
 
 @router.delete("/ops/review-status/{notice_id}")
