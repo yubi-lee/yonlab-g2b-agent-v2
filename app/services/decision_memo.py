@@ -282,15 +282,24 @@ def _recommended_decision(
     risk_level: str,
     manual_decision: dict[str, Any],
 ) -> dict[str, str]:
+    generated = _generated_recommended_decision(detail, score=score, risk_level=risk_level)
     if manual_decision["persisted"] and manual_decision["decision"]:
-        rationale = manual_decision["note"] or (
-            "Using the saved local manual decision override."
-        )
+        rationale = manual_decision["note"] or generated["rationale"]
         return {
             "value": manual_decision["decision"],
             "rationale": rationale,
         }
 
+
+    return generated
+
+
+def _generated_recommended_decision(
+    detail: dict[str, Any],
+    *,
+    score: int,
+    risk_level: str,
+) -> dict[str, str]:
     review_status = _safe_text(detail.get("review_status")).casefold()
     decision_label = _safe_text(detail.get("decision_label")).casefold()
     go_no_go = _safe_text(detail.get("go_no_go_recommendation"))

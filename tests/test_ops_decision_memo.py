@@ -329,6 +329,44 @@ def test_decision_memo_recommended_decision_uses_persisted_manual_value(
     assert payload["export_blocks"]["short_summary"].startswith("Reject - ")
 
 
+def test_decision_memo_uses_generated_rationale_when_persisted_manual_note_is_empty(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:  # noqa: ANN001
+    settings = _tmp_settings(tmp_path)
+    monkeypatch.setattr(routes, "get_settings", lambda: settings)
+    notice_id = _known_notice_id()
+
+    baseline_response = client.get(f"/ops/decision-memo/{notice_id}")
+    assert baseline_response.status_code == 200
+    baseline_payload = baseline_response.json()
+    generated_rationale = baseline_payload["recommended_decision"]["rationale"]
+    assert generated_rationale
+
+    save_response = client.post(
+        f"/ops/manual-decision/{notice_id}",
+        json={
+            "decision": "Hold",
+            "note": "",
+        },
+    )
+    assert save_response.status_code == 200
+
+    response = client.get(f"/ops/decision-memo/{notice_id}")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["manual_decision"] == {
+        "decision": "Hold",
+        "note": "",
+        "updated_at": payload["manual_decision"]["updated_at"],
+        "persisted": True,
+    }
+    assert payload["manual_decision"]["updated_at"]
+    assert payload["recommended_decision"]["value"] == "Hold"
+    assert payload["recommended_decision"]["rationale"] == generated_rationale
+
+
 def test_decision_memo_uses_generated_default_when_manual_decision_missing(
     tmp_path: Path,
     monkeypatch,
