@@ -537,3 +537,49 @@ Fallback behavior preserved:
 - when no persisted manual decision exists, rc15 generated/default Decision Memo behavior
   remains the active fallback
 - private manual-decision note content is not added as a dedicated CSV column
+
+## 2026-07-01 YOnLab G2B Agent v2 rc17 validation environment hardening
+
+Decision: Accept the rc17 validation environment hardening scope as ready for the
+next release-candidate tag after wrapper-based local and fresh-deploy no-real
+validation passes.
+
+Release scope:
+
+- add `scripts/validate_release.ps1` as the preferred Windows release validation entrypoint
+- resolve the repo root from the wrapper script location
+- require repo-local Python at `.venv\Scripts\python.exe`
+- run `pytest` and `ruff` through the repo-local interpreter
+- delegate to `scripts/check_deploy_readiness.ps1`
+- delegate to `scripts/validate_local.ps1`
+- delegate to `scripts/validate_ops_package.ps1`
+- document the wrapper in README, testing strategy, operations runbook, and deployment handoff
+
+Validation result:
+
+- local wrapper `powershell -ExecutionPolicy Bypass -File scripts/validate_release.ps1`: pass
+- local direct `python -m pytest -q`: failed on the machine-global Python because `pytest`
+  was not installed outside the repo-local virtual environment
+- local direct `python -m ruff check app tests`: failed on the machine-global Python because
+  `ruff` was not installed outside the repo-local virtual environment
+- local direct `.ps1` invocation without explicit bypass remained subject to the machine
+  PowerShell execution policy
+- fresh deploy path: `D:\Deploy\yonlab-g2b-agent-v2-rc17`
+- fresh deploy `.env`: absent by design
+- fresh deploy `.venv` strategy: junction to the validated development virtual environment
+- fresh deploy wrapper `powershell -ExecutionPolicy Bypass -File scripts/validate_release.ps1`: pass
+- fresh deploy `powershell -ExecutionPolicy Bypass -File scripts/check_deploy_readiness.ps1`:
+  `deploy_ready=true`
+- fresh deploy `powershell -ExecutionPolicy Bypass -File scripts/validate_local.ps1`: pass
+- fresh deploy `powershell -ExecutionPolicy Bypass -File scripts/validate_ops_package.ps1`: pass
+
+No-real safety confirmation:
+
+- `real_api_call_attempted=false`
+- `real_network_call_attempted=false`
+- `service_key_exposed=false`
+
+Behavior preservation:
+
+- rc16 manual decision persistence behavior remains unchanged
+- product code was not changed during the final rc17 validation/decision-log step
