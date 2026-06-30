@@ -488,3 +488,52 @@ Known limitation:
 
 - manual `Prepare` / `Review` / `Hold` / `Reject` persistence is not implemented in rc15
 - Decision Memo values are generated from safe local data only
+
+## 2026-06-30 YOnLab G2B Agent v2 rc16 manual decision persistence
+
+Decision: Accept the rc16 manual decision persistence scope as ready for release-candidate
+tagging after full local and fresh-deployment no-real validation passes.
+
+Release scope:
+
+- local-only `POST /ops/manual-decision/{notice_id}`
+- persisted manual decision enum:
+  - `Prepare`
+  - `Review`
+  - `Hold`
+  - `Reject`
+- `GET /ops/decision-memo/{notice_id}` prefers persisted manual decisions when present
+- `/ui` Decision Memo controls save and reload persisted manual decisions
+- Daily Review Pack markdown/summary and CSV export reflect persisted manual decisions
+
+Validation result:
+
+- local `python -m pytest -q`: pass
+- local `ruff check app tests`: pass
+- local `scripts/check_deploy_readiness.ps1`: `deploy_ready=true`
+- local `scripts/validate_local.ps1`: pass
+- local `scripts/validate_ops_package.ps1`: pass
+- fresh deploy path: `D:\Deploy\yonlab-g2b-agent-v2-rc16`
+- fresh deploy `ruff check app tests`: pass
+- fresh deploy pytest rc16 subset: pass
+- fresh deploy `scripts/check_deploy_readiness.ps1`: `deploy_ready=true`
+- fresh deploy `scripts/validate_local.ps1`: pass
+- explicit local/deploy smoke:
+  - known notice Decision Memo load: pass
+  - `Prepare` -> `Review` -> `Hold` -> `Reject` persistence overwrite flow: pass
+  - invalid decision returns 4xx: pass
+  - unknown notice returns safe `not_found`: pass
+  - `/ui` Decision Memo controls and JS save hook visible: pass
+  - Daily Review Pack and CSV export reflect persisted manual decision: pass
+
+No-real safety confirmation:
+
+- `real_api_call_attempted=false`
+- `real_network_call_attempted=false`
+- `service_key_exposed=false`
+
+Fallback behavior preserved:
+
+- when no persisted manual decision exists, rc15 generated/default Decision Memo behavior
+  remains the active fallback
+- private manual-decision note content is not added as a dedicated CSV column
