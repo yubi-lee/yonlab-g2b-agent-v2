@@ -385,6 +385,52 @@
         <div id="decision-memo-summary" class="detail-summary">
           Select a Review Board item or enter a known notice id to load a safe local-only Decision Memo.
         </div>
+        <form class="form-grid review-status-form" aria-label="Manual decision controls">
+          <label class="checkbox-row compact-checkbox">
+            <input
+              id="decision-memo-manual-prepare"
+              type="radio"
+              name="decision-memo-manual-decision"
+              value="prepare"
+            />
+            Prepare
+          </label>
+          <label class="checkbox-row compact-checkbox">
+            <input
+              id="decision-memo-manual-review"
+              type="radio"
+              name="decision-memo-manual-decision"
+              value="review"
+            />
+            Review
+          </label>
+          <label class="checkbox-row compact-checkbox">
+            <input
+              id="decision-memo-manual-hold"
+              type="radio"
+              name="decision-memo-manual-decision"
+              value="hold"
+            />
+            Hold
+          </label>
+          <label class="checkbox-row compact-checkbox">
+            <input
+              id="decision-memo-manual-reject"
+              type="radio"
+              name="decision-memo-manual-decision"
+              value="reject"
+            />
+            Reject
+          </label>
+          <label class="wide">
+            Manual note
+            <textarea id="decision-memo-manual-note" rows="4" maxlength="1200"></textarea>
+          </label>
+          <div class="actions wide">
+            <button id="save-manual-decision" type="button">Save manual decision</button>
+            <span id="decision-memo-manual-message" role="status">Local only.</span>
+          </div>
+        </form>
         <div class="package-grid decision-memo-grid">
           <div>
             <h3>YOnLab fit summary</h3>

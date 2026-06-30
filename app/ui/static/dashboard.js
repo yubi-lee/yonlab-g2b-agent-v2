@@ -6,6 +6,7 @@ const state = {
   currentDailyReviewMarkdown: "",
   currentDecisionMemoId: "",
   currentDecisionMemoMarkdown: "",
+  currentManualDecision: "hold",
 };
 
 const safeValue = (value, fallback = "No data") => {
@@ -109,6 +110,8 @@ async function loadReviewBoard() {
 async function loadDecisionMemo(noticeId) {
   const safeNoticeId = String(noticeId || "").trim();
   if (!safeNoticeId) {
+    state.currentDecisionMemoId = "";
+    state.currentDecisionMemoMarkdown = "";
     renderDecisionMemo(emptyDecisionMemo());
     return;
   }
@@ -542,6 +545,46 @@ function emptyDecisionMemo() {
   };
 }
 
+function normalizeManualDecision(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["prepare", "review", "hold", "reject"].includes(normalized)) return normalized;
+  if (normalized === "go") return "prepare";
+  if (normalized === "reviewing") return "review";
+  if (normalized === "no_go" || normalized === "no-go") return "reject";
+  return "hold";
+}
+
+function selectManualDecision(value) {
+  const normalized = normalizeManualDecision(value);
+  state.currentManualDecision = normalized;
+  const manualOptions = {
+    prepare: document.getElementById("decision-memo-manual-prepare"),
+    review: document.getElementById("decision-memo-manual-review"),
+    hold: document.getElementById("decision-memo-manual-hold"),
+    reject: document.getElementById("decision-memo-manual-reject"),
+  };
+  for (const [optionValue, element] of Object.entries(manualOptions)) {
+    if (element) element.checked = optionValue === normalized;
+  }
+}
+
+function renderManualDecision(payload) {
+  const memo = payload || {};
+  const manualDecision = memo.manual_decision || {};
+  const decisionValue = normalizeManualDecision(
+    manualDecision.decision || memo.recommended_decision?.value || state.currentManualDecision,
+  );
+  const note = document.getElementById("decision-memo-manual-note");
+  if (note) {
+    note.value = manualDecision.note || "";
+  }
+  selectManualDecision(decisionValue);
+  safeText(
+    "decision-memo-manual-message",
+    manualDecision.updated_at ? `Saved ${manualDecision.updated_at}` : "Local only.",
+  );
+}
+
 function renderDecisionMemo(payload) {
   const memo = payload || emptyDecisionMemo();
   const notice = memo.notice || {};
@@ -623,6 +666,7 @@ function renderDecisionMemo(payload) {
     "decision-memo-copy-block",
     memo.export_blocks?.markdown || memo.export_blocks?.short_summary || "No decision memo selected.",
   );
+  renderManualDecision(memo);
 }
 
 function loadDecisionMemoFromInput() {
@@ -647,6 +691,39 @@ function openSelectedDecisionMemo() {
     return;
   }
   return loadDecisionMemo(state.currentOpportunityId);
+}
+
+function currentManualDecisionValue() {
+  const selectedDecision = ["prepare", "review", "hold", "reject"].find((value) =>
+    document.getElementById(`decision-memo-manual-${value}`)?.checked,
+  );
+  return selectedDecision || normalizeManualDecision(state.currentManualDecision);
+}
+
+async function saveManualDecision() {
+  const noticeId = String(
+    state.currentDecisionMemoId || document.getElementById("decision-memo-notice-id")?.value || "",
+  ).trim();
+  if (!noticeId) {
+    safeText("decision-memo-manual-message", "Load a decision memo first.");
+    return;
+  }
+  const payload = {
+    decision: currentManualDecisionValue(),
+    note: document.getElementById("decision-memo-manual-note")?.value || "",
+  };
+  const result = await apiJson(`/ops/manual-decision/${encodeURIComponent(noticeId)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  state.currentDecisionMemoId = result.notice_id || noticeId;
+  renderManualDecision({
+    recommended_decision: { value: payload.decision },
+    manual_decision: result,
+  });
+  await loadDecisionMemo(noticeId);
+  await loadDailyReviewPack();
 }
 
 function renderOpportunityReviewStatus(payload) {
@@ -958,6 +1035,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   );
   document.getElementById("open-selected-decision-memo")?.addEventListener("click", () =>
     loadSection("decision memo", openSelectedDecisionMemo, ["decision-memo-status", "decision-memo-summary"]),
+  );
+  for (const value of ["prepare", "review", "hold", "reject"]) {
+    document.getElementById(`decision-memo-manual-${value}`)?.addEventListener("change", () =>
+      selectManualDecision(value),
+    );
+  }
+  document.getElementById("save-manual-decision")?.addEventListener("click", () =>
+    loadSection("save manual decision", saveManualDecision, ["decision-memo-manual-message"]),
   );
   document.getElementById("download-opportunity-markdown")?.addEventListener("click", downloadOpportunityMarkdown);
   document.getElementById("save-opportunity-review-status")?.addEventListener("click", () =>

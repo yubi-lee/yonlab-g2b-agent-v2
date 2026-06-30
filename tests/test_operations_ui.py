@@ -409,9 +409,309 @@ def test_dashboard_contains_decision_memo_panel_and_loader_hooks() -> None:
     assert "decision-memo-preparation-actions" in html
     assert "decision-memo-required-documents" in html
     assert "decision-memo-copy-block" in html
+    assert "decision-memo-manual-prepare" in html
+    assert "decision-memo-manual-review" in html
+    assert "decision-memo-manual-hold" in html
+    assert "decision-memo-manual-reject" in html
+    assert "decision-memo-manual-note" in html
+    assert "save-manual-decision" in html
+    assert "decision-memo-manual-message" in html
     assert "loadDecisionMemo" in js_text
     assert "renderDecisionMemo" in js_text
+    assert "selectManualDecision" in js_text
+    assert "saveManualDecision" in js_text
+    assert "renderManualDecision" in js_text
+    assert "/ops/manual-decision/" in js_text
     assert "/ops/decision-memo/" in js_text
+
+
+def test_dashboard_manual_decision_helpers_render_and_save_refresh_context(
+    tmp_path: Path,
+) -> None:
+    node = shutil.which("node")
+    assert node is not None, "node is required for dashboard render validation"
+
+    check_script = tmp_path / "dashboard_manual_decision_check.js"
+    check_script.write_text(
+        textwrap.dedent(
+            """
+            const fs = require("fs");
+            const vm = require("vm");
+            const assert = require("assert");
+
+            function makeElement(id) {
+              const element = {
+                id,
+                tagName: id,
+                textContent: "Loading",
+                children: [],
+                dataset: {},
+                value: "",
+                checked: false,
+                listeners: {},
+                appendChild(child) {
+                  this.children.push(child);
+                },
+                addEventListener(type, handler) {
+                  this.listeners[type] = handler;
+                },
+                click() {
+                  if (this.listeners.click) {
+                    return this.listeners.click({ currentTarget: this, preventDefault() {} });
+                  }
+                  return undefined;
+                },
+                remove() {},
+              };
+              Object.defineProperty(element, "innerHTML", {
+                get() {
+                  return this._innerHTML || "";
+                },
+                set(value) {
+                  this._innerHTML = value;
+                  this.children = [];
+                },
+              });
+              return element;
+            }
+
+            const elementIds = [
+              "decision-memo-status",
+              "decision-memo-notice-id",
+              "decision-memo-summary",
+              "decision-memo-decision",
+              "decision-memo-rationale",
+              "decision-memo-fit-summary",
+              "decision-memo-risk-summary",
+              "decision-memo-next-action",
+              "decision-memo-preparation-actions",
+              "decision-memo-required-documents",
+              "decision-memo-copy-block",
+              "decision-memo-manual-prepare",
+              "decision-memo-manual-review",
+              "decision-memo-manual-hold",
+              "decision-memo-manual-reject",
+              "decision-memo-manual-note",
+              "save-manual-decision",
+              "decision-memo-manual-message",
+              "daily-review-status",
+              "daily-review-generated-at",
+              "daily-review-latest-run",
+              "daily-review-total-items",
+              "daily-review-p1",
+              "daily-review-p2",
+              "daily-review-p3",
+              "daily-review-hold",
+              "daily-review-no-go",
+              "daily-review-executive-summary",
+              "daily-review-top-items",
+              "daily-review-today-actions",
+              "daily-review-document-actions",
+              "daily-review-risk-summary",
+              "daily-review-markdown",
+              "source-mode-current",
+              "source-mode-message",
+              "source-mode-latest-run",
+              "source-mode-latest-at",
+              "source-mode-real-reports",
+              "source-mode-total-items",
+              "source-mode-next-actions",
+              "priority-legend",
+            ];
+            const elements = Object.fromEntries(elementIds.map((id) => [id, makeElement(id)]));
+            const document = {
+              body: makeElement("body"),
+              createElement(tag) {
+                return makeElement(tag);
+              },
+              getElementById(id) {
+                return elements[id] || null;
+              },
+              querySelector() {
+                return null;
+              },
+              addEventListener() {},
+            };
+            const fetchCalls = [];
+            let manualDecision = {
+              decision: "prepare",
+              note: "Start the checklist.",
+              updated_at: "2026-06-30T09:00:00+09:00",
+            };
+            const context = {
+              Blob: function Blob() {},
+              URL: { createObjectURL: () => "blob://local", revokeObjectURL() {} },
+              URLSearchParams,
+              console,
+              document,
+              elements,
+              encodeURIComponent,
+              fetch: async (url, options = {}) => {
+                fetchCalls.push({ url: String(url), options });
+                if (
+                  String(url) === "/ops/decision-memo/G2B-SAMPLE-2026-001" &&
+                  (!options.method || options.method === "GET")
+                ) {
+                  return {
+                    ok: true,
+                    status: 200,
+                    statusText: "OK",
+                    json: async () => ({
+                      status: "success",
+                      notice_id: "G2B-SAMPLE-2026-001",
+                      notice: {
+                        title: "Seoul AI workflow automation",
+                        agency: "Seoul agency",
+                        deadline: "2026-07-15",
+                      },
+                      yonlab_fit_summary: {
+                        fit_reasons: ["AI/SW fit"],
+                        concern_reasons: [],
+                      },
+                      risk_summary: {
+                        eligibility_risks: [],
+                        document_risks: [],
+                        schedule_risks: [],
+                        commercial_risks: [],
+                      },
+                      deadline_next_action: {
+                        deadline: "2026-07-15",
+                        urgency: "due_soon",
+                        next_action: "Confirm proposal schedule",
+                      },
+                          recommended_decision: {
+                            value: "Prepare",
+                            rationale: "Fit is strong enough to begin preparation.",
+                          },
+                          manual_decision: manualDecision,
+                          preparation_actions: [],
+                          required_documents: [],
+                          export_blocks: {
+                            markdown: "# YOnLab Decision Memo\\n\\n- Decision: Prepare",
+                            short_summary: "Prepare - Seoul AI workflow automation",
+                      },
+                    }),
+                  };
+                }
+                if (String(url) === "/ops/manual-decision/G2B-SAMPLE-2026-001") {
+                  const requestBody = JSON.parse(options.body || "{}");
+                  manualDecision = {
+                    decision: requestBody.decision || "hold",
+                    note: requestBody.note || "",
+                    updated_at: "2026-06-30T10:00:00+09:00",
+                  };
+                  return {
+                    ok: true,
+                    status: 200,
+                    statusText: "OK",
+                    json: async () => ({
+                      notice_id: "G2B-SAMPLE-2026-001",
+                      ...manualDecision,
+                    }),
+                  };
+                }
+                if (String(url) === "/ops/daily-review-pack") {
+                  return {
+                    ok: true,
+                    status: 200,
+                    statusText: "OK",
+                    json: async () => ({
+                      status: "ready",
+                      generated_at: "2026-06-30T10:00:00+09:00",
+                      latest_run_id: "run-1",
+                      total_items: 1,
+                      p1_count: 1,
+                      p2_count: 0,
+                      p3_count: 0,
+                      hold_count: 0,
+                      no_go_count: 0,
+                      executive_summary: { lines: ["One item refreshed"] },
+                      top_items: [],
+                      today_actions: [],
+                      document_actions: [],
+                      risk_summary: {},
+                      markdown_report: "# Daily review refreshed",
+                      source_mode: "saved",
+                      source_mode_message: "Saved data ready.",
+                      real_report_count: 0,
+                      empty_state_next_actions: [],
+                      priority_legend: {},
+                    }),
+                  };
+                }
+                throw new Error("Unexpected fetch " + String(url));
+              },
+            };
+
+            (async () => {
+              vm.createContext(context);
+              vm.runInContext(fs.readFileSync(process.argv[2], "utf8"), context);
+
+              vm.runInContext("renderDecisionMemo(emptyDecisionMemo())", context);
+              assert.match(elements["decision-memo-manual-message"].textContent, /Local only/i);
+              await vm.runInContext("saveManualDecision()", context);
+              assert.match(
+                elements["decision-memo-manual-message"].textContent,
+                /Load a decision memo first/i,
+              );
+
+              await vm.runInContext('loadDecisionMemo("G2B-SAMPLE-2026-001")', context);
+              assert.strictEqual(elements["decision-memo-notice-id"].value, "G2B-SAMPLE-2026-001");
+              assert.strictEqual(elements["decision-memo-manual-prepare"].checked, true);
+              assert.strictEqual(elements["decision-memo-manual-review"].checked, false);
+              assert.strictEqual(
+                elements["decision-memo-manual-note"].value,
+                "Start the checklist.",
+              );
+              assert.match(
+                elements["decision-memo-manual-message"].textContent,
+                /Saved 2026-06-30T09:00:00\\+09:00/,
+              );
+
+              vm.runInContext('selectManualDecision("review")', context);
+              elements["decision-memo-manual-note"].value = "Need one more pricing check.";
+              await vm.runInContext("saveManualDecision()", context);
+
+              const postCall = fetchCalls.find(
+                (entry) => entry.url === "/ops/manual-decision/G2B-SAMPLE-2026-001",
+              );
+              assert.ok(postCall, "manual decision POST should be called");
+              assert.strictEqual(postCall.options.method, "POST");
+              assert.strictEqual(postCall.options.headers["Content-Type"], "application/json");
+              assert.deepStrictEqual(
+                JSON.parse(postCall.options.body),
+                { decision: "review", note: "Need one more pricing check." },
+              );
+
+              const memoFetches = fetchCalls.filter(
+                (entry) =>
+                  entry.url === "/ops/decision-memo/G2B-SAMPLE-2026-001" &&
+                  (!entry.options.method || entry.options.method === "GET")
+              );
+              assert.ok(memoFetches.length >= 2, "decision memo should be refreshed after save");
+              assert.ok(
+                fetchCalls.some((entry) => entry.url === "/ops/daily-review-pack"),
+                "daily review pack should refresh after save",
+              );
+              assert.strictEqual(elements["decision-memo-manual-review"].checked, true);
+              assert.match(elements["daily-review-status"].textContent, /ready/);
+            })().catch((error) => {
+              console.error(error);
+              process.exit(1);
+            });
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [node, str(check_script), str(PROJECT_ROOT / "app" / "ui" / "static" / "dashboard.js")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
 
 
 def test_dashboard_review_board_helpers_render_and_drive_inbox_filters(tmp_path: Path) -> None:
