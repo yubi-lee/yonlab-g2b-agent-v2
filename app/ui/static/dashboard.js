@@ -5,6 +5,7 @@ const state = {
   currentOpportunityTitle: "yonlab-opportunity",
   currentDailyReviewMarkdown: "",
   currentDecisionMemoId: "",
+  currentLoadedDecisionMemoId: "",
   currentDecisionMemoMarkdown: "",
   currentManualDecision: "hold",
 };
@@ -111,12 +112,14 @@ async function loadDecisionMemo(noticeId) {
   const safeNoticeId = String(noticeId || "").trim();
   if (!safeNoticeId) {
     state.currentDecisionMemoId = "";
+    state.currentLoadedDecisionMemoId = "";
     state.currentDecisionMemoMarkdown = "";
     renderDecisionMemo(emptyDecisionMemo());
     return;
   }
   const payload = await apiJson(`/ops/decision-memo/${encodeURIComponent(safeNoticeId)}`);
   state.currentDecisionMemoId = payload.notice_id || safeNoticeId;
+  state.currentLoadedDecisionMemoId = state.currentDecisionMemoId;
   state.currentDecisionMemoMarkdown = payload.export_blocks?.markdown || "";
   const input = document.getElementById("decision-memo-notice-id");
   if (input) input.value = state.currentDecisionMemoId;
@@ -718,6 +721,13 @@ async function saveManualDecision() {
     safeText("decision-memo-manual-message", "Load a decision memo first.");
     return;
   }
+  if (!state.currentLoadedDecisionMemoId || state.currentLoadedDecisionMemoId !== noticeId) {
+    safeText(
+      "decision-memo-manual-message",
+      "Load the selected decision memo before saving. Local only.",
+    );
+    return;
+  }
   const payload = {
     decision: currentManualDecisionValue(),
     note: document.getElementById("decision-memo-manual-note")?.value || "",
@@ -727,13 +737,31 @@ async function saveManualDecision() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  state.currentDecisionMemoId = result.notice_id || noticeId;
+  const reloadNoticeId = result.notice_id || noticeId;
+  state.currentDecisionMemoId = reloadNoticeId;
   renderManualDecision({
     recommended_decision: { value: payload.decision },
     manual_decision: result,
   });
-  await loadDecisionMemo(noticeId);
-  await loadDailyReviewPack();
+  let refreshFailed = false;
+  try {
+    await loadDecisionMemo(reloadNoticeId);
+  } catch (error) {
+    refreshFailed = true;
+    console.error("decision memo refresh failed", error);
+  }
+  try {
+    await loadDailyReviewPack();
+  } catch (error) {
+    refreshFailed = true;
+    console.error("daily review pack refresh failed", error);
+  }
+  if (refreshFailed) {
+    safeText(
+      "decision-memo-manual-message",
+      "Saved locally. Refresh the decision memo or daily review pack to verify the latest view.",
+    );
+  }
 }
 
 function renderOpportunityReviewStatus(payload) {

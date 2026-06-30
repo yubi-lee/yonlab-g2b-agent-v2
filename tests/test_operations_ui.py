@@ -538,6 +538,14 @@ def test_dashboard_manual_decision_helpers_render_and_save_refresh_context(
             }
 
             const elementIds = [
+              "opportunity-detail",
+              "opportunity-detail-fields",
+              "opportunity-markdown",
+              "opportunity-review-status",
+              "opportunity-review-owner",
+              "opportunity-review-next-action",
+              "opportunity-review-note",
+              "opportunity-review-message",
               "decision-memo-status",
               "decision-memo-notice-id",
               "decision-memo-summary",
@@ -600,6 +608,10 @@ def test_dashboard_manual_decision_helpers_render_and_save_refresh_context(
               note: "Start the checklist.",
               updated_at: "2026-06-30T09:00:00+09:00",
             };
+            let refreshedDecision = {
+              value: "Prepare",
+              rationale: "Fit is strong enough to begin preparation.",
+            };
             const context = {
               Blob: function Blob() {},
               URL: { createObjectURL: () => "blob://local", revokeObjectURL() {} },
@@ -641,17 +653,47 @@ def test_dashboard_manual_decision_helpers_render_and_save_refresh_context(
                         urgency: "due_soon",
                         next_action: "Confirm proposal schedule",
                       },
-                          recommended_decision: {
-                            value: "Prepare",
-                            rationale: "Fit is strong enough to begin preparation.",
-                          },
-                          manual_decision: manualDecision,
-                          preparation_actions: [],
-                          required_documents: [],
-                          export_blocks: {
-                            markdown: "# YOnLab Decision Memo\\n\\n- Decision: Prepare",
-                            short_summary: "Prepare - Seoul AI workflow automation",
+                      recommended_decision: refreshedDecision,
+                      manual_decision: manualDecision,
+                      preparation_actions: [],
+                      required_documents: [],
+                      export_blocks: {
+                        markdown:
+                          `# YOnLab Decision Memo\\n\\n- Decision: ${refreshedDecision.value}`,
+                        short_summary: `${refreshedDecision.value} - Seoul AI workflow automation`,
                       },
+                    }),
+                  };
+                }
+                if (String(url) === "/ops/opportunity-inbox/G2B-SAMPLE-2026-001") {
+                  return {
+                    ok: true,
+                    status: 200,
+                    statusText: "OK",
+                    json: async () => ({
+                      notice_id: "G2B-SAMPLE-2026-001",
+                      title: "Seoul AI workflow automation",
+                      agency: "Seoul agency",
+                      source_type: "fixture",
+                      score: 91,
+                      review_status: "reviewing",
+                      owner: "ops",
+                      next_action: "Confirm proposal schedule",
+                      note: "Check pricing",
+                      decision_reasons: [],
+                      action_plan: {},
+                      required_documents: [],
+                      risk_categories: [],
+                    }),
+                  };
+                }
+                if (String(url) === "/ops/opportunity-report/G2B-SAMPLE-2026-001") {
+                  return {
+                    ok: true,
+                    status: 200,
+                    statusText: "OK",
+                    json: async () => ({
+                      markdown: "# Opportunity report",
                     }),
                   };
                 }
@@ -661,6 +703,10 @@ def test_dashboard_manual_decision_helpers_render_and_save_refresh_context(
                     decision: requestBody.decision || "hold",
                     note: requestBody.note || "",
                     updated_at: "2026-06-30T10:00:00+09:00",
+                  };
+                  refreshedDecision = {
+                    value: "Reject",
+                    rationale: "Refreshed memo result after save.",
                   };
                   return {
                     ok: true,
@@ -717,6 +763,20 @@ def test_dashboard_manual_decision_helpers_render_and_save_refresh_context(
                 /Load a decision memo first/i,
               );
 
+              await vm.runInContext('loadOpportunityDetail("G2B-SAMPLE-2026-001")', context);
+              assert.strictEqual(elements["decision-memo-notice-id"].value, "G2B-SAMPLE-2026-001");
+              await vm.runInContext("saveManualDecision()", context);
+              assert.match(
+                elements["decision-memo-manual-message"].textContent,
+                /Load the selected decision memo before saving/i,
+              );
+              assert.strictEqual(
+                fetchCalls.filter(
+                  (entry) => entry.url === "/ops/manual-decision/G2B-SAMPLE-2026-001",
+                ).length,
+                0,
+              );
+
               await vm.runInContext('loadDecisionMemo("G2B-SAMPLE-2026-001")', context);
               assert.strictEqual(elements["decision-memo-notice-id"].value, "G2B-SAMPLE-2026-001");
               assert.strictEqual(elements["decision-memo-manual-prepare"].checked, true);
@@ -755,7 +815,11 @@ def test_dashboard_manual_decision_helpers_render_and_save_refresh_context(
                 fetchCalls.some((entry) => entry.url === "/ops/daily-review-pack"),
                 "daily review pack should refresh after save",
               );
-              assert.strictEqual(elements["decision-memo-manual-review"].checked, true);
+              assert.match(elements["decision-memo-decision"].textContent, /Reject/);
+              assert.match(
+                elements["decision-memo-rationale"].textContent,
+                /Refreshed memo result after save/,
+              );
               assert.match(elements["daily-review-status"].textContent, /ready/);
             })().catch((error) => {
               console.error(error);
