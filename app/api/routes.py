@@ -81,6 +81,7 @@ from app.services.review_status import (
     delete_review_status,
     get_review_status,
     list_review_statuses,
+    normalize_manual_decision_state,
     save_manual_decision,
     save_review_status,
 )
@@ -664,21 +665,12 @@ def ops_decision_memo(notice_id: str) -> dict[str, Any]:
         db_path=settings.yonlab_storage_db_path,
         notice_id=notice_id,
     )
-    payload = build_decision_memo(detail, notice_id=notice_id)
     review_status = get_review_status(settings.yonlab_storage_db_path, notice_id)
-    manual_decision = {
-        "decision": review_status["manual_decision"],
-        "note": review_status["manual_decision_note"],
-        "updated_at": review_status["manual_decision_updated_at"],
-        "persisted": review_status["manual_decision_persisted"],
-    }
-    payload["manual_decision"] = manual_decision
-    if manual_decision["persisted"] and manual_decision["decision"]:
-        payload["recommended_decision"] = {
-            "value": manual_decision["decision"],
-            "rationale": "Using the saved local manual decision override.",
-        }
-    return payload
+    return build_decision_memo(
+        detail,
+        notice_id=notice_id,
+        manual_decision=normalize_manual_decision_state(review_status),
+    )
 
 
 @router.get("/ops/review-status")

@@ -31,6 +31,7 @@ def build_empty_decision_memo(notice_id: str) -> dict[str, Any]:
             "risk_level": "unknown",
             "match_score": 0,
         },
+        "manual_decision": _empty_manual_decision(),
         "yonlab_fit_summary": {
             "score": 0,
             "grade": "unknown",
@@ -71,9 +72,16 @@ def build_empty_decision_memo(notice_id: str) -> dict[str, Any]:
     }
 
 
-def build_decision_memo(detail: dict[str, Any] | None, *, notice_id: str) -> dict[str, Any]:
+def build_decision_memo(
+    detail: dict[str, Any] | None,
+    *,
+    notice_id: str,
+    manual_decision: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     if not detail:
-        return build_empty_decision_memo(notice_id)
+        payload = build_empty_decision_memo(notice_id)
+        payload["manual_decision"] = _normalize_manual_decision(manual_decision)
+        return payload
 
     source_mode = _safe_text(detail.get("source_type")) or "unknown"
     review_status = _safe_text(detail.get("review_status")) or "new"
@@ -81,10 +89,16 @@ def build_decision_memo(detail: dict[str, Any] | None, *, notice_id: str) -> dic
     deadline_status = _deadline_status(deadline)
     score = int(detail.get("score") or 0)
     risk_level = (_safe_text(detail.get("risk_level")) or "unknown").casefold()
+    manual_decision = _normalize_manual_decision(manual_decision)
     fit_reasons = _fit_reasons(detail)
     concern_reasons = _concern_reasons(detail)
     required_documents = _required_documents(detail)
-    recommended_decision = _recommended_decision(detail, score=score, risk_level=risk_level)
+    recommended_decision = _recommended_decision(
+        detail,
+        score=score,
+        risk_level=risk_level,
+        manual_decision=manual_decision,
+    )
     deadline_next_action = _deadline_next_action(
         detail,
         deadline=deadline,
@@ -131,6 +145,7 @@ def build_decision_memo(detail: dict[str, Any] | None, *, notice_id: str) -> dic
             "risk_level": risk_level,
             "match_score": score,
         },
+        "manual_decision": manual_decision,
         "yonlab_fit_summary": {
             "score": score,
             "grade": (
@@ -265,7 +280,17 @@ def _recommended_decision(
     *,
     score: int,
     risk_level: str,
+    manual_decision: dict[str, Any],
 ) -> dict[str, str]:
+    if manual_decision["persisted"] and manual_decision["decision"]:
+        rationale = manual_decision["note"] or (
+            "Using the saved local manual decision override."
+        )
+        return {
+            "value": manual_decision["decision"],
+            "rationale": rationale,
+        }
+
     review_status = _safe_text(detail.get("review_status")).casefold()
     decision_label = _safe_text(detail.get("decision_label")).casefold()
     go_no_go = _safe_text(detail.get("go_no_go_recommendation"))
@@ -301,6 +326,33 @@ def _recommended_decision(
     if value not in ALLOWED_DECISIONS:
         value = "Review"
     return {"value": value, "rationale": rationale}
+
+
+def _empty_manual_decision() -> dict[str, Any]:
+    return {
+        "decision": "",
+        "note": "",
+        "updated_at": "",
+        "persisted": False,
+    }
+
+
+def _normalize_manual_decision(manual_decision: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(manual_decision, dict):
+        return _empty_manual_decision()
+
+    decision = _safe_text(manual_decision.get("decision"))
+    if decision not in ALLOWED_DECISIONS:
+        decision = ""
+    note = _safe_text(manual_decision.get("note"))
+    updated_at = _safe_text(manual_decision.get("updated_at"))
+    persisted = bool(manual_decision.get("persisted") or decision or note or updated_at)
+    return {
+        "decision": decision,
+        "note": note,
+        "updated_at": updated_at,
+        "persisted": persisted,
+    }
 
 
 def _preparation_actions(

@@ -71,6 +71,31 @@ def build_default_review_status(notice_id: str) -> dict[str, Any]:
     }
 
 
+def normalize_manual_decision_state(source: dict[str, Any] | None) -> dict[str, Any]:
+    if source is None:
+        return {
+            "decision": "",
+            "note": "",
+            "updated_at": "",
+            "persisted": False,
+        }
+
+    decision = _sanitize_local_text(source.get("manual_decision"))
+    if decision not in {"Prepare", "Review", "Hold", "Reject"}:
+        decision = ""
+    note = _sanitize_local_text(source.get("manual_decision_note"))
+    updated_at = _sanitize_local_text(source.get("manual_decision_updated_at"))
+    persisted = bool(
+        source.get("manual_decision_persisted") or decision or note or updated_at
+    )
+    return {
+        "decision": decision,
+        "note": note,
+        "updated_at": updated_at,
+        "persisted": persisted,
+    }
+
+
 def list_review_statuses(db_path: str | Path) -> list[dict[str, Any]]:
     records = _load_records(review_status_storage_path(db_path))
     return [
@@ -208,9 +233,7 @@ def _record_response(
     if status not in REVIEW_STATUS_LABELS_KO:
         status = "new"
     note = _sanitize_local_text(record.get("note"))
-    manual_decision = _sanitize_local_text(record.get("manual_decision"))
-    manual_decision_note = _sanitize_local_text(record.get("manual_decision_note"))
-    manual_decision_updated_at = _sanitize_local_text(record.get("manual_decision_updated_at"))
+    manual_decision_state = normalize_manual_decision_state(record)
     return {
         "notice_id": notice_id,
         "source_run_id": _sanitize_local_text(record.get("source_run_id")),
@@ -221,12 +244,10 @@ def _record_response(
         "note_preview": _note_preview(note),
         "next_action": _sanitize_local_text(record.get("next_action")),
         "updated_at": _sanitize_local_text(record.get("updated_at")),
-        "manual_decision": manual_decision,
-        "manual_decision_note": manual_decision_note,
-        "manual_decision_updated_at": manual_decision_updated_at,
-        "manual_decision_persisted": bool(
-            manual_decision or manual_decision_note or manual_decision_updated_at
-        ),
+        "manual_decision": manual_decision_state["decision"],
+        "manual_decision_note": manual_decision_state["note"],
+        "manual_decision_updated_at": manual_decision_state["updated_at"],
+        "manual_decision_persisted": manual_decision_state["persisted"],
         "persisted": persisted,
         "service_key_exposed": False,
         "real_api_call_attempted": False,

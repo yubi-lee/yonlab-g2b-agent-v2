@@ -34,6 +34,7 @@ def test_ops_decision_memo_returns_safe_payload_for_known_local_notice(
         "notice_id",
         "notice",
         "review_context",
+        "manual_decision",
         "yonlab_fit_summary",
         "risk_summary",
         "deadline_next_action",
@@ -54,6 +55,12 @@ def test_ops_decision_memo_returns_safe_payload_for_known_local_notice(
         "deadline_status",
         "risk_level",
         "match_score",
+    }
+    assert payload["manual_decision"] == {
+        "decision": "",
+        "note": "",
+        "updated_at": "",
+        "persisted": False,
     }
     assert set(payload["yonlab_fit_summary"]) >= {
         "score",
@@ -109,6 +116,12 @@ def test_ops_decision_memo_returns_safe_not_found_payload_for_unknown_notice(
     assert payload["source"] == "empty"
     assert payload["notice_id"] == "UNKNOWN-NOTICE-ID"
     assert payload["notice"]["title"] == ""
+    assert payload["manual_decision"] == {
+        "decision": "",
+        "note": "",
+        "updated_at": "",
+        "persisted": False,
+    }
     assert payload["yonlab_fit_summary"]["fit_reasons"] == []
     assert payload["risk_summary"]["eligibility_risks"] == []
     assert payload["deadline_next_action"]["urgency"] == "unknown"
@@ -252,8 +265,94 @@ def test_manual_decision_save_then_decision_memo_read_reflects_override(
     }
     assert payload["manual_decision"]["updated_at"]
     assert payload["recommended_decision"]["value"] == "Hold"
+    assert payload["recommended_decision"]["rationale"] == "Wait for team capacity confirmation."
+    assert "- Decision: Hold" in payload["export_blocks"]["markdown"]
+    assert "Decision: Hold" in payload["export_blocks"]["markdown"]
+    assert payload["export_blocks"]["short_summary"].startswith("Hold - ")
     assert payload["safety"]["real_api_call_attempted"] is False
     assert payload["service_key_exposed"] is False
+
+
+def test_decision_memo_exposes_manual_decision_block(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:  # noqa: ANN001
+    settings = _tmp_settings(tmp_path)
+    monkeypatch.setattr(routes, "get_settings", lambda: settings)
+    notice_id = _known_notice_id()
+
+    response = client.get(f"/ops/decision-memo/{notice_id}")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["manual_decision"] == {
+        "decision": "",
+        "note": "",
+        "updated_at": "",
+        "persisted": False,
+    }
+
+
+def test_decision_memo_recommended_decision_uses_persisted_manual_value(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:  # noqa: ANN001
+    settings = _tmp_settings(tmp_path)
+    monkeypatch.setattr(routes, "get_settings", lambda: settings)
+    notice_id = _known_notice_id()
+
+    save_response = client.post(
+        f"/ops/manual-decision/{notice_id}",
+        json={
+            "decision": "Reject",
+            "note": "Legal review blocked this bid.",
+        },
+    )
+    assert save_response.status_code == 200
+
+    response = client.get(f"/ops/decision-memo/{notice_id}")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["manual_decision"] == {
+        "decision": "Reject",
+        "note": "Legal review blocked this bid.",
+        "updated_at": payload["manual_decision"]["updated_at"],
+        "persisted": True,
+    }
+    assert payload["manual_decision"]["updated_at"]
+    assert payload["recommended_decision"] == {
+        "value": "Reject",
+        "rationale": "Legal review blocked this bid.",
+    }
+    assert "- Decision: Reject" in payload["export_blocks"]["markdown"]
+    assert payload["export_blocks"]["short_summary"].startswith("Reject - ")
+
+
+def test_decision_memo_uses_generated_default_when_manual_decision_missing(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:  # noqa: ANN001
+    settings = _tmp_settings(tmp_path)
+    monkeypatch.setattr(routes, "get_settings", lambda: settings)
+    notice_id = _known_notice_id()
+
+    response = client.get(f"/ops/decision-memo/{notice_id}")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["manual_decision"]["persisted"] is False
+    assert payload["recommended_decision"]["value"] in {
+        "Prepare",
+        "Review",
+        "Hold",
+        "Reject",
+    }
+    assert payload["recommended_decision"]["rationale"]
+    assert payload["recommended_decision"]["rationale"] != ""
+    assert payload["recommended_decision"]["rationale"] != (
+        "Using the saved local manual decision override."
+    )
 
 
 def _tmp_settings(tmp_path: Path, **overrides) -> Settings:  # noqa: ANN001
