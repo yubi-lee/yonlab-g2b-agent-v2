@@ -17,6 +17,7 @@ ReviewStatusValue = Literal[
     "submitted",
     "archived",
 ]
+ManualDecisionValue = Literal["Prepare", "Review", "Hold", "Reject"]
 
 REVIEW_STATUS_LABELS_KO: dict[str, str] = {
     "new": "신규",
@@ -40,6 +41,11 @@ class ReviewStatusUpdate(BaseModel):
     source_run_id: str = Field(default="", max_length=120)
 
 
+class ManualDecisionUpdate(BaseModel):
+    decision: ManualDecisionValue
+    note: str = Field(default="", max_length=1200)
+
+
 def review_status_storage_path(db_path: str | Path) -> Path:
     return Path(db_path).with_name("review_status.json")
 
@@ -55,6 +61,10 @@ def build_default_review_status(notice_id: str) -> dict[str, Any]:
         "note_preview": "",
         "next_action": "",
         "updated_at": "",
+        "manual_decision": "",
+        "manual_decision_note": "",
+        "manual_decision_updated_at": "",
+        "manual_decision_persisted": False,
         "persisted": False,
         "service_key_exposed": False,
         "real_api_call_attempted": False,
@@ -84,6 +94,7 @@ def save_review_status(
 ) -> dict[str, Any]:
     path = review_status_storage_path(db_path)
     records = _load_records(path)
+    existing = records.get(str(notice_id), {})
     records[str(notice_id)] = {
         "notice_id": str(notice_id),
         "source_run_id": payload.source_run_id.strip(),
@@ -91,10 +102,32 @@ def save_review_status(
         "owner": payload.owner.strip(),
         "note": payload.note.strip(),
         "next_action": payload.next_action.strip(),
-        "updated_at": datetime.now(UTC).isoformat(timespec="seconds"),
+        "updated_at": _iso_timestamp(),
+        "manual_decision": existing.get("manual_decision", ""),
+        "manual_decision_note": existing.get("manual_decision_note", ""),
+        "manual_decision_updated_at": existing.get("manual_decision_updated_at", ""),
     }
     _save_records(path, records)
     return _record_response(str(notice_id), records[str(notice_id)], persisted=True)
+
+
+def save_manual_decision(
+    db_path: str | Path,
+    notice_id: str,
+    payload: ManualDecisionUpdate,
+    *,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    path = review_status_storage_path(db_path)
+    records = _load_records(path)
+    record = dict(records.get(str(notice_id), {}))
+    record["notice_id"] = str(notice_id)
+    record["manual_decision"] = payload.decision
+    record["manual_decision_note"] = _sanitize_local_text(payload.note.strip())
+    record["manual_decision_updated_at"] = _iso_timestamp(now)
+    records[str(notice_id)] = record
+    _save_records(path, records)
+    return _record_response(str(notice_id), record, persisted=True)
 
 
 def delete_review_status(db_path: str | Path, notice_id: str) -> dict[str, Any]:
@@ -154,6 +187,10 @@ def _merge_item(item: dict[str, Any], record: dict[str, Any] | None) -> dict[str
             "next_action": status["next_action"],
             "updated_at": status["updated_at"],
             "review_status_persisted": status["persisted"],
+            "manual_decision": status["manual_decision"],
+            "manual_decision_note": status["manual_decision_note"],
+            "manual_decision_updated_at": status["manual_decision_updated_at"],
+            "manual_decision_persisted": status["manual_decision_persisted"],
         }
     )
     return merged
@@ -171,6 +208,9 @@ def _record_response(
     if status not in REVIEW_STATUS_LABELS_KO:
         status = "new"
     note = _sanitize_local_text(record.get("note"))
+    manual_decision = _sanitize_local_text(record.get("manual_decision"))
+    manual_decision_note = _sanitize_local_text(record.get("manual_decision_note"))
+    manual_decision_updated_at = _sanitize_local_text(record.get("manual_decision_updated_at"))
     return {
         "notice_id": notice_id,
         "source_run_id": _sanitize_local_text(record.get("source_run_id")),
@@ -181,6 +221,12 @@ def _record_response(
         "note_preview": _note_preview(note),
         "next_action": _sanitize_local_text(record.get("next_action")),
         "updated_at": _sanitize_local_text(record.get("updated_at")),
+        "manual_decision": manual_decision,
+        "manual_decision_note": manual_decision_note,
+        "manual_decision_updated_at": manual_decision_updated_at,
+        "manual_decision_persisted": bool(
+            manual_decision or manual_decision_note or manual_decision_updated_at
+        ),
         "persisted": persisted,
         "service_key_exposed": False,
         "real_api_call_attempted": False,
@@ -212,7 +258,7 @@ def _save_records(path: Path, records: dict[str, dict[str, Any]]) -> None:
         json.dumps(
             {
                 "schema": "yonlab.review_status.v1",
-                "updated_at": datetime.now(UTC).isoformat(timespec="seconds"),
+                "updated_at": _iso_timestamp(),
                 "items": records,
             },
             ensure_ascii=False,
@@ -236,3 +282,8 @@ def _sanitize_local_text(value: Any) -> str:
     text = text.replace("SERVICE_KEY", "[redacted-key-field]")
     text = text.replace(".env", "[env-redacted]")
     return text
+
+
+def _iso_timestamp(now: datetime | None = None) -> str:
+    timestamp = datetime.now(UTC) if now is None else now
+    return timestamp.isoformat(timespec="seconds")
