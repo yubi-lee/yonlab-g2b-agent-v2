@@ -78,7 +78,18 @@ real operations validation window.
 
 ## Local Validation
 
-Run the offline fixture-safe validation first:
+Preferred offline release validation command:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\validate_release.ps1
+```
+
+This wrapper resolves the repo root from the script location, requires
+`.venv\Scripts\python.exe`, runs `pytest` and `ruff` through the repo-local
+interpreter, and then delegates to the existing validation scripts. The
+execution-policy bypass is limited to that PowerShell process.
+
+Underlying offline validation steps remain available:
 
 ```powershell
 ruff check app tests

@@ -18,6 +18,28 @@ Use one command for local end-to-end validation:
 
 The script runs `python -m pytest -q`, starts a temporary FastAPI server on `127.0.0.1:8000`, waits for `/health`, runs fixture smoke scripts, verifies the UI and operations fixture flow, verifies the real API guard-blocked smoke path, runs the Korean markdown report smoke check, and stops the server in a `finally` block.
 
+## Preferred Windows Release Validation
+
+Use the hardened wrapper for Windows release-gate validation:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\validate_release.ps1
+```
+
+The wrapper:
+
+- resolves the repo root from the script location
+- requires repo-local Python at `.venv\Scripts\python.exe`
+- runs `pytest` and `ruff` through that interpreter
+- calls `scripts/check_deploy_readiness.ps1`
+- calls `scripts/validate_local.ps1`
+- calls `scripts/validate_ops_package.ps1`
+- exits on the first failed step with concise `PASS` or `FAIL` output
+
+This keeps the existing scripts independently runnable while avoiding drift
+between global Python and the repository virtual environment. The execution
+policy bypass is process-local to the wrapper invocation.
+
 ## Real API Readiness Validation
 
 Use one command before the first confirmed real smoke:
@@ -170,6 +192,8 @@ Tests must never call the real G2B/Public Data Portal API. Real API behavior is 
 - Tests must not download real attachments or require HWP/HWPX parsing.
 - Add fixture cases before expanding real API behavior.
 - `python -m pytest -q` must remain the standard validation command.
+- `powershell -ExecutionPolicy Bypass -File .\scripts\validate_release.ps1` is
+  the preferred Windows release-validation entrypoint.
 
 ## Korean UTF-8 Regression Rule
 

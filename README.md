@@ -53,6 +53,17 @@ Preferred full local validation, including pytest, temporary local server startu
 .\scripts\validate_local.ps1
 ```
 
+Preferred Windows release validation entrypoint:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\validate_release.ps1
+```
+
+`validate_release.ps1` resolves the repo root from the script location, requires
+repo-local Python at `.venv\Scripts\python.exe`, runs `pytest` and `ruff`
+through that interpreter, and then delegates to the existing validation scripts.
+The execution-policy bypass applies only to that PowerShell process.
+
 `validate_local.ps1` now includes a Review Board no-real smoke path for `/ops/review-board`,
 `/ui` Review Board rendering, and Daily Review Pack Review Board export sections.
 

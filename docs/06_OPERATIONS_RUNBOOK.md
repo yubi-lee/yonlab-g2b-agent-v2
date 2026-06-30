@@ -219,6 +219,19 @@ key values are never printed by the controlled scripts.
 
 ## Validation
 
+Preferred Windows release validation:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\validate_release.ps1
+```
+
+This wrapper uses repo-local `.venv\Scripts\python.exe`, then delegates to the
+existing readiness and package-validation scripts. It is the safest single
+entrypoint when the machine's global `python` or PowerShell execution policy
+differs from the project-local environment.
+
+Underlying commands remain available:
+
 ```powershell
 python -m pytest -q
 .\scripts\check_deploy_readiness.ps1
@@ -230,6 +243,10 @@ python -m pytest -q
 
 `validate_local.ps1` runs fixture-safe UI and operations smoke checks. It does not call the
 real G2B/Public Data Portal API.
+
+If direct `.ps1` execution is blocked by Windows PowerShell policy, use the
+wrapper above or invoke the individual script with `powershell -ExecutionPolicy
+Bypass -File ...`.
 
 For release deployment handoff, including setup, offline validation, controlled real-run
 procedure, smoke tests, rollback criteria, and troubleshooting, see
