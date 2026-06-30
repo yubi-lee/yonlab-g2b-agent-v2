@@ -149,6 +149,59 @@ def test_daily_review_pack_includes_decision_memo_summary_and_entries() -> None:
     assert summary["real_api_call_attempted"] is False
 
 
+def test_daily_review_pack_uses_persisted_manual_decision_in_decision_memo() -> None:
+    pack = build_daily_review_pack(
+        _decision_memo_items(
+            manual_decision="Reject",
+            manual_decision_note="Operator overrode the generated recommendation.",
+            manual_decision_updated_at="2026-06-30T08:30:00+00:00",
+            manual_decision_persisted=True,
+        )
+    )
+
+    memo = pack["decision_memo_summary"]["memos"][0]
+
+    assert memo["recommended_decision"] == "Reject"
+    assert memo["rationale"] == "Operator overrode the generated recommendation."
+    assert pack["decision_memo_summary"]["decision_counts"]["Reject"] == 1
+
+
+def test_daily_review_pack_markdown_shows_persisted_manual_decision_details() -> None:
+    pack = build_daily_review_pack(
+        _decision_memo_items(
+            manual_decision="Hold",
+            manual_decision_note="Wait for partner confirmation before bidding.",
+            manual_decision_updated_at="2026-06-30T08:30:00+00:00",
+            manual_decision_persisted=True,
+        )
+    )
+
+    markdown = pack["markdown_report"]
+
+    assert "## Decision Memo Summary" in markdown
+    assert "## Decision Memo Details" in markdown
+    assert "- Hold: 1" in markdown
+    assert "/ Hold" in markdown
+    assert "rationale: Wait for partner confirmation before bidding." in markdown
+
+
+def test_daily_review_pack_preserves_generated_decision_without_manual_override() -> None:
+    pack = build_daily_review_pack(
+        _decision_memo_items(
+            manual_decision="",
+            manual_decision_note="",
+            manual_decision_updated_at="",
+            manual_decision_persisted=False,
+        )
+    )
+
+    memo = pack["decision_memo_summary"]["memos"][0]
+
+    assert memo["recommended_decision"] == "Prepare"
+    assert pack["decision_memo_summary"]["decision_counts"]["Prepare"] == 1
+    assert memo["rationale"] != ""
+
+
 def test_daily_review_pack_groups_required_documents() -> None:
     pack = build_daily_review_pack(_sample_items())
     item = pack["review_items"][0]
@@ -452,7 +505,13 @@ def _sample_items() -> list[dict]:
     ]
 
 
-def _decision_memo_items() -> list[dict]:
+def _decision_memo_items(
+    *,
+    manual_decision: str = "",
+    manual_decision_note: str = "",
+    manual_decision_updated_at: str = "",
+    manual_decision_persisted: bool = False,
+) -> list[dict]:
     return [
         _item(
             notice_id="G2B-SAMPLE-2026-001",
@@ -476,6 +535,10 @@ def _decision_memo_items() -> list[dict]:
                 "AI/SW 시스템 구축 과업이 와이온랩의 핵심 역량과 부합합니다.",
             ],
             risks=["주요 리스크는 낮으며 제안 일정만 확인하면 됩니다."],
+            manual_decision=manual_decision,
+            manual_decision_note=manual_decision_note,
+            manual_decision_updated_at=manual_decision_updated_at,
+            manual_decision_persisted=manual_decision_persisted,
         )
     ]
 
@@ -501,6 +564,10 @@ def _item(
     go_no_go_ko: str = "review",
     decision_reasons: list[str] | None = None,
     risks: list[str] | None = None,
+    manual_decision: str = "",
+    manual_decision_note: str = "",
+    manual_decision_updated_at: str = "",
+    manual_decision_persisted: bool = False,
 ) -> dict:
     return {
         "notice_id": notice_id,
@@ -529,6 +596,10 @@ def _item(
             f"{notice_id} fit reason one",
             f"{notice_id} fit reason two",
         ],
+        "manual_decision": manual_decision,
+        "manual_decision_note": manual_decision_note,
+        "manual_decision_updated_at": manual_decision_updated_at,
+        "manual_decision_persisted": manual_decision_persisted,
         "report_path": "D:\\Deploy\\secret\\report.md",
         "raw_json_path": "D:\\Deploy\\secret\\raw.json",
         "raw_source": {"serviceKey": "LOCAL_ONLY_SECRET"},

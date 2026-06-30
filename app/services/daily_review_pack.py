@@ -9,6 +9,7 @@ from typing import Any
 from app.services.decision_memo import build_decision_memo
 from app.services.opportunity_decision import group_required_documents
 from app.services.review_board import build_review_board
+from app.services.review_status import normalize_manual_decision_state
 
 EMPTY_STATE_MESSAGE = (
     "No opportunity data available. No searchable saved notices exist yet."
@@ -323,7 +324,11 @@ def build_decision_memo_summary(
         item = item_by_notice_id.get(notice_id)
         if item is None:
             continue
-        memo = build_decision_memo(item, notice_id=notice_id)
+        memo = build_decision_memo(
+            item,
+            notice_id=notice_id,
+            manual_decision=_manual_decision_state(item),
+        )
         decision_value = str(memo.get("recommended_decision", {}).get("value") or "Hold")
         if decision_value not in decision_counts:
             decision_value = "Hold"
@@ -557,6 +562,12 @@ def _safe_item(item: dict[str, Any]) -> dict[str, Any]:
         "owner": _sanitize_export_text(item.get("owner")),
         "note_preview": _sanitize_export_text(item.get("note_preview")),
         "next_action": _sanitize_export_text(item.get("next_action")),
+        "manual_decision": _sanitize_export_text(item.get("manual_decision")),
+        "manual_decision_note": _sanitize_export_text(item.get("manual_decision_note")),
+        "manual_decision_updated_at": _sanitize_export_text(
+            item.get("manual_decision_updated_at")
+        ),
+        "manual_decision_persisted": bool(item.get("manual_decision_persisted")),
         "decision_label": _sanitize_export_text(item.get("decision_label")),
         "decision_label_ko": _sanitize_export_text(item.get("decision_label_ko")),
         "bid_priority": _priority(item),
@@ -861,6 +872,10 @@ def _decision_memo_required_documents(memo: dict[str, Any]) -> list[str]:
         for entry in (memo.get("required_documents") or [])
         if _sanitize_export_text(entry.get("name"))
     ]
+
+
+def _manual_decision_state(item: dict[str, Any]) -> dict[str, Any]:
+    return normalize_manual_decision_state(item)
 
 
 def _safe_url(value: Any) -> str:
